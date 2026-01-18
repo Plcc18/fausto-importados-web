@@ -36,6 +36,7 @@ import {
   ChevronDown,
   RotateCcw,
   Menu,
+  User,
 } from 'lucide-react'
 import {
   Sheet,
@@ -57,6 +58,12 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 import { Slider } from '@/components/ui/slider'
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
+import { useNavigate } from "react-router-dom"
 
 type GenderFilter = 'todos' | 'feminino' | 'masculino' | 'unissex'
 type OlfativeFamily =
@@ -88,6 +95,10 @@ interface QuickFilter {
 
 const MAX_PRICE = 2500
 
+//Login fixo
+const Email = "admin@example.com"
+const Senha = "123456"
+
 export function Store() {
   const [products, setProducts] = useState<Product[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
@@ -99,6 +110,61 @@ export function Store() {
     priceRange: [0, MAX_PRICE],
   })
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const navigate = useNavigate()
+
+
+  const isLoggedIn = false
+
+  if (isLoggedIn) {
+    return (
+      <Avatar className="h-9 w-9 cursor-pointer transition-transform">
+        <AvatarImage alt="Seu Usuário" />
+        <AvatarFallback>US</AvatarFallback>
+      </Avatar>
+    )
+  }
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+
+    setTimeout(() => {
+      if (email === Email && password === Senha) {
+        toast.success("Login Realizado com sucesso!", {
+          style: {
+            backgroundColor: "#3CB371",
+            color: "#ffffff"
+          },
+        })
+        setIsLoading(false)
+        setOpen(false)
+      }
+      if (email != Email) {
+        toast.error("Email incorreto. Tente novamente!", {
+          style: {
+            backgroundColor: "#FF6347",
+            color: "#ffffff"
+          },
+        })
+      }
+      if (password != Senha) {
+        toast.error("Senha incorreta. Tente novamente!", {
+          style: {
+            backgroundColor: "#FF6347",
+            color: "#ffffff"
+          },
+        })
+      }
+      setIsLoading(false)
+      setOpen(false)
+
+      navigate("/admin")
+    }, 1500)
+  }
 
   useEffect(() => {
     setProducts(getProducts())
@@ -251,7 +317,7 @@ export function Store() {
   return (
     <div className="min-h-screen bg-background">
       {/* Sophisticated Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
         {/* Top Bar */}
         <div className="hidden border-b border-border/30 bg-foreground text-background md:block">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-2 text-xs tracking-wide">
@@ -272,7 +338,7 @@ export function Store() {
                   <span className="sr-only">Menu</span>
                 </button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[300px] p-0">
+              <SheetContent side="left" className="w-75 p-0">
                 <div className="flex flex-col">
                   <div className="border-b border-border p-6">
                     <h2 className="font-serif text-xl tracking-tight">Fausto</h2>
@@ -405,7 +471,7 @@ export function Store() {
               >
                 <div className="relative">
                   <ShoppingBag className={cn(
-                    'h-[18px] w-[18px] transition-transform duration-300',
+                    'h-4.5 w-4.5 transition-transform duration-300',
                     cartCount > 0 ? 'group-hover:scale-110' : ''
                   )} />
                   {cartCount > 0 && (
@@ -415,7 +481,7 @@ export function Store() {
                     </span>
                   )}
                 </div>
-                
+
                 {cartCount > 0 ? (
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold">{cartCount}</span>
@@ -426,14 +492,14 @@ export function Store() {
                 ) : (
                   <span className="hidden text-sm font-medium sm:block">Carrinho</span>
                 )}
-                
+
                 {cartCount > 0 && (
                   <div className="hidden items-center gap-1 border-l border-background/30 pl-2 md:flex">
                     <span className="text-xs font-medium opacity-90">Ver</span>
-                    <svg 
-                      className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5" 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
+                    <svg
+                      className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -441,14 +507,67 @@ export function Store() {
                   </div>
                 )}
               </button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                onClick={() => setOpen(true)}
+                title="Fazer Login">
+                <User className="w-5 h-5" />
+              </Button>
+
+              <Dialog open={open} onOpenChange={setOpen} >
+                <DialogContent className="sm:max-w-106.25">
+                  <DialogHeader>
+                    <DialogTitle>Entrar na Conta</DialogTitle>
+                    <DialogDescription>Use seu e-mail e senha para acessar sua conta.</DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleLogin} className="space-y-5 pt-4">
+                    <div className="grid gap-5 py-2">
+                      <div className="grid gap-2">
+                        <Label htmlFor="email">E-mail</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="seu@email.com"
+                          autoComplete="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="password">Senha</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          autoComplete="current-password"
+                          placeholder="digite sua senha.."
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? "Entrando..." : "Entrar"}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-muted/50 via-muted/30 to-background px-4 py-24 md:py-36">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
+      <section className="relative overflow-hidden bg-linear-to-b from-muted/50 via-muted/30 to-background px-4 py-24 md:py-36">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA2MCAwIEwgMCAwIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMDA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-50" />
         <div className="relative mx-auto max-w-4xl text-center">
           <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/50 px-4 py-1.5 backdrop-blur-sm">
@@ -888,7 +1007,7 @@ export function Store() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-gradient-to-b from-background to-muted/30 px-4 py-20">
+      <footer className="border-t border-border bg-linear-to-b from-background to-muted/30 px-4 py-20">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-12 lg:grid-cols-4 lg:gap-8">
             {/* Brand */}
@@ -970,7 +1089,7 @@ export function Store() {
                 </div>
               </div>
             </div>
-            <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/20 p-5 border border-emerald-200/50">
+            <div className="rounded-xl bg-linear-to-r from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/20 p-5 border border-emerald-200/50">
               <p className="font-bold text-emerald-700 dark:text-emerald-300 text-[15px]">
                 🎁 Frete Grátis na compra acima de R$ 300!
               </p>
@@ -1011,3 +1130,5 @@ export function Store() {
     </div>
   )
 }
+
+

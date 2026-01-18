@@ -60,7 +60,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
     }).format(value)
 
   // ← MUDE PARA O SEU NÚMERO REAL DE WHATSAPP (com DDD e código do país)
-  const whatsappBusinessNumber = '5511999999999' // Exemplo: 55 + DDD + número
+  const whatsappBusinessNumber = '5585997621031' // Exemplo: 55 + DDD + número
 
   const generateOrderMessage = () => {
     const itemsList = items
@@ -120,7 +120,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
             <div className="space-y-4  grid grid-cols-3">
               {items.map((item) => (
                 <div key={item.product.id} className="flex gap-4">
-                  <div className="h-20 w-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                  <div className="h-20 w-16 rounded-md overflow-hidden bg-muted shrink-0">
                     <img
                       src={item.product.image || '/placeholder.svg'}
                       alt={item.product.name}
@@ -221,7 +221,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
           </Button>
           <Button
             onClick={handleSendOrder}
-            className="min-w-[220px]"
+            className="min-w-55"
             disabled={!name.trim() || !whatsapp.trim()}
           >
             Enviar Pedido pelo WhatsApp
@@ -327,7 +327,7 @@ export function Cart({
                       key={item.product.id}
                       className="flex gap-4 rounded-xl bg-muted/30 p-3 transition-colors hover:bg-muted/50"
                     >
-                      <div className="relative h-24 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
+                      <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
                         <img
                           src={item.product.image || '/placeholder.svg'}
                           alt={item.product.name}

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { ShoppingBag, Plus, Minus, X } from "lucide-react"
+import { ShoppingBag, Plus, Minus } from "lucide-react"
 
 interface ProductCardProps {
   product: Product
@@ -93,14 +93,6 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-3xl p-0 overflow-hidden">
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-4 top-4 z-10"
-            onClick={() => setIsModalOpen(false)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
           <div className="grid md:grid-cols-2">
             <div className="relative aspect-square bg-muted">
               <img
