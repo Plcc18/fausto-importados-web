@@ -37,6 +37,7 @@ import {
   RotateCcw,
   Menu,
   User,
+  Search,
 } from 'lucide-react'
 import {
   Sheet,
@@ -114,6 +115,7 @@ export function Store() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState<string>("")
   const navigate = useNavigate()
 
 
@@ -140,19 +142,10 @@ export function Store() {
             color: "#ffffff"
           },
         })
-        setIsLoading(false)
         setOpen(false)
-      }
-      if (email != Email) {
-        toast.error("Email incorreto. Tente novamente!", {
-          style: {
-            backgroundColor: "#FF6347",
-            color: "#ffffff"
-          },
-        })
-      }
-      if (password != Senha) {
-        toast.error("Senha incorreta. Tente novamente!", {
+        navigate("/admin")
+      } else {
+        toast.error("Email ou senha incorreta. Tente novamente!", {
           style: {
             backgroundColor: "#FF6347",
             color: "#ffffff"
@@ -160,9 +153,6 @@ export function Store() {
         })
       }
       setIsLoading(false)
-      setOpen(false)
-
-      navigate("/admin")
     }, 1500)
   }
 
@@ -206,7 +196,7 @@ export function Store() {
 
   const familyFilters = [
     { value: 'floral', label: 'Floral', icon: Flower2 },
-    { value: 'amadeirado', label: 'Amadeirado', icon: TreePine },
+    { value: 'Amadeirado', label: 'Amadeirado', icon: TreePine },
     { value: 'citrico', label: 'Cítrico', icon: Citrus },
     { value: 'oriental', label: 'Oriental', icon: Moon },
     { value: 'aquatico', label: 'Aquático', icon: Waves },
@@ -225,6 +215,21 @@ export function Store() {
   const filteredProducts = useMemo(() => {
     let result = products.filter((p) => p.inStock)
 
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim()
+
+      result = result.filter((p: Product) => {
+        const searchable = [
+          p.name?.toLowerCase() || "",
+          p.brand?.toLowerCase() || "",
+          p.olfactiveFamily?.toLowerCase() || "",
+        ].join("")
+
+
+        return searchable.includes(term)
+      })
+    }
+
     if (filters.gender !== 'todos') {
       result = result.filter((p) => p.category === filters.gender)
     }
@@ -241,7 +246,7 @@ export function Store() {
     result = result.filter((p) => p.price >= min && p.price <= max)
 
     return result
-  }, [products, filters])
+  }, [products, filters, searchTerm])
 
   const handleAddToCart = (product: Product) => {
     addToCart(product)
@@ -273,6 +278,7 @@ export function Store() {
       priceRange: [0, MAX_PRICE],
     })
     setActiveQuickFilter(null)
+    setSearchTerm("")
   }, [])
 
   const handleQuickFilter = useCallback(
@@ -660,6 +666,7 @@ export function Store() {
                 <h2 className="text-3xl font-light tracking-tight text-foreground md:text-4xl">
                   Nossa Coleção
                 </h2>
+
                 <p className="mt-2 text-muted-foreground">
                   {filteredProducts.length} fragrância{filteredProducts.length !== 1 ? 's' : ''}{' '}
                   selecionada{filteredProducts.length !== 1 ? 's' : ''}
@@ -685,109 +692,75 @@ export function Store() {
               )}
             </div>
 
-            {/* Elegant Filter Bar */}
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Gender Filter */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    className={cn(
-                      'flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all',
-                      filters.gender !== 'todos'
-                        ? 'border-foreground bg-foreground text-background'
-                        : 'border-border bg-transparent text-foreground hover:border-foreground/50'
-                    )}
-                  >
-                    {filters.gender === 'todos'
-                      ? 'Gênero'
-                      : filters.gender.charAt(0).toUpperCase() + filters.gender.slice(1)}
-                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-44 p-1.5" align="start">
-                  <Command>
-                    <CommandList>
-                      <CommandGroup>
-                        {[
-                          { value: 'todos', label: 'Todos' },
-                          { value: 'feminino', label: 'Feminino' },
-                          { value: 'masculino', label: 'Masculino' },
-                          { value: 'unissex', label: 'Unissex' },
-                        ].map((option) => (
-                          <CommandItem
-                            key={option.value}
-                            onSelect={() => {
-                              setFilters((prev) => ({
-                                ...prev,
-                                gender: option.value as GenderFilter,
-                              }))
-                              setActiveQuickFilter(null)
-                            }}
-                            className="gap-2 rounded-lg"
-                          >
-                            <Check
-                              className={cn(
-                                'h-4 w-4',
-                                filters.gender === option.value ? 'opacity-100' : 'opacity-0'
-                              )}
-                            />
-                            {option.label}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+            <div className="grid grid-cols-2 ">
 
-              {/* Family Filter */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    className={cn(
-                      'flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all',
-                      filters.family !== 'todos'
-                        ? 'border-foreground bg-foreground text-background'
-                        : 'border-border bg-transparent text-foreground hover:border-foreground/50'
-                    )}
-                  >
-                    {filters.family === 'todos'
-                      ? 'Família Olfativa'
-                      : familyFilters.find((f) => f.value === filters.family)?.label}
-                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-52 p-1.5" align="start">
-                  <Command>
-                    <CommandInput placeholder="Buscar..." className="h-9" />
-                    <CommandList>
-                      <CommandEmpty>Nenhuma encontrada.</CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem
-                          onSelect={() => {
-                            setFilters((prev) => ({ ...prev, family: 'todos' }))
-                            setActiveQuickFilter(null)
-                          }}
-                          className="gap-2 rounded-lg"
-                        >
-                          <Check
-                            className={cn(
-                              'h-4 w-4',
-                              filters.family === 'todos' ? 'opacity-100' : 'opacity-0'
-                            )}
-                          />
-                          Todas as famílias
-                        </CommandItem>
-                        <CommandSeparator className="my-1" />
-                        {familyFilters.map((family) => {
-                          const Icon = family.icon
-                          return (
+              <div className="relative w-full max-w-md mx-auto">
+                {/* Input wrapper */}
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder="Buscar..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-10 py-3 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+
+                  {/* Lupa */}
+                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-gray-400" />
+                  </div>
+
+                  {/* Botão de limpar apenas com X */}
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm("")}
+                      className="absolute inset-y-1 right-1 flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300"
+                    >
+                      <X className="h-4 w-4 text-gray-600" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+
+
+              {/* Elegant Filter Bar */}
+              <div className="flex flex-wrap items-center gap-2 justify-end">
+
+                {/* Gender Filter */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      className={cn(
+                        'flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all',
+                        filters.gender !== 'todos'
+                          ? 'border-foreground bg-foreground text-background'
+                          : 'border-border bg-transparent text-foreground hover:border-foreground/50'
+                      )}
+                    >
+                      {filters.gender === 'todos'
+                        ? 'Gênero'
+                        : filters.gender.charAt(0).toUpperCase() + filters.gender.slice(1)}
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-44 p-1.5" align="start">
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          {[
+                            { value: 'todos', label: 'Todos' },
+                            { value: 'feminino', label: 'Feminino' },
+                            { value: 'masculino', label: 'Masculino' },
+                            { value: 'unissex', label: 'Unissex' },
+                          ].map((option) => (
                             <CommandItem
-                              key={family.value}
+                              key={option.value}
                               onSelect={() => {
                                 setFilters((prev) => ({
                                   ...prev,
-                                  family: family.value as OlfativeFamily,
+                                  gender: option.value as GenderFilter,
                                 }))
                                 setActiveQuickFilter(null)
                               }}
@@ -796,49 +769,44 @@ export function Store() {
                               <Check
                                 className={cn(
                                   'h-4 w-4',
-                                  filters.family === family.value ? 'opacity-100' : 'opacity-0'
+                                  filters.gender === option.value ? 'opacity-100' : 'opacity-0'
                                 )}
                               />
-                              <Icon className="h-4 w-4 text-muted-foreground" />
-                              {family.label}
+                              {option.label}
                             </CommandItem>
-                          )
-                        })}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
 
-              {/* Concentration Filter */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    className={cn(
-                      'flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all',
-                      filters.concentration !== 'todos'
-                        ? 'border-foreground bg-foreground text-background'
-                        : 'border-border bg-transparent text-foreground hover:border-foreground/50'
-                    )}
-                  >
-                    {filters.concentration === 'todos'
-                      ? 'Concentração'
-                      : concentrationOptions.find((c) => c.value === filters.concentration)?.label}
-                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-52 p-1.5" align="start">
-                  <Command>
-                    <CommandList>
-                      <CommandGroup>
-                        {concentrationOptions.map((option) => (
+                {/* Family Filter */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      className={cn(
+                        'flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all',
+                        filters.family !== 'todos'
+                          ? 'border-foreground bg-foreground text-background'
+                          : 'border-border bg-transparent text-foreground hover:border-foreground/50'
+                      )}
+                    >
+                      {filters.family === 'todos'
+                        ? 'Família Olfativa'
+                        : familyFilters.find((f) => f.value === filters.family)?.label}
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-52 p-1.5" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar..." className="h-9" />
+                      <CommandList>
+                        <CommandEmpty>Nenhuma encontrada.</CommandEmpty>
+                        <CommandGroup>
                           <CommandItem
-                            key={option.value}
                             onSelect={() => {
-                              setFilters((prev) => ({
-                                ...prev,
-                                concentration: option.value as Concentration,
-                              }))
+                              setFilters((prev) => ({ ...prev, family: 'todos' }))
                               setActiveQuickFilter(null)
                             }}
                             className="gap-2 rounded-lg"
@@ -846,82 +814,101 @@ export function Store() {
                             <Check
                               className={cn(
                                 'h-4 w-4',
-                                filters.concentration === option.value ? 'opacity-100' : 'opacity-0'
+                                filters.family === 'todos' ? 'opacity-100' : 'opacity-0'
                               )}
                             />
-                            <div className="flex flex-col">
-                              <span>{option.label}</span>
-                              {option.description && (
-                                <span className="text-xs text-muted-foreground">
-                                  {option.description}
-                                </span>
-                              )}
-                            </div>
+                            Todas as famílias
                           </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                          <CommandSeparator className="my-1" />
+                          {familyFilters.map((family) => {
+                            const Icon = family.icon
+                            return (
+                              <CommandItem
+                                key={family.value}
+                                onSelect={() => {
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    family: family.value as OlfativeFamily,
+                                  }))
+                                  setActiveQuickFilter(null)
+                                }}
+                                className="gap-2 rounded-lg"
+                              >
+                                <Check
+                                  className={cn(
+                                    'h-4 w-4',
+                                    filters.family === family.value ? 'opacity-100' : 'opacity-0'
+                                  )}
+                                />
+                                <Icon className="h-4 w-4 text-muted-foreground" />
+                                {family.label}
+                              </CommandItem>
+                            )
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
 
-              {/* Price Filter */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    className={cn(
-                      'flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all',
-                      filters.priceRange[0] !== 0 || filters.priceRange[1] !== MAX_PRICE
-                        ? 'border-foreground bg-foreground text-background'
-                        : 'border-border bg-transparent text-foreground hover:border-foreground/50'
-                    )}
-                  >
-                    {filters.priceRange[0] === 0 && filters.priceRange[1] === MAX_PRICE
-                      ? 'Preço'
-                      : `${formatPrice(filters.priceRange[0])} - ${formatPrice(filters.priceRange[1])}`}
-                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-72 p-4" align="start">
-                  <div className="space-y-5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Faixa de Preço</span>
-                      <button
-                        className="text-xs text-muted-foreground hover:text-foreground"
-                        onClick={() => {
-                          setFilters((prev) => ({ ...prev, priceRange: [0, MAX_PRICE] }))
+                {/* Price Filter */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      className={cn(
+                        'flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all',
+                        filters.priceRange[0] !== 0 || filters.priceRange[1] !== MAX_PRICE
+                          ? 'border-foreground bg-foreground text-background'
+                          : 'border-border bg-transparent text-foreground hover:border-foreground/50'
+                      )}
+                    >
+                      {filters.priceRange[0] === 0 && filters.priceRange[1] === MAX_PRICE
+                        ? 'Preço'
+                        : `${formatPrice(filters.priceRange[0])} - ${formatPrice(filters.priceRange[1])}`}
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-4" align="start">
+                    <div className="space-y-5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Faixa de Preço</span>
+                        <button
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setFilters((prev) => ({ ...prev, priceRange: [0, MAX_PRICE] }))
+                            setActiveQuickFilter(null)
+                          }}
+                        >
+                          Resetar
+                        </button>
+                      </div>
+                      <Slider
+                        value={filters.priceRange}
+                        min={0}
+                        max={MAX_PRICE}
+                        step={50}
+                        onValueChange={(value) => {
+                          setFilters((prev) => ({
+                            ...prev,
+                            priceRange: value as [number, number],
+                          }))
                           setActiveQuickFilter(null)
                         }}
-                      >
-                        Resetar
-                      </button>
+                        className="py-4"
+                      />
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="rounded-lg bg-muted px-3 py-1.5 font-medium">
+                          {formatPrice(filters.priceRange[0])}
+                        </span>
+                        <span className="text-muted-foreground">até</span>
+                        <span className="rounded-lg bg-muted px-3 py-1.5 font-medium">
+                          {formatPrice(filters.priceRange[1])}
+                        </span>
+                      </div>
                     </div>
-                    <Slider
-                      value={filters.priceRange}
-                      min={0}
-                      max={MAX_PRICE}
-                      step={50}
-                      onValueChange={(value) => {
-                        setFilters((prev) => ({
-                          ...prev,
-                          priceRange: value as [number, number],
-                        }))
-                        setActiveQuickFilter(null)
-                      }}
-                      className="py-4"
-                    />
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="rounded-lg bg-muted px-3 py-1.5 font-medium">
-                        {formatPrice(filters.priceRange[0])}
-                      </span>
-                      <span className="text-muted-foreground">até</span>
-                      <span className="rounded-lg bg-muted px-3 py-1.5 font-medium">
-                        {formatPrice(filters.priceRange[1])}
-                      </span>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
             {/* Active Filter Tags */}
@@ -979,7 +966,7 @@ export function Store() {
 
           {/* Products Grid */}
           {filteredProducts.length > 0 ? (
-            <div className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {filteredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} onAddToCart={handleAddToCart} />
               ))}

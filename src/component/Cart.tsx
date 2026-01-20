@@ -59,7 +59,6 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
       minimumFractionDigits: 0,
     }).format(value)
 
-  // ← MUDE PARA O SEU NÚMERO REAL DE WHATSAPP (com DDD e código do país)
   const whatsappBusinessNumber = '5585997621031' // Exemplo: 55 + DDD + número
 
   const generateOrderMessage = () => {
@@ -109,59 +108,63 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-6xl max-h-[92vh] flex flex-col p-0 gap-0 ">
+      <DialogContent className="sm:max-w-6xl max-h-[90vh] flex flex-col p-0 gap-0 ">
         <DialogHeader className="px-6 py-5 border-b">
           <DialogTitle className="text-xl">Finalizar seu Pedido</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Resumo dos itens */}
-          <ScrollArea className="flex-1 px-6 py-5 ">
-            <div className="space-y-4  grid grid-cols-3">
-              {items.map((item) => (
-                <div key={item.product.id} className="flex gap-4">
-                  <div className="h-20 w-16 rounded-md overflow-hidden bg-muted shrink-0">
-                    <img
-                      src={item.product.image || '/placeholder.svg'}
-                      alt={item.product.name}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
 
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium leading-tight">{item.product.name}</p>
-                    <p className="text-sm text-muted-foreground">{item.product.size}</p>
-                    <div className="mt-1 flex items-center gap-3 text-sm">
-                      <span>{item.quantity}x</span>
-                      <span className="font-medium">{formatPrice(item.product.price * item.quantity)}</span>
-                    </div>
+        {/* Resumo dos itens e dados do cliente */}
+        <ScrollArea className="flex-1 px-6 sm py-5 overflow-y-auto">
+          <div className="space-y-4 grid grid-cols-1 sm:grid-cols-2">
+            {items.map((item) => (
+              <div key={item.product.id} className="flex gap-4">
+                <div className="h-20 w-16 rounded-md overflow-hidden bg-muted shrink-0">
+                  <img
+                    src={item.product.image || '/placeholder.svg'}
+                    alt={item.product.name}
+                    className="h-full w-full object-contain p-2"
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholder.svg'
+                    }}
+                  />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium leading-tight">{item.product.name}</p>
+                  <p className="text-sm text-muted-foreground">{item.product.size}</p>
+                  <div className="mt-1 flex items-center gap-3 text-sm">
+                    <span>{item.quantity}x</span>
+                    <span className="font-medium">{formatPrice(item.product.price * item.quantity)}</span>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
 
-            <Separator className="my-6" />
+          <Separator className="my-6" />
 
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>{formatPrice(total)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Frete</span>
-                <span className="text-emerald-600 font-medium">A combinar via WhatsApp</span>
-              </div>
-              <Separator className="my-4" />
-              <div className="flex justify-between text-lg font-semibold">
-                <span>Total</span>
-                <span>{formatPrice(total)}</span>
-              </div>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span>{formatPrice(total)}</span>
             </div>
-          </ScrollArea>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Frete</span>
+              <span className="text-emerald-600 font-medium">A combinar via WhatsApp</span>
+            </div>
+            <Separator className="my-4" />
+            <div className="flex justify-between text-lg font-semibold">
+              <span>Total</span>
+              <span>{formatPrice(total)}</span>
+            </div>
+          </div>
+
+          <Separator className="my-6" />
 
           {/* Dados do cliente + pagamento */}
-          <div className="px-6 py-6 border-t bg-muted/40 space-y-5  gap-2">
-            <div className='grid grid-cols-2 gap-2'>
+          <div className="space-y-5">
+            <div className='grid grid-cols-1 gap-2'>
               <div className="grid gap-2">
                 <Label htmlFor="nome">Nome completo</Label>
                 <Input
@@ -188,7 +191,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
               <RadioGroup
                 value={payment}
                 onValueChange={(value) => setPayment(value as typeof payment)}
-                className="grid grid-cols-2  gap-2"
+                className="grid grid-cols-1 sm:grid-cols-3  gap-2"
               >
                 <div className="flex items-center space-x-3 space-y-0 rounded-lg border p-4 cursor-pointer hover:border-primary/60 transition-colors">
                   <RadioGroupItem value="pix" id="r1" />
@@ -213,7 +216,8 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
               </RadioGroup>
             </div>
           </div>
-        </div>
+        </ScrollArea>
+
 
         <DialogFooter className="px-6 py-5 border-t bg-background/95">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -221,7 +225,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
           </Button>
           <Button
             onClick={handleSendOrder}
-            className="min-w-55"
+            className="min-w-55 "
             disabled={!name.trim() || !whatsapp.trim()}
           >
             Enviar Pedido pelo WhatsApp
@@ -259,7 +263,7 @@ export function Cart({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent className="flex w-full flex-col p-0 sm:max-w-md">
+        <SheetContent className="flex h-full w-full flex-col p-0 sm:max-w-md">
           <SheetHeader className="border-b border-border px-6 py-5">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2 text-lg font-medium">
@@ -271,6 +275,12 @@ export function Cart({
                   </span>
                 )}
               </SheetTitle>
+              <button
+                onClick={onClose}
+                className='rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+              >
+                <X className='h-5 w-5' />
+              </button>
             </div>
           </SheetHeader>
 
@@ -320,64 +330,68 @@ export function Cart({
                 </div>
               )}
 
-              <ScrollArea className="flex-1 px-6">
-                <div className="space-y-4 py-4">
-                  {items.map((item) => (
-                    <div
-                      key={item.product.id}
-                      className="flex gap-4 rounded-xl bg-muted/30 p-3 transition-colors hover:bg-muted/50"
-                    >
-                      <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
-                        <img
-                          src={item.product.image || '/placeholder.svg'}
-                          alt={item.product.name}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
+              <div className="flex-1 min-h-0 flex flex-col">
+                <ScrollArea className="h-full px-6">
+                  <div className="space-y-4 py-4">
+                    {items.map((item) => (
+                      <div
+                        key={item.product.id}
+                        className="flex gap-4 rounded-xl bg-muted/30 p-3 transition-colors hover:bg-muted/50"
+                      >
+                        <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                          <img
+                            src={item.product.image || '/placeholder.svg'}
+                            alt={item.product.name}
+                            className="h-full w-full object-contain p-3"
+                            onError={(e) => {
+                              e.currentTarget.src = '/placeholder.svg'
+                            }}
+                          />
+                        </div>
 
-                      <div className="flex flex-1 flex-col">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                              {item.product.brand}
+                        <div className="flex flex-1 flex-col">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                {item.product.brand}
+                              </span>
+                              <h4 className="text-sm font-medium">{item.product.name}</h4>
+                              <p className="text-xs text-muted-foreground">{item.product.size}</p>
+                            </div>
+                            <button
+                              onClick={() => onRemove(item.product.id)}
+                              className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          <div className="mt-auto flex items-center justify-between pt-2">
+                            <div className="flex items-center rounded-full border border-border">
+                              <button
+                                onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
+                                className="flex h-7 w-7 items-center justify-center rounded-l-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </button>
+                              <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                              <button
+                                onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
+                                className="flex h-7 w-7 items-center justify-center rounded-r-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <span className="font-semibold">
+                              {formatPrice(item.product.price * item.quantity)}
                             </span>
-                            <h4 className="text-sm font-medium">{item.product.name}</h4>
-                            <p className="text-xs text-muted-foreground">{item.product.size}</p>
                           </div>
-                          <button
-                            onClick={() => onRemove(item.product.id)}
-                            className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-
-                        <div className="mt-auto flex items-center justify-between pt-2">
-                          <div className="flex items-center rounded-full border border-border">
-                            <button
-                              onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
-                              className="flex h-7 w-7 items-center justify-center rounded-l-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                            >
-                              <Minus className="h-3 w-3" />
-                            </button>
-                            <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                            <button
-                              onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                              className="flex h-7 w-7 items-center justify-center rounded-r-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                            >
-                              <Plus className="h-3 w-3" />
-                            </button>
-                          </div>
-                          <span className="font-semibold">
-                            {formatPrice(item.product.price * item.quantity)}
-                          </span>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
               {/* Footer */}
               <div className="border-t border-border p-6">
                 <div className="mb-6 space-y-2">

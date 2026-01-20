@@ -34,7 +34,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   ArrowLeft,
   Plus,
@@ -413,7 +412,7 @@ export function Admin() {
             <CardTitle>Produtos</CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="w-full">
+            <div className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -429,11 +428,14 @@ export function Admin() {
                   {products.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell>
-                        <div className="relative h-12 w-12 overflow-hidden rounded-md bg-muted">
+                        <div className="relative h-12 w-12 overflow-hidden rounded-md bg-muted flex items-center justify-center">
                           <img
                             src={product.image || "/placeholder.svg"}
                             alt={product.name}
-                            className="h-full w-full object-cover"
+                            className="max-h-full max-w-full object-contain"
+                            onError={(e) => {
+                              e.currentTarget.src = "/placeholder.svg"
+                            }}
                           />
                         </div>
                       </TableCell>
@@ -491,8 +493,61 @@ export function Admin() {
                   ))}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
 
+            {/* Mobile */}
+            <div className="md:hidden space-y-4">
+              {products.map((product) => (
+                <Card key={product.id}>
+                  <CardContent className="flex items-center gap-4 p-4">
+                    {/* Imagem */}
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted flex items-center justify-center">
+                      <img
+                        src={product.image || "/placeholder.svg"}
+                        alt={product.name}
+                        className="max-h-full max-w-full object-contain"
+                        onError={(e) => {
+                          e.currentTarget.src = "/placeholder.svg"
+                        }}
+                      />
+                    </div>
+
+                    {/* Infos */}
+                    <div className="flex-1">
+                      <p className="font-medium">{product.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {product.brand} • {product.size}
+                      </p>
+
+                      <div className="mt-2 flex items-center justify-between">
+                        <p className="font-bold">
+                          R$ {product.price.toFixed(2).replace(".", ",")}
+                        </p>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditDialog(product)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive"
+                            onClick={() => setDeleteConfirm(product.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
             {products.length === 0 && (
               <div className="py-12 text-center">
                 <Package className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -542,10 +597,11 @@ export function Admin() {
                       required
                     />
                   </div>
+                  {/* Categoria */}
                   <div className="space-y-2">
                     <Label>Categoria</Label>
                     <Select
-                    
+
                       value={formData.category}
                       onValueChange={(value: "masculino" | "feminino" | "unissex") =>
                         setFormData({ ...formData, category: value })
@@ -561,70 +617,93 @@ export function Admin() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Família Olfativa */}
+                  <div className="space-y-2 mt-4">
+                    <Label>Família Olfativa</Label>
+                    <Select
+                      value={formData.olfactiveFamily}
+                      onValueChange={(value: string) =>
+                        setFormData({ ...formData, olfactiveFamily: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a família olfativa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cítrica">Cítrica</SelectItem>
+                        <SelectItem value="floral">Floral</SelectItem>
+                        <SelectItem value="amadeirada">Amadeirada</SelectItem>
+                        <SelectItem value="oriental">Oriental</SelectItem>
+                        <SelectItem value="fougère">Fougère</SelectItem>
+                        <SelectItem value="frutada">Frutada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="grid gap-6 ">
-                  
 
-                {/* Descrição */}
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Notas olfativas, inspiração, ocasião de uso..."
-                    rows={4}
-                    required
+
+                  {/* Descrição */}
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Notas olfativas, inspiração, ocasião de uso..."
+                      rows={4}
+                      required
+                    />
+                  </div>
+
+                  {/* Preço + Preço original + Tamanho */}
+                  <div className="grid gap-6 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Preço (R$)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        step="0.01"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="originalPrice">Preço Original (R$)</Label>
+                      <Input
+                        id="originalPrice"
+                        type="number"
+                        step="0.01"
+                        value={formData.originalPrice}
+                        onChange={(e) =>
+                          setFormData({ ...formData, originalPrice: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="size">Tamanho</Label>
+                      <Input
+                        id="size"
+                        value={formData.size}
+                        onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                        placeholder="100ml, 50ml, 200ml..."
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Upload de imagem - componente inteligente */}
+                  <SmartImageUploader
+                    value={formData.image}
+                    onChange={(newImage) => setFormData((prev) => ({ ...prev, image: newImage }))}
+                    maxSizeMB={8}
                   />
-                </div>
 
-                {/* Preço + Preço original + Tamanho */}
-                <div className="grid gap-6 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Preço (R$)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="originalPrice">Preço Original (R$)</Label>
-                    <Input
-                      id="originalPrice"
-                      type="number"
-                      step="0.01"
-                      value={formData.originalPrice}
-                      onChange={(e) =>
-                        setFormData({ ...formData, originalPrice: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="size">Tamanho</Label>
-                    <Input
-                      id="size"
-                      value={formData.size}
-                      onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                      placeholder="100ml, 50ml, 200ml..."
-                      required
-                    />
-                  </div>
-                </div>
+                  {/* Categoria + outros campos opcionais */}
 
-                {/* Upload de imagem - componente inteligente */}
-                <SmartImageUploader
-                  value={formData.image}
-                  onChange={(newImage) => setFormData((prev) => ({ ...prev, image: newImage }))}
-                  maxSizeMB={8}
-                />
-
-                {/* Categoria + outros campos opcionais */}
-                
                   {/* Aqui você pode adicionar concentração e família olfativa se desejar */}
                 </div>
 

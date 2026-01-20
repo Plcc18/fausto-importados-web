@@ -35,7 +35,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
   return (
     <>
-      <Card 
+      <Card
         className="group cursor-pointer overflow-hidden border-0 bg-card shadow-sm transition-all duration-300 hover:shadow-lg"
         onClick={() => setIsModalOpen(true)}
       >
@@ -43,7 +43,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           <img
             src={product.image || "/placeholder.svg"}
             alt={product.name}
-            className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-contain p-3 transition-transform duration-500 group-hover:scale-105"
           />
           {hasDiscount && (
             <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground">
@@ -56,7 +56,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             </div>
           )}
         </div>
-        <CardContent className="p-4">
+        <CardContent className="p-4 flex flex-col">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
             {product.brand}
           </p>
@@ -64,18 +64,24 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             {product.name}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            {product.size} | {categoryLabels[product.category]}
+            {product.size} | {categoryLabels[product.category]}  | {product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1)}
           </p>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 min-h-11 flex flex-col justify-center">
             <span className="text-lg font-semibold text-foreground">
               R$ {product.price.toFixed(2).replace(".", ",")}
             </span>
-            {hasDiscount && (
+
+            {hasDiscount ? (
               <span className="text-sm text-muted-foreground line-through">
                 R$ {product.originalPrice?.toFixed(2).replace(".", ",")}
               </span>
+            ) : (
+              <span className="text-sm invisible">
+                placeholder
+              </span>
             )}
           </div>
+
           <Button
             className="mt-4 w-full gap-2"
             onClick={(e) => {
@@ -91,19 +97,20 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       </Card>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-3xl p-0 overflow-hidden">
+        <DialogContent className="max-w-3xl p-0 h-[95vh] md:h-auto overflow-y-auto">
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
-          <div className="grid md:grid-cols-2">
-            <div className="relative aspect-square bg-muted">
+          <div className="flex flex-col md:flex-row">
+            <div className="relative bg-muted md:flex-1 flex items-center justify-center min-h-75">
               <img
                 src={product.image || "/placeholder.svg"}
                 alt={product.name}
-                className="object-cover w-full h-full"
+                className="max-w-full max-h-full object-contain p-6"
               />
             </div>
-            <div className="flex flex-col p-6">
+            <div className="flex flex-col p-6 md:flex-1">
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{categoryLabels[product.category]}</Badge>
+                <Badge variant="secondary">{product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1)}</Badge>
                 {hasDiscount && (
                   <Badge className="bg-accent text-accent-foreground">Oferta</Badge>
                 )}
@@ -116,7 +123,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
               </h2>
               <p className="text-sm text-muted-foreground">{product.size}</p>
               <Separator className="my-4" />
-              <p className="flex-1 text-muted-foreground leading-relaxed">
+              <p className="text-muted-foreground leading-relaxed">
                 {product.description}
               </p>
               <Separator className="my-4" />
