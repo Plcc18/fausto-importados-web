@@ -65,6 +65,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
+import { useRef } from "react"
 
 type GenderFilter = 'todos' | 'feminino' | 'masculino' | 'unissex'
 type OlfativeFamily =
@@ -117,7 +118,8 @@ export function Store() {
   const [isLoading, setIsLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState<string>("")
   const navigate = useNavigate()
-
+  const collectionRef = useRef<HTMLDivElement | null>(null)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const isLoggedIn = false
 
@@ -213,7 +215,7 @@ export function Store() {
   ]
 
   const filteredProducts = useMemo(() => {
-    let result = products.filter((p) => p.inStock)
+    let result = products
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim()
@@ -320,6 +322,13 @@ export function Store() {
     }).format(value)
   }
 
+  const scrollToCollection = () => {
+    collectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    })
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Sophisticated Header */}
@@ -337,7 +346,7 @@ export function Store() {
         <div className="mx-auto max-w-7xl px-4 md:px-6">
           <div className="flex h-16 items-center justify-between gap-4 md:h-20">
             {/* Mobile Menu */}
-            <Sheet>
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <button className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted md:hidden">
                   <Menu className="h-5 w-5" />
@@ -355,6 +364,8 @@ export function Store() {
                       onClick={() => {
                         setFilters((prev) => ({ ...prev, gender: 'feminino' }))
                         setActiveQuickFilter(null)
+                        scrollToCollection()
+                        setIsMobileMenuOpen(false)
                       }}
                       className={cn(
                         'rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors',
@@ -369,6 +380,8 @@ export function Store() {
                       onClick={() => {
                         setFilters((prev) => ({ ...prev, gender: 'masculino' }))
                         setActiveQuickFilter(null)
+                        scrollToCollection()
+                        setIsMobileMenuOpen(false)
                       }}
                       className={cn(
                         'rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors',
@@ -383,6 +396,8 @@ export function Store() {
                       onClick={() => {
                         setFilters((prev) => ({ ...prev, gender: 'unissex' }))
                         setActiveQuickFilter(null)
+                        scrollToCollection()
+                        setIsMobileMenuOpen(false)
                       }}
                       className={cn(
                         'rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors',
@@ -398,8 +413,16 @@ export function Store() {
                       onClick={() => {
                         setFilters((prev) => ({ ...prev, priceRange: [0, 500] as [number, number] }))
                         setActiveQuickFilter(null)
+                        scrollToCollection()
+                        setIsMobileMenuOpen(false)
                       }}
-                      className="rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted"
+                      className={cn(
+                        'rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors',
+                        filters.priceRange[0] === 0 && filters.priceRange[1] === 500
+                          ? 'bg-foreground text-background'
+                          : 'hover:bg-muted'
+                      )}
+
                     >
                       Promoções
                     </button>
@@ -423,6 +446,7 @@ export function Store() {
                   onClick={() => {
                     setFilters((prev) => ({ ...prev, gender: 'feminino' }))
                     setActiveQuickFilter(null)
+                    scrollToCollection()
                   }}
                   className={cn(
                     'rounded-full px-4 py-2 text-sm font-medium transition-all duration-200',
@@ -437,6 +461,7 @@ export function Store() {
                   onClick={() => {
                     setFilters((prev) => ({ ...prev, gender: 'masculino' }))
                     setActiveQuickFilter(null)
+                    scrollToCollection()
                   }}
                   className={cn(
                     'rounded-full px-4 py-2 text-sm font-medium transition-all duration-200',
@@ -451,6 +476,7 @@ export function Store() {
                   onClick={() => {
                     setFilters((prev) => ({ ...prev, gender: 'unissex' }))
                     setActiveQuickFilter(null)
+                    scrollToCollection()
                   }}
                   className={cn(
                     'rounded-full px-4 py-2 text-sm font-medium transition-all duration-200',
@@ -460,6 +486,22 @@ export function Store() {
                   )}
                 >
                   Unissex
+                </button>
+                <button
+                  onClick={() => {
+                    setFilters((prev) => ({ ...prev, priceRange: [0, 500] as [number, number] }))
+                    setActiveQuickFilter(null)
+                    scrollToCollection()
+                  }}
+                  className={cn(
+                    'rounded-full px-4 py-2 text-sm font-medium transition-all duration-200',
+                    filters.priceRange[0] === 0 && filters.priceRange[1] === 500
+                      ? 'bg-foreground text-background'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+
+                >
+                  Promoções
                 </button>
               </nav>
             </div>
@@ -609,7 +651,10 @@ export function Store() {
               return (
                 <button
                   key={filter.id}
-                  onClick={() => handleQuickFilter(filter)}
+                  onClick={() => {
+                    handleQuickFilter(filter)
+                    scrollToCollection()
+                  }}
                   className={cn(
                     'group relative flex items-center gap-2.5 overflow-hidden rounded-full border px-6 py-3 text-sm font-medium transition-all duration-300',
                     isActive
@@ -657,7 +702,7 @@ export function Store() {
       </section>
 
       {/* Products Section */}
-      <section className="px-4 py-16 md:py-24">
+      <section ref={collectionRef} className="px-4 py-16 md:py-24">
         <div className="mx-auto max-w-7xl">
           {/* Section Header with Filters */}
           <div className="mb-12 flex flex-col gap-8">
@@ -951,9 +996,10 @@ export function Store() {
                   <Badge variant="secondary" className="gap-1.5 rounded-full py-1.5 pl-3 pr-1.5">
                     {formatPrice(filters.priceRange[0])} - {formatPrice(filters.priceRange[1])}
                     <button
-                      onClick={() =>
+                      onClick={() => {
                         setFilters((prev) => ({ ...prev, priceRange: [0, MAX_PRICE] }))
-                      }
+                        setActiveQuickFilter(null)
+                      }}
                       className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
                     >
                       <X className="h-3 w-3" />

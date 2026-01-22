@@ -18,6 +18,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [quantity, setQuantity] = useState(1)
   const hasDiscount = product.originalPrice && product.originalPrice > product.price
+  const isFeatured = product.featured === true
 
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) {
@@ -46,13 +47,18 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             className="w-full h-full object-contain p-3 transition-transform duration-500 group-hover:scale-105"
           />
           {hasDiscount && (
-            <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground">
+            <Badge className="absolute top-3 right-3 bg-primary text-primary-foreground">
               Oferta
+            </Badge>
+          )}
+          {isFeatured && (
+            <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">
+              Destaque
             </Badge>
           )}
           {!product.inStock && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-              <Badge variant="secondary">Esgotado</Badge>
+              <Badge variant="destructive">Esgotado</Badge>
             </div>
           )}
         </div>

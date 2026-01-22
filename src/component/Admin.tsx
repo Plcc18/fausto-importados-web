@@ -464,10 +464,10 @@ export function Admin() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          <Badge variant={product.inStock ? "default" : "secondary"}>
+                          <Badge variant={product.inStock ? "success" : "destructive"}>
                             {product.inStock ? "Disponível" : "Esgotado"}
                           </Badge>
-                          {product.featured && <Badge variant="outline">Destaque</Badge>}
+                          {product.featured && <Badge variant="default">Destaque</Badge>}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -519,10 +519,24 @@ export function Admin() {
                         {product.brand} • {product.size}
                       </p>
 
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant={product.inStock ? "success" : "destructive"}>
+                          {product.inStock ? "Disponível" : "Esgotado"}
+                        </Badge>
+                        {product.featured && <Badge variant="default">Destaque</Badge>}
+                      </div>
+
                       <div className="mt-2 flex items-center justify-between">
-                        <p className="font-bold">
-                          R$ {product.price.toFixed(2).replace(".", ",")}
-                        </p>
+                        <div className="flex flex-col">
+                          <p className="font-medium">
+                            R$ {product.price.toFixed(2).replace(".", ",")}
+                          </p>
+                          {product.originalPrice && (
+                            <p className="text-sm text-muted-foreground line-through">
+                              R$ {product.originalPrice.toFixed(2).replace(".", ",")}
+                            </p>
+                          )}
+                        </div>
 
                         <div className="flex gap-2">
                           <Button
