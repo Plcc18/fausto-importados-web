@@ -112,6 +112,11 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                 alt={product.name}
                 className="max-w-full max-h-full object-contain p-6"
               />
+              {!product.inStock && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                  <Badge variant="destructive">Esgotado</Badge>
+                </div>
+              )}
             </div>
             <div className="flex flex-col p-6 md:flex-1">
               <div className="flex items-center gap-2">
