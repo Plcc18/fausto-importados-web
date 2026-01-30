@@ -587,9 +587,9 @@ export function Admin() {
                         <SelectValue placeholder="Selecione a categoria" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="feminino">Feminino</SelectItem>
-                        <SelectItem value="masculino">Masculino</SelectItem>
-                        <SelectItem value="unissex">Unissex</SelectItem>
+                        <SelectItem value="FEMININO">Feminino</SelectItem>
+                        <SelectItem value="MASCULINO">Masculino</SelectItem>
+                        <SelectItem value="UNISSEX">Unissex</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -607,13 +607,13 @@ export function Admin() {
                         <SelectValue placeholder="Selecione a família olfativa" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="floral">Floral</SelectItem>
-                        <SelectItem value="amadeirada">Amadeirado</SelectItem>
-                        <SelectItem value="citrico">Cítrico</SelectItem>
-                        <SelectItem value="oriental">Oriental</SelectItem>
-                        <SelectItem value="aquatico">aquatico</SelectItem>
-                        <SelectItem value="frutado">Frutado</SelectItem>
-                        <SelectItem value="gourmand">Gourmand</SelectItem>
+                        <SelectItem value="FLORAL">Floral</SelectItem>
+                        <SelectItem value="AMADEIRADO">Amadeirado</SelectItem>
+                        <SelectItem value="CITRICO">Cítrico</SelectItem>
+                        <SelectItem value="ORIENTAL">Oriental</SelectItem>
+                        <SelectItem value="AQUATICO">aquatico</SelectItem>
+                        <SelectItem value="FRUTADO">Frutado</SelectItem>
+                        <SelectItem value="GOURMAND">Gourmand</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
