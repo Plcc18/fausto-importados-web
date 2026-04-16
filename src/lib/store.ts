@@ -6,14 +6,27 @@ import { defaultProducts } from "./products-data"
 const PRODUCTS_KEY = "perfumaria_products"
 const CART_KEY = "perfumaria_cart"
 
+// ============================
+// Utils
+// ============================
+
+function safeJSONParse<T>(data: string | null, fallback: T): T {
+  try {
+    return data ? JSON.parse(data) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+// ============================
+// PRODUCTS
+// ============================
+
 export function getProducts(): Product[] {
   if (typeof window === "undefined") return defaultProducts
-  
+
   const stored = localStorage.getItem(PRODUCTS_KEY)
-  if (stored) {
-    return JSON.parse(stored)
-  }
-  return defaultProducts
+  return safeJSONParse<Product[]>(stored, defaultProducts)
 }
 
 export function saveProducts(products: Product[]): void {
@@ -23,38 +36,45 @@ export function saveProducts(products: Product[]): void {
 
 export function addProduct(product: Omit<Product, "id">): Product {
   const products = getProducts()
+
   const newProduct: Product = {
     ...product,
-    id: Date.now().toString()
+    id: crypto.randomUUID(), 
   }
-  products.push(newProduct)
-  saveProducts(products)
+
+  const updated = [...products, newProduct]
+  saveProducts(updated)
+
   return newProduct
 }
 
 export function updateProduct(id: string, updates: Partial<Product>): void {
   const products = getProducts()
-  const index = products.findIndex(p => p.id === id)
-  if (index !== -1) {
-    products[index] = { ...products[index], ...updates }
-    saveProducts(products)
-  }
+
+  const updated = products.map((p) =>
+    p.id === id ? { ...p, ...updates } : p
+  )
+
+  saveProducts(updated)
 }
 
 export function deleteProduct(id: string): void {
   const products = getProducts()
-  const filtered = products.filter(p => p.id !== id)
+
+  const filtered = products.filter((p) => p.id !== id)
+
   saveProducts(filtered)
 }
 
+// ============================
+// CART
+// ============================
+
 export function getCart(): CartItem[] {
   if (typeof window === "undefined") return []
-  
+
   const stored = localStorage.getItem(CART_KEY)
-  if (stored) {
-    return JSON.parse(stored)
-  }
-  return []
+  return safeJSONParse<CartItem[]>(stored, [])
 }
 
 export function saveCart(cart: CartItem[]): void {
@@ -64,35 +84,48 @@ export function saveCart(cart: CartItem[]): void {
 
 export function addToCart(product: Product): void {
   const cart = getCart()
-  const existingIndex = cart.findIndex(item => item.product.id === product.id)
-  
-  if (existingIndex !== -1) {
-    cart[existingIndex].quantity += 1
+
+  const existing = cart.find((item) => item.product.id === product.id)
+
+  let updatedCart: CartItem[]
+
+  if (existing) {
+    updatedCart = cart.map((item) =>
+      item.product.id === product.id
+        ? { ...item, quantity: item.quantity + 1 }
+        : item
+    )
   } else {
-    cart.push({ product, quantity: 1 })
+    updatedCart = [...cart, { product, quantity: 1 }]
   }
-  
-  saveCart(cart)
+
+  saveCart(updatedCart)
 }
 
 export function removeFromCart(productId: string): void {
   const cart = getCart()
-  const filtered = cart.filter(item => item.product.id !== productId)
+
+  const filtered = cart.filter((item) => item.product.id !== productId)
+
   saveCart(filtered)
 }
 
 export function updateCartQuantity(productId: string, quantity: number): void {
   const cart = getCart()
-  const index = cart.findIndex(item => item.product.id === productId)
-  
-  if (index !== -1) {
-    if (quantity <= 0) {
-      cart.splice(index, 1)
-    } else {
-      cart[index].quantity = quantity
-    }
-    saveCart(cart)
+
+  let updatedCart: CartItem[]
+
+  if (quantity <= 0) {
+    updatedCart = cart.filter((item) => item.product.id !== productId)
+  } else {
+    updatedCart = cart.map((item) =>
+      item.product.id === productId
+        ? { ...item, quantity }
+        : item
+    )
   }
+
+  saveCart(updatedCart)
 }
 
 export function clearCart(): void {
@@ -101,7 +134,10 @@ export function clearCart(): void {
 }
 
 export function getCartTotal(cart: CartItem[]): number {
-  return cart.reduce((total, item) => total + item.product.price * item.quantity, 0)
+  return cart.reduce(
+    (total, item) => total + item.product.price * item.quantity,
+    0
+  )
 }
 
 export function getCartCount(cart: CartItem[]): number {

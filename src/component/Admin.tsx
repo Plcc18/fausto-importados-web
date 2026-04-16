@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import type { Product } from "@/lib/types"
-import { getProducts, updateProduct, deleteProduct, addProduct } from "@/lib/store"
 import { Button } from "@/Shadcn-Components/ui/button"
 import { Input } from "@/Shadcn-Components/ui/input"
 import { Label } from "@/Shadcn-Components/ui/label"
@@ -47,7 +46,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { emptyForm, type ProductFormData, type SmartImageUploaderProps } from "@/types"
-
+import Swal from "sweetalert2"
 //Types importados do types.ts
 
 function SmartImageUploader({
@@ -55,6 +54,7 @@ function SmartImageUploader({
   onChange,
   className = "",
   maxSizeMB = 6,
+  onLoadingChange
 }: SmartImageUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [preview, setPreview] = useState<string>(value || "")
@@ -67,38 +67,102 @@ function SmartImageUploader({
     }
   }, [value])
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
+    setIsLoading(true)
+    onLoadingChange?.(true)
     if (!file.type.startsWith("image/")) {
-      setError("Apenas imagens são permitidas (JPG, PNG, WebP)")
-      return
-    }
-
-    if (file.size > maxSizeMB * 1024 * 1024) {
-      setError(`Tamanho máximo permitido: ${maxSizeMB}MB`)
+      setError("Apenas imagens são permitidas")
       return
     }
 
     setError(null)
-    setIsLoading(true)
 
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const result = e.target?.result as string
-      setPreview(result)
-      onChange(result)
-      setIsLoading(false)
-    }
-    reader.onerror = () => {
-      setError("Erro ao processar a imagem")
-      setIsLoading(false)
-    }
+    // preview imediato
+    const previewUrl = URL.createObjectURL(file)
+    setPreview(previewUrl)
 
-    reader.readAsDataURL(file)
+    try {
+      const token = localStorage.getItem("token")
+
+      const headers: any = {}
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+
+      const formData = new FormData()
+      formData.append("image", file)
+
+      const response = await fetch("http://localhost:8080/api/upload", {
+        method: "POST",
+        headers,
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text)
+      }
+
+      const data = await response.json()
+
+      onChange(data.url)
+
+    } catch (err) {
+      console.error(err)
+      setError("Erro ao enviar imagem")
+    } finally {
+      setIsLoading(false)
+      onLoadingChange?.(false)
+    }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) processFile(file)
+  const handleFileChange = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("Apenas imagens são permitidas")
+      return
+    }
+
+    setError(null)
+
+    // preview imediato
+    const previewUrl = URL.createObjectURL(file)
+    setPreview(previewUrl)
+
+    try {
+      const token = localStorage.getItem("token")
+
+      const headers: any = {}
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+
+      const formData = new FormData()
+      formData.append("image", file)
+
+      const response = await fetch("http://localhost:8080/api/upload", {
+        method: "POST",
+        headers,
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text)
+      }
+
+      const data = await response.json()
+
+      onChange(data.url)
+
+    } catch (err) {
+      console.error(err)
+      setError("Erro ao enviar imagem")
+    } finally {
+      setIsLoading(false)
+      onLoadingChange?.(false)
+    }
   }
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -171,7 +235,10 @@ function SmartImageUploader({
             type="file"
             accept="image/jpeg,image/png,image/webp"
             className="hidden"
-            onChange={handleFileChange}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleFileChange(file)
+            }}
           />
 
           <div className="flex flex-col items-center gap-3">
@@ -210,13 +277,54 @@ export function Admin() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [formData, setFormData] = useState<ProductFormData>(emptyForm)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [imageUploading, setImageUploading] = useState(false)
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
+  const handleLogout = async () => {
+    const result = await Swal.fire({
+      title: 'Tem certeza?',
+      text: 'Você realmente deseja sair da sua conta?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sim, sair',
+      cancelButtonText: 'Cancelar',
+    })
+
+    if (result.isConfirmed) {
+      localStorage.removeItem("token")
+
+      navigate("/admin/login")
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Logout',
+        text: 'Você saiu da sua conta!',
+      })
+
+    }
+  }
 
   useEffect(() => {
-    setProducts(getProducts())
+    fetchProducts()
   }, [])
 
+  const fetchProducts = async () => {
+    try {
+      setLoading(true)
+
+      const response = await fetch("http://localhost:8080/api/product")
+      const data = await response.json()
+
+      setProducts(data.content)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const refreshProducts = () => {
-    setProducts(getProducts())
+    fetchProducts()
   }
 
   const openCreateDialog = () => {
@@ -231,11 +339,11 @@ export function Admin() {
       name: product.name,
       brand: product.brand,
       description: product.description,
-      price: product.price.toString(),
-      originalPrice: product.originalPrice?.toString() || "",
+      price: product.price,
+      originalPrice: product.originalPrice ?? "",
       image: product.image || "",
-      category: product.category,
-      size: product.size,
+      category: product.category as "MASCULINO" | "FEMININO" | "UNISSEX",
+      size: typeof product.size === "string" ? product.size : parseInt(product.size) || 100,
       concentration: product.concentration || "",
       olfactiveFamily: product.olfactiveFamily || "",
       featured: product.featured || false,
@@ -244,28 +352,99 @@ export function Admin() {
     setIsDialogOpen(true)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+
+    if (!formData.image) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Imagem obrigatória',
+        text: 'Aguarde o upload da imagem ou selecione uma imagem antes de salvar.',
+      })
+      return
+    }
     e.preventDefault()
+    if (!formData.image) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Imagem obrigatória',
+        text: 'Aguarde o upload ou selecione uma imagem antes de salvar.',
+      })
+      return
+    }
+    const token = localStorage.getItem("token")
 
     const productData = {
       name: formData.name,
       brand: formData.brand,
       description: formData.description,
-      price: parseFloat(formData.price) || 0,
-      originalPrice: formData.originalPrice ? parseFloat(formData.originalPrice) : undefined,
-      image: formData.image || "/products/perfume-default.jpg",
+
+      price: Number(formData.price),
+
+      originalPrice:
+        formData.originalPrice
+          ? Number(formData.originalPrice)
+          : null,
+
       category: formData.category,
+
       size: formData.size,
-      concentration: formData.concentration || "",
-      olfactiveFamily: formData.olfactiveFamily || "",
-      featured: formData.featured,
-      inStock: formData.inStock,
+
+      olfactiveFamily:
+        formData.olfactiveFamily || null,
+
+      featured: formData.featured ?? false,
+
+      inStock: formData.inStock ?? true,
+
+      image: formData.image || null,
     }
 
     if (editingProduct) {
-      updateProduct(editingProduct.id, productData)
+      // PUT — multipart/form-data
+      const form = new FormData()
+      form.append("product", JSON.stringify(productData))
+      // só anexa imagem se for um arquivo novo (começa com blob:)
+      // imagens já salvas são URLs normais, não precisam ser reenviadas
+
+      const res = await fetch(`http://localhost:8080/api/product/${editingProduct.id}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      })
+
+      if (res.status === 401 || res.status === 403) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Acesso negado',
+          text: 'Você não está autorizado!',
+        })
+        navigate("/admin/login")
+        return
+      }
+
     } else {
-      addProduct(productData)
+      // POST — application/json
+      const res = await fetch("http://localhost:8080/api/product", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(productData),
+      })
+
+      if (res.status === 401 || res.status === 403) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Acesso negado',
+          text: 'Você não está autorizado!',
+        })
+        navigate("/admin/login")
+        return
+      }
+
+      const text = await res.text()
+      console.log("ERRO BACKEND:", text)
     }
 
     setIsDialogOpen(false)
@@ -273,9 +452,26 @@ export function Admin() {
     setEditingProduct(null)
     refreshProducts()
   }
+  const handleDelete = async (id: string) => {
+    const token = localStorage.getItem("token")
 
-  const handleDelete = (id: string) => {
-    deleteProduct(id)
+    const res = await fetch(`http://localhost:8080/api/product/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    if (res.status === 401 || res.status === 403) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Ação negada',
+        text: 'Você não está autorizado!',
+      })
+      navigate("/admin/login")
+      return
+    }
+
     setDeleteConfirm(null)
     refreshProducts()
   }
@@ -288,9 +484,9 @@ export function Admin() {
   }
 
   const categoryLabels = {
-    masculino: "Masculino",
-    feminino: "Feminino",
-    unissex: "Unissex",
+    MASCULINO: "Masculino",
+    FEMININO: "Feminino",
+    UNISSEX: "Unissex",
   }
 
   return (
@@ -307,10 +503,58 @@ export function Admin() {
               <p className="text-sm text-muted-foreground">Gerencie seus produtos</p>
             </div>
           </div>
-          <Button onClick={openCreateDialog} className="gap-2">
+          <Button onClick={
+            openCreateDialog} className="gap-2">
             <Plus className="h-4 w-4" />
             Novo Produto
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setLogoutConfirmOpen(true)}
+          >
+            Sair da conta
+          </Button>
+
+          <Dialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Sair da conta</DialogTitle>
+              </DialogHeader>
+
+              <p className="text-muted-foreground">
+                Tem certeza que deseja sair da sua conta?
+              </p>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setLogoutConfirmOpen(false)}
+                >
+                  Cancelar
+                </Button>
+
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    localStorage.removeItem("token")
+                    setLogoutConfirmOpen(false)
+                    navigate("/admin/login")
+
+                    // Mantém só o feedback de sucesso
+                    Swal.fire({
+                      icon: 'success',
+                      title: 'Logout',
+                      text: 'Você saiu da sua conta!',
+                      timer: 2000,
+                      showConfirmButton: false,
+                    })
+                  }}
+                >
+                  Sair
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </header>
 
@@ -387,72 +631,103 @@ export function Admin() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <div className="relative h-12 w-12 overflow-hidden rounded-md bg-muted flex items-center justify-center">
-                          <img
-                            src={product.image || "/placeholder.svg"}
-                            alt={product.name}
-                            className="max-h-full max-w-full object-contain"
-                            onError={(e) => {
-                              e.currentTarget.src = "/placeholder.svg"
-                            }}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{product.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {product.brand} | {product.size}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{categoryLabels[product.category]}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">
-                            R$ {product.price.toFixed(2).replace(".", ",")}
-                          </p>
-                          {product.originalPrice && (
-                            <p className="text-sm text-muted-foreground line-through">
-                              R$ {product.originalPrice.toFixed(2).replace(".", ",")}
-                            </p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          <Badge variant={product.inStock ? "success" : "destructive"}>
-                            {product.inStock ? "Disponível" : "Esgotado"}
-                          </Badge>
-                          {product.featured && <Badge variant="default">Destaque</Badge>}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(product)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => setDeleteConfirm(product.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-10">
+                        <div className="flex flex-col items-center gap-2">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                          <span className="text-sm text-muted-foreground">
+                            Carregando produtos...
+                          </span>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : products.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-10">
+                        <span className="text-muted-foreground">
+                          Nenhum produto encontrado
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    products.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <div className="relative h-12 w-12 overflow-hidden rounded-md bg-muted flex items-center justify-center">
+                            <img
+                              src={product.image || "/placeholder.svg"}
+                              alt={product.name}
+                              className="max-h-full max-w-full object-contain"
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder.svg"
+                              }}
+                            />
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{product.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {product.brand} | {product.size}ml
+                            </p>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <Badge variant="outline">
+                            {categoryLabels[product.category as keyof typeof categoryLabels]}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">
+                              R$ {product.price.toFixed(2).replace(".", ",")}
+                            </p>
+                            {product.originalPrice && (
+                              <p className="text-sm text-muted-foreground line-through">
+                                R$ {product.originalPrice.toFixed(2).replace(".", ",")}
+                              </p>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            <Badge variant={product.inStock ? "success" : "destructive"}>
+                              {product.inStock ? "Disponível" : "Esgotado"}
+                            </Badge>
+                            {product.featured && (
+                              <Badge variant="default">Destaque</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditDialog(product)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setDeleteConfirm(product.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -579,7 +854,7 @@ export function Admin() {
                     <Select
 
                       value={formData.category}
-                      onValueChange={(value: "masculino" | "feminino" | "unissex") =>
+                      onValueChange={(value: "MASCULINO" | "FEMININO" | "UNISSEX") =>
                         setFormData({ ...formData, category: value })
                       }
                     >
@@ -611,7 +886,7 @@ export function Admin() {
                         <SelectItem value="AMADEIRADO">Amadeirado</SelectItem>
                         <SelectItem value="CITRICO">Cítrico</SelectItem>
                         <SelectItem value="ORIENTAL">Oriental</SelectItem>
-                        <SelectItem value="AQUATICO">aquatico</SelectItem>
+                        <SelectItem value="AQUATICO">Aquático</SelectItem>
                         <SelectItem value="FRUTADO">Frutado</SelectItem>
                         <SelectItem value="GOURMAND">Gourmand</SelectItem>
                       </SelectContent>
@@ -644,7 +919,16 @@ export function Admin() {
                         type="number"
                         step="0.01"
                         value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        onChange={(e) => {
+                          const value = e.target.value
+
+                          if (/^\d*\.?\d*$/.test(value)) {
+                            setFormData({
+                              ...formData,
+                              price: value === "" ? "" : Number(value),
+                            })
+                          }
+                        }}
                         required
                       />
                     </div>
@@ -656,32 +940,40 @@ export function Admin() {
                         step="0.01"
                         value={formData.originalPrice}
                         onChange={(e) =>
-                          setFormData({ ...formData, originalPrice: e.target.value })
+                          setFormData({
+                            ...formData,
+                            originalPrice:
+                              e.target.value === "" ? "" : Number(e.target.value),
+                          })
                         }
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="size">Tamanho</Label>
+                      <Label htmlFor="size">Tamanho (ml)</Label>
                       <Input
                         id="size"
+                        type="number"
                         value={formData.size}
-                        onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                        placeholder="100ml, 50ml, 200ml..."
-                        required
+                        onChange={(e) => {
+                          const value = e.target.value
+
+                          setFormData((prev) => ({
+                            ...prev,
+                            size: value === "" ? "" : Number(value) as number
+                          }))
+                        }}
                       />
                     </div>
                   </div>
 
                   {/* Upload de imagem - componente inteligente */}
                   <SmartImageUploader
-                    value={formData.image}
-                    onChange={(newImage) => setFormData((prev) => ({ ...prev, image: newImage }))}
+                    value={formData.image || ""}
+                    onChange={(newImage) => setFormData(prev => ({ ...prev, image: newImage }))}
+                    onLoadingChange={setImageUploading}
                     maxSizeMB={8}
                   />
 
-                  {/* Categoria + outros campos opcionais */}
-
-                  {/* Aqui você pode adicionar concentração e família olfativa se desejar */}
                 </div>
 
                 <Separator />
@@ -721,8 +1013,10 @@ export function Admin() {
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
-                {editingProduct ? "Salvar Alterações" : "Criar Produto"}
+              <Button type="submit" disabled={imageUploading}>
+                {imageUploading
+                  ? "Enviando imagem..."
+                  : editingProduct ? "Salvar Alterações" : "Criar Produto"}
               </Button>
             </DialogFooter>
           </form>

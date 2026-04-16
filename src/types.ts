@@ -2,11 +2,11 @@ export type ProductFormData = {
   name: string
   brand: string
   description: string
-  price: string
-  originalPrice: string
+  price: number | ""
+  originalPrice?: number | ""
   image: string
-  category: "masculino" | "feminino" | "unissex"
-  size: string
+  category: "MASCULINO" | "FEMININO" | "UNISSEX"
+  size: number | string
   concentration?: string
   olfactiveFamily?: string
   featured: boolean
@@ -20,17 +20,18 @@ export const emptyForm: ProductFormData = {
   price: "",
   originalPrice: "",
   image: "",
-  category: "feminino",
-  size: "100ml",
+  category: "FEMININO",
+  size: 100,
   concentration: "",
   olfactiveFamily: "",
   featured: false,
   inStock: true,
 }
 
-export interface SmartImageUploaderProps {
+export type SmartImageUploaderProps = {
   value: string
-  onChange: (newValue: string) => void
+  onChange: (value: string) => void
   className?: string
   maxSizeMB?: number
+  onLoadingChange?: (loading: boolean) => void
 }

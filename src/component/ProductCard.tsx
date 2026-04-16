@@ -8,6 +8,7 @@ import { Badge } from "@/Shadcn-Components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/Shadcn-Components/ui/dialog"
 import { Separator } from "@/Shadcn-Components/ui/separator"
 import { ShoppingBag, Plus, Minus } from "lucide-react"
+import { toast } from "sonner"
 
 interface ProductCardProps {
   product: Product
@@ -70,7 +71,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             {product.name}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            {product.size} | {categoryLabels[product.category]}  | {product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1)}
+            {product.size}ml | {categoryLabels[product.category]}  | {product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1)}
           </p>
           <div className="mt-3 min-h-11 flex flex-col justify-center">
             <span className="text-lg font-semibold text-foreground">
@@ -93,6 +94,9 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             onClick={(e) => {
               e.stopPropagation()
               onAddToCart(product)
+              toast.success("Produto adicionado ao carrinho", {
+                style: { backgroundColor: "#3CB371", color: "#ffffff" },
+              })
             }}
             disabled={!product.inStock}
           >
@@ -132,7 +136,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
               <h2 className="mt-1 text-2xl font-semibold text-foreground">
                 {product.name}
               </h2>
-              <p className="text-sm text-muted-foreground">{product.size}</p>
+              <p className="text-sm text-muted-foreground">{product.size}ml</p>
               <Separator className="my-4" />
               <p className="text-muted-foreground leading-relaxed">
                 {product.description}

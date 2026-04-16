@@ -4,6 +4,7 @@ import React from "react"
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { Product, CartItem } from '@/lib/types'
+import { Input } from "@/Shadcn-Components/ui/input"
 import {
   getProducts,
   getCart,
@@ -36,7 +37,6 @@ import {
   ChevronDown,
   RotateCcw,
   Menu,
-  User,
   Search,
 } from 'lucide-react'
 import {
@@ -59,11 +59,7 @@ import {
   CommandSeparator,
 } from '@/Shadcn-Components/ui/command'
 import { Slider } from '@/Shadcn-Components/ui/slider'
-import { Avatar, AvatarFallback, AvatarImage } from "@/Shadcn-Components/ui/avatar"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/Shadcn-Components/ui/dialog"
-import { Label } from "@/Shadcn-Components/ui/label"
-import { Input } from "@/Shadcn-Components/ui/input"
-import { toast } from "sonner"
+
 import { useNavigate } from "react-router-dom"
 import { useRef } from "react"
 
@@ -97,10 +93,6 @@ interface QuickFilter {
 
 const MAX_PRICE = 2500
 
-//Login fixo
-const Email = "admin@example.com"
-const Senha = "123456"
-
 export function Store() {
   const [products, setProducts] = useState<Product[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
@@ -112,54 +104,25 @@ export function Store() {
     priceRange: [0, MAX_PRICE],
   })
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+
   const [searchTerm, setSearchTerm] = useState<string>("")
   const navigate = useNavigate()
   const collectionRef = useRef<HTMLDivElement | null>(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  const isLoggedIn = false
-
-  if (isLoggedIn) {
-    return (
-      <Avatar className="h-9 w-9 cursor-pointer transition-transform">
-        <AvatarImage alt="Seu Usuário" />
-        <AvatarFallback>US</AvatarFallback>
-      </Avatar>
-    )
-  }
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-
-    setTimeout(() => {
-      if (email === Email && password === Senha) {
-        toast.success("Login Realizado com sucesso!", {
-          style: {
-            backgroundColor: "#3CB371",
-            color: "#ffffff"
-          },
-        })
-        setOpen(false)
-        navigate("/admin")
-      } else {
-        toast.error("Email ou senha incorreta. Tente novamente!", {
-          style: {
-            backgroundColor: "#FF6347",
-            color: "#ffffff"
-          },
-        })
-      }
-      setIsLoading(false)
-    }, 1500)
-  }
 
   useEffect(() => {
-    setProducts(getProducts())
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/api/product")
+        const data = await response.json()
+        setProducts(data.content)
+      } catch (error) {
+        console.error("Erro ao buscar produtos:", error)
+      }
+    }
+
+    fetchProducts()
     setCart(getCart())
   }, [])
 
@@ -178,7 +141,7 @@ export function Store() {
         label: 'Presente',
         icon: Gift,
         description: 'Seleção especial',
-        apply: (f) => ({ ...f, priceRange: [200, 800] as [number, number] }),
+        apply: (f) => ({ ...f, priceRange: [20, 100] as [number, number] }),
         isActive: () => activeQuickFilter === 'presentes',
       },
       {
@@ -188,7 +151,7 @@ export function Store() {
         description: 'Exclusivos',
         apply: (f) => ({
           ...f,
-          priceRange: [1000, MAX_PRICE] as [number, number],
+          priceRange: [200, MAX_PRICE] as [number, number],
         }),
         isActive: () => activeQuickFilter === 'premium',
       },
@@ -233,11 +196,11 @@ export function Store() {
     }
 
     if (filters.gender !== 'todos') {
-      result = result.filter((p) => p.category === filters.gender)
+      result = result.filter((p) => p.category.toLowerCase() === filters.gender)
     }
 
     if (filters.family !== 'todos') {
-      result = result.filter((p: Product) => p.olfactiveFamily === filters.family)
+      result = result.filter((p: Product) => p.olfactiveFamily.toLowerCase() === filters.family)
     }
 
     if (filters.concentration !== 'todos') {
@@ -337,7 +300,6 @@ export function Store() {
         <div className="hidden border-b border-border/30 bg-foreground text-background md:block">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-2 text-xs tracking-wide">
             <span className="opacity-80">Fragrâncias 100% Originais</span>
-            <span className="font-medium">Frete Grátis acima de R$ 300</span>
             <span className="opacity-80">Parcele em até 12x</span>
           </div>
         </div>
@@ -411,14 +373,14 @@ export function Store() {
 
                     <button
                       onClick={() => {
-                        setFilters((prev) => ({ ...prev, priceRange: [0, 500] as [number, number] }))
+                        setFilters((prev) => ({ ...prev, priceRange: [0, 150] as [number, number] }))
                         setActiveQuickFilter(null)
                         scrollToCollection()
                         setIsMobileMenuOpen(false)
                       }}
                       className={cn(
                         'rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors',
-                        filters.priceRange[0] === 0 && filters.priceRange[1] === 500
+                        filters.priceRange[0] === 0 && filters.priceRange[1] === 150
                           ? 'bg-foreground text-background'
                           : 'hover:bg-muted'
                       )}
@@ -556,58 +518,7 @@ export function Store() {
                 )}
               </button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full"
-                onClick={() => setOpen(true)}
-                title="Fazer Login">
-                <User className="w-5 h-5" />
-              </Button>
 
-              <Dialog open={open} onOpenChange={setOpen} >
-                <DialogContent className="sm:max-w-106.25">
-                  <DialogHeader>
-                    <DialogTitle>Entrar na Conta</DialogTitle>
-                    <DialogDescription>Use seu e-mail e senha para acessar sua conta.</DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleLogin} className="space-y-5 pt-4">
-                    <div className="grid gap-5 py-2">
-                      <div className="grid gap-2">
-                        <Label htmlFor="email">E-mail</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="seu@email.com"
-                          autoComplete="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor="password">Senha</Label>
-                        <Input
-                          id="password"
-                          type="password"
-                          autoComplete="current-password"
-                          placeholder="digite sua senha.."
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                      <Button type="submit" className="w-full" disabled={isLoading}>
-                        {isLoading ? "Entrando..." : "Entrar"}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
             </div>
           </div>
         </div>
@@ -1052,17 +963,26 @@ export function Store() {
                 </span>
               </a>
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-                Curadoria de fragrâncias importadas 100% originais. Autenticidade garantida desde 2018.
+                Curadoria de fragrâncias importadas 100% originais. Autenticidade garantida desde 2024.
               </p>
               <div className="mt-6 flex gap-3">
-                <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full border border-border transition-colors hover:bg-muted">
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
-                </a>
-                <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full border border-border transition-colors hover:bg-muted">
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.607 0 11.985-5.365 11.985-11.987C23.97 5.39 18.592.026 11.985.026L12.017 0z" /></svg>
-                </a>
-                <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full border border-border transition-colors hover:bg-muted">
+                <a href="https://www.instagram.com/faustoimportados/" className="flex h-9 w-9 items-center justify-center rounded-full border border-border transition-colors hover:bg-muted" target="_blank" rel="noopener noreferrer" title="Instagram">
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" /></svg>
+                </a>
+                <a
+                  href="https://wa.me/5585996375030"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border transition-colors hover:bg-muted"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="WhatsApp"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M20.52 3.48A11.75 11.75 0 0012.01 0C5.39 0 .01 5.38 0 12c0 2.11.55 4.17 1.6 5.99L0 24l6.18-1.62A11.93 11.93 0 0012.01 24c6.62 0 12-5.38 12-12 0-3.2-1.25-6.21-3.49-8.52zM12 21.82c-1.85 0-3.66-.5-5.23-1.45l-.37-.22-3.67.96.98-3.58-.24-.37A9.77 9.77 0 012.2 12C2.2 6.6 6.6 2.2 12 2.2c2.62 0 5.09 1.02 6.95 2.88A9.77 9.77 0 0121.8 12c0 5.4-4.4 9.82-9.8 9.82zm5.39-7.36c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.46-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.48-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.87 1.22 3.07.15.2 2.11 3.22 5.12 4.52.72.31 1.28.5 1.72.64.72.23 1.37.2 1.88.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z" />
+                  </svg>
                 </a>
               </div>
             </div>
@@ -1113,28 +1033,15 @@ export function Store() {
               <div className="mt-6 space-y-4 text-sm">
                 <div>
                   <p className="font-medium">WhatsApp</p>
-                  <p className="text-muted-foreground">(11) 99999-9999</p>
+                  <a href="https://wa.me/5585996375030" target="_blank" className="text-muted-foreground">(85) 99637-5030</a>
                 </div>
                 <div>
                   <p className="font-medium">Horário</p>
-                  <p className="text-muted-foreground">Seg - Sex: 9h às 18h</p>
-                  <p className="text-muted-foreground">Sábado: 9h às 13h</p>
+                  <p className="text-muted-foreground">Seg - Dom: 7h às 22h</p>
                 </div>
               </div>
             </div>
-            <div className="rounded-xl bg-linear-to-r from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/20 p-5 border border-emerald-200/50">
-              <p className="font-bold text-emerald-700 dark:text-emerald-300 text-[15px]">
-                🎁 Frete Grátis na compra acima de R$ 300!
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Todo Brasil • Envio com rastreio + Embalagem segura
-              </p>
-              <p className="mt-1 text-xs italic text-emerald-600/80 dark:text-emerald-400/80">
-                Faltam pouco pro seu frete sair de graça! 😏
-              </p>
-            </div>
           </div>
-
 
           <Separator className="my-12" />
 
@@ -1143,9 +1050,9 @@ export function Store() {
               © 2026 Fausto Importados. Todos os direitos reservados.
             </p>
             <div className="flex items-center gap-6 text-xs text-muted-foreground">
-              <a href="#" className="transition-colors hover:text-foreground">Termos de Uso</a>
-              <a href="#" className="transition-colors hover:text-foreground">Privacidade</a>
-              <a href="#" className="transition-colors hover:text-foreground">Cookies</a>
+              <a href="/termos" className="transition-colors hover:text-foreground">Termos de Uso</a>
+              <a href="/privacidade" className="transition-colors hover:text-foreground">Privacidade</a>
+              <a href="/cookies" className="transition-colors hover:text-foreground">Cookies</a>
             </div>
           </div>
         </div>

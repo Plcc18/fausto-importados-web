@@ -25,6 +25,7 @@ import {
 import { Input } from '@/Shadcn-Components/ui/input'
 import { Label } from '@/Shadcn-Components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/Shadcn-Components/ui/radio-group'
+import Swal from 'sweetalert2'
 
 interface CartProps {
   isOpen: boolean
@@ -59,7 +60,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
       minimumFractionDigits: 0,
     }).format(value)
 
-  const whatsappBusinessNumber = '5585997621031' // Exemplo: 55 + DDD + número
+  const whatsappBusinessNumber = '5585996375030'
 
   const generateOrderMessage = () => {
     const itemsList = items
@@ -72,21 +73,21 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
       .join('\n')
 
     const paymentText = {
-      pix: '💠 Pix',
-      cartao: '💳 Cartão (até 12x)',
-      boleto: '📄 Boleto',
+      pix: 'Pix',
+      cartao: 'Cartão (até 12x)',
+      boleto: 'Boleto',
     }[payment]
 
     return (
       `*NOVO PEDIDO - FAUSTO IMPORTADOS*\n\n` +
-      `👤 Nome: ${name.trim()}\n` +
-      `📱 WhatsApp: ${whatsapp.trim()}\n` +
-      `💳 Forma de pagamento: ${paymentText}\n\n` +
-      `*🛍️ ITENS DO PEDIDO:*\n${itemsList}\n\n` +
+      `Nome: ${name.trim()}\n` +
+      `WhatsApp: ${whatsapp.trim()}\n` +
+      `Forma de pagamento: ${paymentText}\n\n` +
+      `*ITENS DO PEDIDO:*\n${itemsList}\n\n` +
       `━━━━━━━━━━━━━━━━━━━━━\n` +
-      `💰 *Total: ${formatPrice(total)}*\n\n` +
-      `Aguardo confirmação e dados para pagamento! 🙏\n` +
-      `Qualquer dúvida é só chamar! ✨`
+      `*Total: ${formatPrice(total)}*\n\n` +
+      `Aguardo confirmação e dados para pagamento! \n` +
+      `Qualquer dúvida é só chamar! `
     )
   }
 
@@ -132,7 +133,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
 
                 <div className="flex-1 min-w-0">
                   <p className="font-medium leading-tight">{item.product.name}</p>
-                  <p className="text-sm text-muted-foreground">{item.product.size}</p>
+                  <p className="text-sm text-muted-foreground">{item.product.size}ml</p>
                   <div className="mt-1 flex items-center gap-3 text-sm">
                     <span>{item.quantity}x</span>
                     <span className="font-medium">{formatPrice(item.product.price * item.quantity)}</span>
@@ -248,10 +249,9 @@ export function Cart({
   onClear,
 }: CartProps) {
   const total = getCartTotal(items)
-  const freeShippingThreshold = 300
-  const remainingForFreeShipping = freeShippingThreshold - total
 
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
 
   const formatPrice = (value: number) =>
     new Intl.NumberFormat('pt-BR', {
@@ -301,34 +301,6 @@ export function Cart({
             </div>
           ) : (
             <>
-              {/* Free Shipping Progress */}
-              {remainingForFreeShipping > 0 && (
-                <div className="border-b border-border bg-muted/30 px-6 py-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Truck className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      Faltam <strong>{formatPrice(remainingForFreeShipping)}</strong> para frete grátis
-                    </span>
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-foreground transition-all duration-500"
-                      style={{
-                        width: `${Math.min((total / freeShippingThreshold) * 100, 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {remainingForFreeShipping <= 0 && (
-                <div className="border-b border-border bg-emerald-50 px-6 py-4 dark:bg-emerald-950/30">
-                  <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
-                    <Truck className="h-4 w-4" />
-                    <span className="font-medium">Parabéns! Você ganhou frete grátis!</span>
-                  </div>
-                </div>
-              )}
 
               <div className="flex-1 min-h-0 flex flex-col">
                 <ScrollArea className="h-full px-6">
@@ -356,7 +328,7 @@ export function Cart({
                                 {item.product.brand}
                               </span>
                               <h4 className="text-sm font-medium">{item.product.name}</h4>
-                              <p className="text-xs text-muted-foreground">{item.product.size}</p>
+                              <p className="text-xs text-muted-foreground">{item.product.size}ml</p>
                             </div>
                             <button
                               onClick={() => onRemove(item.product.id)}
@@ -399,12 +371,6 @@ export function Cart({
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>{formatPrice(total)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Frete</span>
-                    <span className={remainingForFreeShipping <= 0 ? 'text-emerald-600' : ''}>
-                      {remainingForFreeShipping <= 0 ? 'Grátis' : 'A combinar'}
-                    </span>
-                  </div>
                   <Separator className="my-3" />
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-lg">Total</span>
@@ -422,14 +388,55 @@ export function Cart({
                     Finalizar Compra
                   </Button>
 
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={onClear}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Limpar Carrinho
-                  </Button>
+                  <div className="w-full">
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() => setClearConfirmOpen(true)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Limpar Carrinho
+                    </Button>
+
+                    <Dialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+                      <DialogContent className="max-w-sm">
+                        <DialogHeader>
+                          <DialogTitle>Limpar carrinho</DialogTitle>
+                        </DialogHeader>
+
+                        <p className="text-muted-foreground">
+                          Tem certeza que deseja remover todos os itens do carrinho? Esta ação não pode ser desfeita.
+                        </p>
+
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => setClearConfirmOpen(false)}
+                          >
+                            Cancelar
+                          </Button>
+
+                          <Button
+                            variant="destructive"
+                            onClick={() => {
+                              onClear()
+                              setClearConfirmOpen(false)
+                              onClose()
+                              Swal.fire({
+                                icon: 'success',
+                                title: 'Carrinho limpo',
+                                text: 'Todos os itens foram removidos do seu carrinho.',
+                                timer: 2000,
+                                showConfirmButton: false,
+                              })
+                            }}
+                          >
+                            Limpar
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
               </div>
             </>
