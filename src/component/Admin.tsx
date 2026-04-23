@@ -47,14 +47,27 @@ import {
 } from "lucide-react"
 import { emptyForm, type ProductFormData, type SmartImageUploaderProps } from "@/types"
 import Swal from "sweetalert2"
-//Types importados do types.ts
 
+// ============================================================================
+// Helper — todas as requisições autenticadas usam credentials: "include"
+// para que o browser envie o cookie HttpOnly automaticamente.
+// Não há mais nenhum token no localStorage.
+// ============================================================================
+const authFetch = (url: string, options: RequestInit = {}) =>
+  fetch(url, {
+    ...options,
+    credentials: "include",
+  })
+
+// ============================================================================
+// SmartImageUploader
+// ============================================================================
 function SmartImageUploader({
   value,
   onChange,
+  onLoadingChange,
   className = "",
   maxSizeMB = 6,
-  onLoadingChange
 }: SmartImageUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [preview, setPreview] = useState<string>(value || "")
@@ -67,95 +80,32 @@ function SmartImageUploader({
     }
   }, [value])
 
-  const processFile = async (file: File) => {
+  const uploadFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("Apenas imagens são permitidas")
+      return
+    }
+
+    setError(null)
+    setPreview(URL.createObjectURL(file))
     setIsLoading(true)
     onLoadingChange?.(true)
-    if (!file.type.startsWith("image/")) {
-      setError("Apenas imagens são permitidas")
-      return
-    }
-
-    setError(null)
-
-    // preview imediato
-    const previewUrl = URL.createObjectURL(file)
-    setPreview(previewUrl)
 
     try {
-      const token = localStorage.getItem("token")
-
-      const headers: any = {}
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`
-      }
-
       const formData = new FormData()
       formData.append("image", file)
 
-      const response = await fetch("http://localhost:8080/api/upload", {
+      const response = await authFetch("http://localhost:8080/api/upload", {
         method: "POST",
-        headers,
         body: formData,
       })
 
       if (!response.ok) {
-        const text = await response.text()
-        throw new Error(text)
+        throw new Error(await response.text())
       }
 
       const data = await response.json()
-
       onChange(data.url)
-
-    } catch (err) {
-      console.error(err)
-      setError("Erro ao enviar imagem")
-    } finally {
-      setIsLoading(false)
-      onLoadingChange?.(false)
-    }
-  }
-
-  const handleFileChange = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setError("Apenas imagens são permitidas")
-      return
-    }
-
-    setError(null)
-
-    // preview imediato
-    const previewUrl = URL.createObjectURL(file)
-    setPreview(previewUrl)
-
-    try {
-      const token = localStorage.getItem("token")
-
-      const headers: any = {}
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`
-      }
-
-      const formData = new FormData()
-      formData.append("image", file)
-
-      const response = await fetch("http://localhost:8080/api/upload", {
-        method: "POST",
-        headers,
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const text = await response.text()
-        throw new Error(text)
-      }
-
-      const data = await response.json()
-
-      onChange(data.url)
-
     } catch (err) {
       console.error(err)
       setError("Erro ao enviar imagem")
@@ -169,7 +119,7 @@ function SmartImageUploader({
     e.preventDefault()
     setIsDragging(false)
     const file = e.dataTransfer.files[0]
-    if (file) processFile(file)
+    if (file) uploadFile(file)
   }
 
   const removeImage = () => {
@@ -237,7 +187,7 @@ function SmartImageUploader({
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0]
-              if (file) handleFileChange(file)
+              if (file) uploadFile(file)
             }}
           />
 
@@ -265,8 +215,6 @@ function SmartImageUploader({
   )
 }
 
-
-
 // ============================================================================
 // Componente Principal - Admin
 // ============================================================================
@@ -279,28 +227,28 @@ export function Admin() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
-  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
+
   const handleLogout = async () => {
     const result = await Swal.fire({
-      title: 'Tem certeza?',
-      text: 'Você realmente deseja sair da sua conta?',
-      icon: 'warning',
+      title: "Tem certeza?",
+      text: "Você realmente deseja sair da sua conta?",
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonText: 'Sim, sair',
-      cancelButtonText: 'Cancelar',
+      confirmButtonText: "Sim, sair",
+      cancelButtonText: "Cancelar",
     })
 
     if (result.isConfirmed) {
-      localStorage.removeItem("token")
+      // Apaga o cookie no servidor
+      await authFetch("http://localhost:8080/auth/logout", { method: "POST" })
 
       navigate("/admin/login")
 
       await Swal.fire({
-        icon: 'success',
-        title: 'Logout',
-        text: 'Você saiu da sua conta!',
+        icon: "success",
+        title: "Logout",
+        text: "Você saiu da sua conta!",
       })
-
     }
   }
 
@@ -311,10 +259,8 @@ export function Admin() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-
       const response = await fetch("http://localhost:8080/api/product")
       const data = await response.json()
-
       setProducts(data.content)
     } catch (error) {
       console.error(error)
@@ -323,9 +269,7 @@ export function Admin() {
     }
   }
 
-  const refreshProducts = () => {
-    fetchProducts()
-  }
+  const refreshProducts = () => fetchProducts()
 
   const openCreateDialog = () => {
     setEditingProduct(null)
@@ -343,108 +287,76 @@ export function Admin() {
       originalPrice: product.originalPrice ?? "",
       image: product.image || "",
       category: product.category as "MASCULINO" | "FEMININO" | "UNISSEX",
-      size: typeof product.size === "string" ? product.size : parseInt(product.size) || 100,
+      size: typeof product.size === "string" ? parseInt(product.size) : product.size,
       concentration: product.concentration || "",
       olfactiveFamily: product.olfactiveFamily || "",
       featured: product.featured || false,
       inStock: product.inStock ?? true,
+      stockQuantity: product.stockQuantity ?? 0,
     })
     setIsDialogOpen(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
 
     if (!formData.image) {
       Swal.fire({
-        icon: 'warning',
-        title: 'Imagem obrigatória',
-        text: 'Aguarde o upload da imagem ou selecione uma imagem antes de salvar.',
+        icon: "warning",
+        title: "Imagem obrigatória",
+        text: "Aguarde o upload da imagem ou selecione uma imagem antes de salvar.",
       })
       return
     }
-    e.preventDefault()
-    if (!formData.image) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Imagem obrigatória',
-        text: 'Aguarde o upload ou selecione uma imagem antes de salvar.',
-      })
-      return
-    }
-    const token = localStorage.getItem("token")
 
     const productData = {
       name: formData.name,
       brand: formData.brand,
       description: formData.description,
-
       price: Number(formData.price),
-
-      originalPrice:
-        formData.originalPrice
-          ? Number(formData.originalPrice)
-          : null,
-
+      originalPrice: formData.originalPrice ? Number(formData.originalPrice) : null,
       category: formData.category,
-
       size: formData.size,
-
-      olfactiveFamily:
-        formData.olfactiveFamily || null,
-
+      olfactiveFamily: formData.olfactiveFamily || null,
       featured: formData.featured ?? false,
-
       inStock: formData.inStock ?? true,
-
-      image: formData.image || null,
+      image: formData.image,
+      stockQuantity: Number(formData.stockQuantity ?? 0),
     }
 
     if (editingProduct) {
       // PUT — multipart/form-data
       const form = new FormData()
       form.append("product", JSON.stringify(productData))
-      // só anexa imagem se for um arquivo novo (começa com blob:)
-      // imagens já salvas são URLs normais, não precisam ser reenviadas
 
-      const res = await fetch(`http://localhost:8080/api/product/${editingProduct.id}`, {
+      const res = await authFetch(`http://localhost:8080/api/product/${editingProduct.id}`, {
         method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
         body: form,
       })
 
       if (res.status === 401 || res.status === 403) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Acesso negado',
-          text: 'Você não está autorizado!',
-        })
+        Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
         navigate("/admin/login")
         return
       }
-
     } else {
       // POST — application/json
-      const res = await fetch("http://localhost:8080/api/product", {
+      const res = await authFetch("http://localhost:8080/api/product", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(productData),
       })
 
       if (res.status === 401 || res.status === 403) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Acesso negado',
-          text: 'Você não está autorizado!',
-        })
+        Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
         navigate("/admin/login")
         return
       }
 
-      const text = await res.text()
-      console.log("ERRO BACKEND:", text)
+      if (!res.ok) {
+        const text = await res.text()
+        console.error("ERRO BACKEND:", text)
+      }
     }
 
     setIsDialogOpen(false)
@@ -452,22 +364,14 @@ export function Admin() {
     setEditingProduct(null)
     refreshProducts()
   }
-  const handleDelete = async (id: string) => {
-    const token = localStorage.getItem("token")
 
-    const res = await fetch(`http://localhost:8080/api/product/${id}`, {
+  const handleDelete = async (id: string) => {
+    const res = await authFetch(`http://localhost:8080/api/product/${id}`, {
       method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
     })
 
     if (res.status === 401 || res.status === 403) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Ação negada',
-        text: 'Você não está autorizado!',
-      })
+      Swal.fire({ icon: "error", title: "Ação negada", text: "Você não está autorizado!" })
       navigate("/admin/login")
       return
     }
@@ -503,58 +407,13 @@ export function Admin() {
               <p className="text-sm text-muted-foreground">Gerencie seus produtos</p>
             </div>
           </div>
-          <Button onClick={
-            openCreateDialog} className="gap-2">
+          <Button onClick={openCreateDialog} className="gap-2">
             <Plus className="h-4 w-4" />
             Novo Produto
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setLogoutConfirmOpen(true)}
-          >
-            Sair da conta
+          <Button variant={"outline"} onClick={handleLogout}>
+            Sair
           </Button>
-
-          <Dialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
-            <DialogContent className="max-w-sm">
-              <DialogHeader>
-                <DialogTitle>Sair da conta</DialogTitle>
-              </DialogHeader>
-
-              <p className="text-muted-foreground">
-                Tem certeza que deseja sair da sua conta?
-              </p>
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setLogoutConfirmOpen(false)}
-                >
-                  Cancelar
-                </Button>
-
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    localStorage.removeItem("token")
-                    setLogoutConfirmOpen(false)
-                    navigate("/admin/login")
-
-                    // Mantém só o feedback de sucesso
-                    Swal.fire({
-                      icon: 'success',
-                      title: 'Logout',
-                      text: 'Você saiu da sua conta!',
-                      timer: 2000,
-                      showConfirmButton: false,
-                    })
-                  }}
-                >
-                  Sair
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
       </header>
 
@@ -737,7 +596,6 @@ export function Admin() {
               {products.map((product) => (
                 <Card key={product.id}>
                   <CardContent className="flex items-center gap-4 p-4">
-                    {/* Imagem */}
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted flex items-center justify-center">
                       <img
                         src={product.image || "/placeholder.svg"}
@@ -749,7 +607,6 @@ export function Admin() {
                       />
                     </div>
 
-                    {/* Infos */}
                     <div className="flex-1">
                       <p className="font-medium">{product.name}</p>
                       <p className="text-sm text-muted-foreground">
@@ -852,7 +709,6 @@ export function Admin() {
                   <div className="space-y-2">
                     <Label>Categoria</Label>
                     <Select
-
                       value={formData.category}
                       onValueChange={(value: "MASCULINO" | "FEMININO" | "UNISSEX") =>
                         setFormData({ ...formData, category: value })
@@ -894,9 +750,7 @@ export function Admin() {
                   </div>
                 </div>
 
-                <div className="grid gap-6 ">
-
-
+                <div className="grid gap-6">
                   {/* Descrição */}
                   <div className="space-y-2">
                     <Label htmlFor="description">Descrição</Label>
@@ -921,7 +775,6 @@ export function Admin() {
                         value={formData.price}
                         onChange={(e) => {
                           const value = e.target.value
-
                           if (/^\d*\.?\d*$/.test(value)) {
                             setFormData({
                               ...formData,
@@ -956,24 +809,46 @@ export function Admin() {
                         value={formData.size}
                         onChange={(e) => {
                           const value = e.target.value
-
                           setFormData((prev) => ({
                             ...prev,
-                            size: value === "" ? "" : Number(value) as number
+                            size: value === "" ? "" : Number(value) as number,
                           }))
                         }}
                       />
                     </div>
                   </div>
 
-                  {/* Upload de imagem - componente inteligente */}
+
+                  {/* Quantidade em estoque */}
+                  <div className="space-y-2">
+                    <Label htmlFor="stockQuantity">Quantidade em estoque</Label>
+                    <Input
+                      id="stockQuantity"
+                      type="number"
+                      min={0}
+                      value={formData.stockQuantity ?? 0}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setFormData((prev) => ({
+                          ...prev,
+                          stockQuantity: value === "" ? 0 : Number(value),
+                        }))
+                      }}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Marcado como esgotado automaticamente quando chegar a 0.
+                    </p>
+                  </div>
+                  {/* Upload de imagem */}
                   <SmartImageUploader
                     value={formData.image || ""}
-                    onChange={(newImage) => setFormData(prev => ({ ...prev, image: newImage }))}
+                    onChange={(newImage) =>
+                      setFormData((prev) => ({ ...prev, image: newImage }))
+                    }
                     onLoadingChange={setImageUploading}
                     maxSizeMB={8}
                   />
-
                 </div>
 
                 <Separator />
@@ -1016,7 +891,9 @@ export function Admin() {
               <Button type="submit" disabled={imageUploading}>
                 {imageUploading
                   ? "Enviando imagem..."
-                  : editingProduct ? "Salvar Alterações" : "Criar Produto"}
+                  : editingProduct
+                  ? "Salvar Alterações"
+                  : "Criar Produto"}
               </Button>
             </DialogFooter>
           </form>

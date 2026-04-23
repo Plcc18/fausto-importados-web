@@ -21,6 +21,9 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const hasDiscount = product.originalPrice && product.originalPrice > product.price
   const isFeatured = product.featured === true
 
+  // Considera esgotado se inStock for false OU se stockQuantity for 0
+  const isOutOfStock = !product.inStock || (product.stockQuantity !== undefined && product.stockQuantity <= 0)
+
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) {
       onAddToCart(product)
@@ -29,10 +32,33 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
     setIsModalOpen(false)
   }
 
-  const categoryLabels = {
+  const categoryLabels: Record<string, string> = {
     masculino: "Masculino",
     feminino: "Feminino",
-    unissex: "Unissex"
+    unissex: "Unissex",
+    MASCULINO: "Masculino",
+    FEMININO: "Feminino",
+    UNISSEX: "Unissex",
+  }
+
+  // Badge de estoque exibido nos cards e no modal
+  const StockBadge = () => {
+    if (isOutOfStock) return null
+    if (product.stockQuantity === undefined || product.stockQuantity === null) return null
+
+    if (product.stockQuantity <= 3) {
+      return (
+        <Badge variant="destructive" className="text-xs">
+          Últimas {product.stockQuantity} unidade{product.stockQuantity > 1 ? "s" : ""}
+        </Badge>
+      )
+    }
+
+    return (
+      <Badge variant="secondary" className="text-xs">
+        {product.stockQuantity} em estoque
+      </Badge>
+    )
   }
 
   return (
@@ -57,7 +83,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
               Destaque
             </Badge>
           )}
-          {!product.inStock && (
+          {isOutOfStock && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80">
               <Badge variant="destructive">Esgotado</Badge>
             </div>
@@ -71,21 +97,24 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             {product.name}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            {product.size}ml | {categoryLabels[product.category]}  | {product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1)}
+            {product.size}ml | {categoryLabels[product.category]} | {product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1).toLowerCase()}
           </p>
+
+          {/* Badge de estoque no card */}
+          <div className="mt-2">
+            <StockBadge />
+          </div>
+
           <div className="mt-3 min-h-11 flex flex-col justify-center">
             <span className="text-lg font-semibold text-foreground">
               R$ {product.price.toFixed(2).replace(".", ",")}
             </span>
-
             {hasDiscount ? (
               <span className="text-sm text-muted-foreground line-through">
                 R$ {product.originalPrice?.toFixed(2).replace(".", ",")}
               </span>
             ) : (
-              <span className="text-sm invisible">
-                placeholder
-              </span>
+              <span className="text-sm invisible">placeholder</span>
             )}
           </div>
 
@@ -98,7 +127,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                 style: { backgroundColor: "#3CB371", color: "#ffffff" },
               })
             }}
-            disabled={!product.inStock}
+            disabled={isOutOfStock}
           >
             <ShoppingBag className="h-4 w-4" />
             Adicionar
@@ -116,16 +145,18 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                 alt={product.name}
                 className="max-w-full max-h-full object-contain p-6"
               />
-              {!product.inStock && (
+              {isOutOfStock && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/80">
                   <Badge variant="destructive">Esgotado</Badge>
                 </div>
               )}
             </div>
             <div className="flex flex-col p-6 md:flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline">{categoryLabels[product.category]}</Badge>
-                <Badge variant="secondary">{product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1)}</Badge>
+                <Badge variant="secondary">
+                  {product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1).toLowerCase()}
+                </Badge>
                 {hasDiscount && (
                   <Badge className="bg-accent text-accent-foreground">Oferta</Badge>
                 )}
@@ -137,6 +168,12 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                 {product.name}
               </h2>
               <p className="text-sm text-muted-foreground">{product.size}ml</p>
+
+              {/* Badge de estoque no modal */}
+              <div className="mt-2">
+                <StockBadge />
+              </div>
+
               <Separator className="my-4" />
               <p className="text-muted-foreground leading-relaxed">
                 {product.description}
@@ -165,7 +202,15 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setQuantity(quantity + 1)}
+                    onClick={() => {
+                      // Não deixa adicionar mais do que tem em estoque
+                      const max = product.stockQuantity ?? Infinity
+                      setQuantity(Math.min(quantity + 1, max))
+                    }}
+                    disabled={
+                      product.stockQuantity !== undefined &&
+                      quantity >= product.stockQuantity
+                    }
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -173,7 +218,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                 <Button
                   className="flex-1 gap-2"
                   onClick={handleAddToCart}
-                  disabled={!product.inStock}
+                  disabled={isOutOfStock}
                 >
                   <ShoppingBag className="h-4 w-4" />
                   Adicionar ao Carrinho

@@ -11,6 +11,7 @@ export type ProductFormData = {
   olfactiveFamily?: string
   featured: boolean
   inStock: boolean
+  stockQuantity?: number
 }
 
 export const emptyForm: ProductFormData = {

@@ -12,6 +12,7 @@ export interface Product {
   size: string
   featured?: boolean
   inStock: boolean
+  stockQuantity?: number
 }
 
 export interface CartItem {

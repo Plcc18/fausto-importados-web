@@ -20,40 +20,34 @@ export function AdminLogin() {
       const response = await fetch("http://localhost:8080/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // credentials: "include" é necessário para o browser salvar o cookie
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       })
 
       if (!response.ok) {
         Swal.fire({
-          icon: 'error',
-          title: 'Negado',
-          text: 'Credenciais inválidas. Tente novamente!',
+          icon: "error",
+          title: "Negado",
+          text: "Credenciais inválidas. Tente novamente!",
           timer: 2000,
           showConfirmButton: false,
         })
         return
       }
 
-      const data = await response.json()
-      const token = data.token ?? data.jwt ?? data.accessToken ?? null
-
-      if (!token) {
-        throw new Error("Token não encontrado na resposta da API")
-      }
-
-      localStorage.setItem("token", token)
-
+      // O token agora vem como cookie HttpOnly — não há body para ler.
+      // O browser salva o cookie automaticamente e o envia em toda requisição.
 
       Swal.fire({
-        icon: 'success',
-        title: 'Loging',
-        text: 'Bem vindo, ADM!',
+        icon: "success",
+        title: "Login",
+        text: "Bem vindo, ADM!",
         timer: 2000,
         showConfirmButton: false,
       })
 
       navigate("/admin")
-
     } catch (err: any) {
       toast.error(err.message || "Email ou senha incorretos. Tente novamente!", {
         style: { backgroundColor: "#FF6347", color: "#ffffff" },

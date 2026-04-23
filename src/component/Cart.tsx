@@ -6,15 +6,13 @@ import { getCartTotal } from '@/lib/store'
 import { Button } from '@/Shadcn-Components/ui/button'
 import { ScrollArea } from '@/Shadcn-Components/ui/scroll-area'
 import { Separator } from '@/Shadcn-Components/ui/separator'
-import { X, Minus, Plus, Trash2, ShoppingBag, Package, Truck } from 'lucide-react'
+import { X, Minus, Plus, Trash2, ShoppingBag, Package } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from '@/Shadcn-Components/ui/sheet'
-
-// Componente Modal de Checkout
 import {
   Dialog,
   DialogContent,
@@ -26,6 +24,7 @@ import { Input } from '@/Shadcn-Components/ui/input'
 import { Label } from '@/Shadcn-Components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/Shadcn-Components/ui/radio-group'
 import Swal from 'sweetalert2'
+import { decreaseStockForCart } from '@/lib/decreaseStock'
 
 interface CartProps {
   isOpen: boolean
@@ -36,9 +35,6 @@ interface CartProps {
   onClear: () => void
 }
 
-// ---------------------
-// Modal de Finalização de Pedido
-// ---------------------
 interface CheckoutModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -50,6 +46,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
   const [name, setName] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
   const [payment, setPayment] = useState<'pix' | 'cartao' | 'boleto'>('pix')
+  const [isSending, setIsSending] = useState(false)
 
   const total = getCartTotal(items)
 
@@ -91,32 +88,32 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
     )
   }
 
-  const handleSendOrder = () => {
+  const handleSendOrder = async () => {
     if (!name.trim() || !whatsapp.trim()) {
       alert('Por favor, preencha seu nome e número de WhatsApp')
       return
     }
 
+    setIsSending(true)
+
+    // Decrementa o estoque de cada item no backend antes de abrir o WhatsApp
+    await decreaseStockForCart(items)
+
     const message = encodeURIComponent(generateOrderMessage())
     const whatsappUrl = `https://wa.me/${whatsappBusinessNumber}?text=${message}`
-
     window.open(whatsappUrl, '_blank')
 
-    // Opcional: você pode limpar o carrinho depois do envio
-    // onClear()
-    // onCloseCart()
+    setIsSending(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-6xl max-h-[90vh] flex flex-col p-0 gap-0 ">
+      <DialogContent className="sm:max-w-6xl max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 py-5 border-b">
           <DialogTitle className="text-xl">Finalizar seu Pedido</DialogTitle>
         </DialogHeader>
 
-
-        {/* Resumo dos itens e dados do cliente */}
-        <ScrollArea className="flex-1 px-6 sm py-5 overflow-y-auto">
+        <ScrollArea className="flex-1 px-6 py-5 overflow-y-auto">
           <div className="space-y-4 grid grid-cols-1 sm:grid-cols-2">
             {items.map((item) => (
               <div key={item.product.id} className="flex gap-4">
@@ -130,7 +127,6 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
                     }}
                   />
                 </div>
-
                 <div className="flex-1 min-w-0">
                   <p className="font-medium leading-tight">{item.product.name}</p>
                   <p className="text-sm text-muted-foreground">{item.product.size}ml</p>
@@ -163,9 +159,8 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
 
           <Separator className="my-6" />
 
-          {/* Dados do cliente + pagamento */}
           <div className="space-y-5">
-            <div className='grid grid-cols-1 gap-2'>
+            <div className="grid grid-cols-1 gap-2">
               <div className="grid gap-2">
                 <Label htmlFor="nome">Nome completo</Label>
                 <Input
@@ -175,7 +170,6 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
-
               <div className="grid gap-2">
                 <Label htmlFor="whatsapp">WhatsApp</Label>
                 <Input
@@ -192,7 +186,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
               <RadioGroup
                 value={payment}
                 onValueChange={(value) => setPayment(value as typeof payment)}
-                className="grid grid-cols-1 sm:grid-cols-3  gap-2"
+                className="grid grid-cols-1 sm:grid-cols-3 gap-2"
               >
                 <div className="flex items-center space-x-3 space-y-0 rounded-lg border p-4 cursor-pointer hover:border-primary/60 transition-colors">
                   <RadioGroupItem value="pix" id="r1" />
@@ -200,14 +194,12 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
                     Pix (mais rápido e recomendado)
                   </Label>
                 </div>
-
                 <div className="flex items-center space-x-3 space-y-0 rounded-lg border p-4 cursor-pointer hover:border-primary/60 transition-colors">
                   <RadioGroupItem value="cartao" id="r2" />
                   <Label htmlFor="r2" className="flex-1 cursor-pointer font-medium">
                     Cartão de crédito (até 12x)
                   </Label>
                 </div>
-
                 <div className="flex items-center space-x-3 space-y-0 rounded-lg border p-4 cursor-pointer hover:border-primary/60 transition-colors">
                   <RadioGroupItem value="boleto" id="r3" />
                   <Label htmlFor="r3" className="flex-1 cursor-pointer font-medium">
@@ -219,17 +211,16 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
           </div>
         </ScrollArea>
 
-
         <DialogFooter className="px-6 py-5 border-t bg-background/95">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Voltar
           </Button>
           <Button
             onClick={handleSendOrder}
-            className="min-w-55 "
-            disabled={!name.trim() || !whatsapp.trim()}
+            className="min-w-55"
+            disabled={!name.trim() || !whatsapp.trim() || isSending}
           >
-            Enviar Pedido pelo WhatsApp
+            {isSending ? 'Enviando...' : 'Enviar Pedido pelo WhatsApp'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -249,7 +240,6 @@ export function Cart({
   onClear,
 }: CartProps) {
   const total = getCartTotal(items)
-
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
 
@@ -277,9 +267,9 @@ export function Cart({
               </SheetTitle>
               <button
                 onClick={onClose}
-                className='rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+                className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <X className='h-5 w-5' />
+                <X className="h-5 w-5" />
               </button>
             </div>
           </SheetHeader>
@@ -301,7 +291,6 @@ export function Cart({
             </div>
           ) : (
             <>
-
               <div className="flex-1 min-h-0 flex flex-col">
                 <ScrollArea className="h-full px-6">
                   <div className="space-y-4 py-4">
@@ -320,7 +309,6 @@ export function Cart({
                             }}
                           />
                         </div>
-
                         <div className="flex flex-1 flex-col">
                           <div className="flex items-start justify-between">
                             <div>
@@ -337,7 +325,6 @@ export function Cart({
                               <X className="h-4 w-4" />
                             </button>
                           </div>
-
                           <div className="mt-auto flex items-center justify-between pt-2">
                             <div className="flex items-center rounded-full border border-border">
                               <button
@@ -364,6 +351,7 @@ export function Cart({
                   </div>
                 </ScrollArea>
               </div>
+
               {/* Footer */}
               <div className="border-t border-border p-6">
                 <div className="mb-6 space-y-2">
@@ -403,19 +391,13 @@ export function Cart({
                         <DialogHeader>
                           <DialogTitle>Limpar carrinho</DialogTitle>
                         </DialogHeader>
-
                         <p className="text-muted-foreground">
                           Tem certeza que deseja remover todos os itens do carrinho? Esta ação não pode ser desfeita.
                         </p>
-
                         <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => setClearConfirmOpen(false)}
-                          >
+                          <Button variant="outline" onClick={() => setClearConfirmOpen(false)}>
                             Cancelar
                           </Button>
-
                           <Button
                             variant="destructive"
                             onClick={() => {
@@ -444,7 +426,6 @@ export function Cart({
         </SheetContent>
       </Sheet>
 
-      {/* Modal de Checkout */}
       <CheckoutModal
         open={isCheckoutOpen}
         onOpenChange={setIsCheckoutOpen}
