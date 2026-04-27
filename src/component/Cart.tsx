@@ -24,7 +24,6 @@ import { Input } from '@/Shadcn-Components/ui/input'
 import { Label } from '@/Shadcn-Components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/Shadcn-Components/ui/radio-group'
 import Swal from 'sweetalert2'
-import { decreaseStockForCart } from '@/lib/decreaseStock'
 
 interface CartProps {
   isOpen: boolean
@@ -40,9 +39,10 @@ interface CheckoutModalProps {
   onOpenChange: (open: boolean) => void
   items: CartItem[]
   onCloseCart: () => void
+  onClear: () => void
 }
 
-function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
+function CheckoutModal({ open, onOpenChange, items, onCloseCart, onClear }: CheckoutModalProps) {
   const [name, setName] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
   const [payment, setPayment] = useState<'pix' | 'cartao' | 'boleto'>('pix')
@@ -63,7 +63,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
     const itemsList = items
       .map(
         (item) =>
-          `• ${item.quantity}x ${item.product.name} (${item.product.size || '—'}) - ${formatPrice(
+          `• ${item.quantity}x ${item.product.name} ${item.product.size}ml - ${formatPrice(
             item.product.price * item.quantity
           )}`
       )
@@ -83,7 +83,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
       `*ITENS DO PEDIDO:*\n${itemsList}\n\n` +
       `━━━━━━━━━━━━━━━━━━━━━\n` +
       `*Total: ${formatPrice(total)}*\n\n` +
-      `Aguardo confirmação e dados para pagamento! \n` +
+      `Aguardo confirmação e dados para pagamento!\n` +
       `Qualquer dúvida é só chamar! `
     )
   }
@@ -96,14 +96,41 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
 
     setIsSending(true)
 
-    // Decrementa o estoque de cada item no backend antes de abrir o WhatsApp
-    await decreaseStockForCart(items)
+    try {
+      // Salva pedido no backend como PENDING
+      await fetch('http://localhost:8080/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: name.trim(),
+          customerWhatsapp: whatsapp.trim(),
+          paymentMethod: payment,
+          total,
+          items: items.map((item) => ({
+            productId: item.product.id,
+            productName: item.product.name,
+            productSize: item.product.size,
+            productCategory: item.product.category?.toUpperCase() ?? "",
+            productFamily: item.product.olfactiveFamily?.toUpperCase() ?? "",
+            onSale: !!(item.product.originalPrice && item.product.originalPrice > item.product.price),
+            quantity: item.quantity,
+            unitPrice: item.product.price,
+          })),
+        }),
+      })
+    } catch (err) {
+      console.error('Erro ao salvar pedido:', err)
+      // Não bloqueia — abre o WhatsApp mesmo assim
+    }
 
     const message = encodeURIComponent(generateOrderMessage())
     const whatsappUrl = `https://wa.me/${whatsappBusinessNumber}?text=${message}`
     window.open(whatsappUrl, '_blank')
 
     setIsSending(false)
+    onOpenChange(false)
+    onCloseCart()
+    onClear()
   }
 
   return (
@@ -122,9 +149,7 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
                     src={item.product.image || '/placeholder.svg'}
                     alt={item.product.name}
                     className="h-full w-full object-contain p-2"
-                    onError={(e) => {
-                      e.currentTarget.src = '/placeholder.svg'
-                    }}
+                    onError={(e) => { e.currentTarget.src = '/placeholder.svg' }}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -190,21 +215,15 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
               >
                 <div className="flex items-center space-x-3 space-y-0 rounded-lg border p-4 cursor-pointer hover:border-primary/60 transition-colors">
                   <RadioGroupItem value="pix" id="r1" />
-                  <Label htmlFor="r1" className="flex-1 cursor-pointer font-medium">
-                    Pix (mais rápido e recomendado)
-                  </Label>
+                  <Label htmlFor="r1" className="flex-1 cursor-pointer font-medium">Pix (mais rápido e recomendado)</Label>
                 </div>
                 <div className="flex items-center space-x-3 space-y-0 rounded-lg border p-4 cursor-pointer hover:border-primary/60 transition-colors">
                   <RadioGroupItem value="cartao" id="r2" />
-                  <Label htmlFor="r2" className="flex-1 cursor-pointer font-medium">
-                    Cartão de crédito (até 12x)
-                  </Label>
+                  <Label htmlFor="r2" className="flex-1 cursor-pointer font-medium">Cartão de crédito (até 12x)</Label>
                 </div>
                 <div className="flex items-center space-x-3 space-y-0 rounded-lg border p-4 cursor-pointer hover:border-primary/60 transition-colors">
                   <RadioGroupItem value="boleto" id="r3" />
-                  <Label htmlFor="r3" className="flex-1 cursor-pointer font-medium">
-                    Boleto bancário
-                  </Label>
+                  <Label htmlFor="r3" className="flex-1 cursor-pointer font-medium">Boleto bancário</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -228,9 +247,6 @@ function CheckoutModal({ open, onOpenChange, items }: CheckoutModalProps) {
   )
 }
 
-// ---------------------
-// Componente Principal Cart
-// ---------------------
 export function Cart({
   isOpen,
   onClose,
@@ -304,9 +320,7 @@ export function Cart({
                             src={item.product.image || '/placeholder.svg'}
                             alt={item.product.name}
                             className="h-full w-full object-contain p-3"
-                            onError={(e) => {
-                              e.currentTarget.src = '/placeholder.svg'
-                            }}
+                            onError={(e) => { e.currentTarget.src = '/placeholder.svg' }}
                           />
                         </div>
                         <div className="flex flex-1 flex-col">
@@ -335,8 +349,18 @@ export function Cart({
                               </button>
                               <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
                               <button
-                                onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                                className="flex h-7 w-7 items-center justify-center rounded-r-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                // Limita pelo estoque disponível
+                                onClick={() => {
+                                  const max = item.product.stockQuantity ?? Infinity
+                                  if (item.quantity < max) {
+                                    onUpdateQuantity(item.product.id, item.quantity + 1)
+                                  }
+                                }}
+                                disabled={
+                                  item.product.stockQuantity !== undefined &&
+                                  item.quantity >= item.product.stockQuantity
+                                }
+                                className="flex h-7 w-7 items-center justify-center rounded-r-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
                               >
                                 <Plus className="h-3 w-3" />
                               </button>
@@ -352,7 +376,6 @@ export function Cart({
                 </ScrollArea>
               </div>
 
-              {/* Footer */}
               <div className="border-t border-border p-6">
                 <div className="mb-6 space-y-2">
                   <div className="flex items-center justify-between text-sm">
@@ -392,7 +415,7 @@ export function Cart({
                           <DialogTitle>Limpar carrinho</DialogTitle>
                         </DialogHeader>
                         <p className="text-muted-foreground">
-                          Tem certeza que deseja remover todos os itens do carrinho? Esta ação não pode ser desfeita.
+                          Tem certeza que deseja remover todos os itens do carrinho?
                         </p>
                         <DialogFooter>
                           <Button variant="outline" onClick={() => setClearConfirmOpen(false)}>
@@ -431,6 +454,7 @@ export function Cart({
         onOpenChange={setIsCheckoutOpen}
         items={items}
         onCloseCart={onClose}
+        onClear={onClear}
       />
     </>
   )

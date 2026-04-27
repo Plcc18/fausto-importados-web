@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Store } from '@/component/Store'
 import { Admin } from '@/component/Admin'
+import { SalesReport } from '@/component/SalesReport'
 import { AdminLogin } from '@/component/AdminLogin'
 import { Toaster } from 'sonner'
 import { Termos } from "./component/Termos"
@@ -43,6 +44,14 @@ export function App() {
           }
         />
         <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin/relatorio"
+          element={
+            <PrivateRoute>
+              <SalesReport />
+            </PrivateRoute>
+          }
+        />
         <Route path="/termos" element={<Termos />} />
         <Route path="/privacidade" element={<Privacidade />} />
         <Route path="/cookies" element={<Cookies />} />

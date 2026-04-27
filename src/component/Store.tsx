@@ -42,6 +42,8 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from '@/Shadcn-Components/ui/sheet'
 import {
@@ -58,7 +60,6 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/Shadcn-Components/ui/command'
-import { Slider } from '@/Shadcn-Components/ui/slider'
 
 import { useNavigate } from "react-router-dom"
 import { useRef } from "react"
@@ -79,7 +80,9 @@ interface Filters {
   gender: GenderFilter
   family: OlfativeFamily
   concentration: Concentration
-  priceRange: [number, number]
+  minPrice: string
+  maxPrice: string
+  onSale: boolean
 }
 
 interface QuickFilter {
@@ -91,7 +94,6 @@ interface QuickFilter {
   isActive: (filters: Filters) => boolean
 }
 
-const MAX_PRICE = 2500
 
 export function Store() {
   const [products, setProducts] = useState<Product[]>([])
@@ -101,7 +103,9 @@ export function Store() {
     gender: 'todos',
     family: 'todos',
     concentration: 'todos',
-    priceRange: [0, MAX_PRICE],
+    minPrice: '',
+    maxPrice: '',
+    onSale: false,
   })
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null)
 
@@ -141,7 +145,7 @@ export function Store() {
         label: 'Presente',
         icon: Gift,
         description: 'Seleção especial',
-        apply: (f) => ({ ...f, priceRange: [20, 100] as [number, number] }),
+        apply: (f) => ({ ...f, minPrice: '20', maxPrice: '100' }),
         isActive: () => activeQuickFilter === 'presentes',
       },
       {
@@ -149,10 +153,7 @@ export function Store() {
         label: 'Luxo',
         icon: Star,
         description: 'Exclusivos',
-        apply: (f) => ({
-          ...f,
-          priceRange: [200, MAX_PRICE] as [number, number],
-        }),
+        apply: (f) => ({ ...f, minPrice: '200', maxPrice: '' }),
         isActive: () => activeQuickFilter === 'premium',
       },
     ],
@@ -207,8 +208,13 @@ export function Store() {
       result = result.filter((p: Product) => p.concentration === filters.concentration)
     }
 
-    const [min, max] = filters.priceRange
+    const min = filters.minPrice !== '' ? Number(filters.minPrice) : 0
+    const max = filters.maxPrice !== '' ? Number(filters.maxPrice) : Infinity
     result = result.filter((p) => p.price >= min && p.price <= max)
+
+    if (filters.onSale) {
+      result = result.filter((p) => p.originalPrice && p.originalPrice > p.price)
+    }
 
     return result
   }, [products, filters, searchTerm])
@@ -240,7 +246,9 @@ export function Store() {
       gender: 'todos',
       family: 'todos',
       concentration: 'todos',
-      priceRange: [0, MAX_PRICE],
+      minPrice: '',
+      maxPrice: '',
+      onSale: false,
     })
     setActiveQuickFilter(null)
     setSearchTerm("")
@@ -263,8 +271,9 @@ export function Store() {
       filters.gender !== 'todos' ||
       filters.family !== 'todos' ||
       filters.concentration !== 'todos' ||
-      filters.priceRange[0] !== 0 ||
-      filters.priceRange[1] !== MAX_PRICE
+      filters.minPrice !== '' ||
+      filters.maxPrice !== '' ||
+      filters.onSale
     )
   }, [filters])
 
@@ -273,7 +282,8 @@ export function Store() {
     if (filters.gender !== 'todos') count++
     if (filters.family !== 'todos') count++
     if (filters.concentration !== 'todos') count++
-    if (filters.priceRange[0] !== 0 || filters.priceRange[1] !== MAX_PRICE) count++
+    if (filters.minPrice !== '' || filters.maxPrice !== '') count++
+    if (filters.onSale) count++
     return count
   }, [filters])
 
@@ -316,10 +326,13 @@ export function Store() {
                 </button>
               </SheetTrigger>
               <SheetContent side="left" className="w-75 p-0">
+                <SheetHeader className="sr-only">
+                  <SheetTitle>Menu de navegação</SheetTitle>
+                </SheetHeader>
                 <div className="flex flex-col">
                   <div className="border-b border-border p-6">
-                    <h2 className="font-serif text-xl tracking-tight">Fausto</h2>
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Importados</p>
+                    <span className="font-serif text-xl font-medium tracking-tight">Fausto</span>
+                    <span className="block text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Importados</span>
                   </div>
                   <nav className="flex flex-col p-4">
                     <button
@@ -373,18 +386,17 @@ export function Store() {
 
                     <button
                       onClick={() => {
-                        setFilters((prev) => ({ ...prev, priceRange: [0, 150] as [number, number] }))
+                        setFilters((prev) => ({ ...prev, onSale: !prev.onSale }))
                         setActiveQuickFilter(null)
                         scrollToCollection()
                         setIsMobileMenuOpen(false)
                       }}
                       className={cn(
                         'rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors',
-                        filters.priceRange[0] === 0 && filters.priceRange[1] === 150
+                        filters.onSale
                           ? 'bg-foreground text-background'
                           : 'hover:bg-muted'
                       )}
-
                     >
                       Promoções
                     </button>
@@ -393,13 +405,11 @@ export function Store() {
               </SheetContent>
             </Sheet>
 
-            {/* Logo */}
+            {/* Brand */}
             <div className="flex items-center gap-8">
               <a href="/" className="group flex flex-col items-center transition-opacity hover:opacity-80 md:items-start">
-                <span className="font-serif text-2xl font-medium tracking-tight md:text-3xl">Fausto</span>
-                <span className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground md:text-xs md:tracking-[0.4em]">
-                  Importados
-                </span>
+                <span className="font-serif text-xl font-medium tracking-tight">Fausto</span>
+                <span className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Importados</span>
               </a>
 
               {/* Desktop Navigation */}
@@ -451,17 +461,16 @@ export function Store() {
                 </button>
                 <button
                   onClick={() => {
-                    setFilters((prev) => ({ ...prev, priceRange: [0, 500] as [number, number] }))
+                    setFilters((prev) => ({ ...prev, onSale: !prev.onSale }))
                     setActiveQuickFilter(null)
                     scrollToCollection()
                   }}
                   className={cn(
                     'rounded-full px-4 py-2 text-sm font-medium transition-all duration-200',
-                    filters.priceRange[0] === 0 && filters.priceRange[1] === 500
+                    filters.onSale
                       ? 'bg-foreground text-background'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   )}
-
                 >
                   Promoções
                 </button>
@@ -538,6 +547,15 @@ export function Store() {
               2026 + Elegante
             </span>
           </div>
+          {/* Logo banner */}
+          <div className="flex justify-center mb-4 mt-2">
+            <img
+              src="/logoLoja.png"
+              alt="Fausto Importados"
+              className="w-full max-w-[280px] sm:max-w-sm md:max-w-md object-contain"
+              style={{ filter: "drop-shadow(0 8px 32px rgba(0,0,0,0.18))" }}
+            />
+          </div>
           <h1 className="text-4xl font-light leading-[1.1] tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl text-balance">
             A arte da
             <span className="relative mx-3 inline-block font-serif italic">
@@ -549,10 +567,6 @@ export function Store() {
             <br className="hidden sm:block" />
             ao seu alcance
           </h1>
-          <p className="mx-auto mt-8 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            Curadoria exclusiva de fragrâncias importadas das maisons mais prestigiadas do mundo.
-            Autenticidade certificada em cada frasco.
-          </p>
 
           {/* Quick Filters as Hero CTAs */}
           <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
@@ -813,53 +827,59 @@ export function Store() {
                     <button
                       className={cn(
                         'flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all',
-                        filters.priceRange[0] !== 0 || filters.priceRange[1] !== MAX_PRICE
+                        filters.minPrice !== '' || filters.maxPrice !== ''
                           ? 'border-foreground bg-foreground text-background'
                           : 'border-border bg-transparent text-foreground hover:border-foreground/50'
                       )}
                     >
-                      {filters.priceRange[0] === 0 && filters.priceRange[1] === MAX_PRICE
+                      {filters.minPrice === '' && filters.maxPrice === ''
                         ? 'Preço'
-                        : `${formatPrice(filters.priceRange[0])} - ${formatPrice(filters.priceRange[1])}`}
+                        : `R$ ${filters.minPrice || '0'} — R$ ${filters.maxPrice || '∞'}`}
                       <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-72 p-4" align="start">
-                    <div className="space-y-5">
+                  <PopoverContent className="w-64 p-4" align="start">
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Faixa de Preço</span>
                         <button
-                          className="text-xs text-muted-foreground hover:text-foreground"
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                           onClick={() => {
-                            setFilters((prev) => ({ ...prev, priceRange: [0, MAX_PRICE] }))
+                            setFilters((prev) => ({ ...prev, minPrice: '', maxPrice: '' }))
                             setActiveQuickFilter(null)
                           }}
                         >
-                          Resetar
+                          Limpar
                         </button>
                       </div>
-                      <Slider
-                        value={filters.priceRange}
-                        min={0}
-                        max={MAX_PRICE}
-                        step={50}
-                        onValueChange={(value) => {
-                          setFilters((prev) => ({
-                            ...prev,
-                            priceRange: value as [number, number],
-                          }))
-                          setActiveQuickFilter(null)
-                        }}
-                        className="py-4"
-                      />
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="rounded-lg bg-muted px-3 py-1.5 font-medium">
-                          {formatPrice(filters.priceRange[0])}
-                        </span>
-                        <span className="text-muted-foreground">até</span>
-                        <span className="rounded-lg bg-muted px-3 py-1.5 font-medium">
-                          {formatPrice(filters.priceRange[1])}
-                        </span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <label className="text-xs text-muted-foreground mb-1 block">Mínimo</label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={filters.minPrice}
+                            onChange={(e) => {
+                              setFilters((prev) => ({ ...prev, minPrice: e.target.value }))
+                              setActiveQuickFilter(null)
+                            }}
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                          />
+                        </div>
+                        <span className="text-muted-foreground mt-5">—</span>
+                        <div className="flex-1">
+                          <label className="text-xs text-muted-foreground mb-1 block">Máximo</label>
+                          <input
+                            type="number"
+                            placeholder="∞"
+                            value={filters.maxPrice}
+                            onChange={(e) => {
+                              setFilters((prev) => ({ ...prev, maxPrice: e.target.value }))
+                              setActiveQuickFilter(null)
+                            }}
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                          />
+                        </div>
                       </div>
                     </div>
                   </PopoverContent>
@@ -903,14 +923,22 @@ export function Store() {
                     </button>
                   </Badge>
                 )}
-                {(filters.priceRange[0] !== 0 || filters.priceRange[1] !== MAX_PRICE) && (
+                {filters.onSale && (
                   <Badge variant="secondary" className="gap-1.5 rounded-full py-1.5 pl-3 pr-1.5">
-                    {formatPrice(filters.priceRange[0])} - {formatPrice(filters.priceRange[1])}
+                    Promoções
                     <button
-                      onClick={() => {
-                        setFilters((prev) => ({ ...prev, priceRange: [0, MAX_PRICE] }))
-                        setActiveQuickFilter(null)
-                      }}
+                      onClick={() => setFilters((prev) => ({ ...prev, onSale: false }))}
+                      className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {(filters.minPrice !== '' || filters.maxPrice !== '') && (
+                  <Badge variant="secondary" className="gap-1.5 rounded-full py-1.5 pl-3 pr-1.5">
+                    R$ {filters.minPrice || '0'} — R$ {filters.maxPrice || '∞'}
+                    <button
+                      onClick={() => setFilters((prev) => ({ ...prev, minPrice: '', maxPrice: '' }))}
                       className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
                     >
                       <X className="h-3 w-3" />
@@ -953,14 +981,12 @@ export function Store() {
       {/* Footer */}
       <footer className="border-t border-border bg-linear-to-b from-background to-muted/30 px-4 py-20">
         <div className="mx-auto max-w-7xl">
-          <div className="grid gap-12 lg:grid-cols-4 lg:gap-8">
+          <div className="grid gap-12 grid-cols-2 lg:grid-cols-4 lg:gap-8">
             {/* Brand */}
-            <div className="lg:col-span-1">
+            <div className="col-span-2 lg:col-span-1">
               <a href="/" className="inline-block">
                 <span className="font-serif text-2xl font-medium tracking-tight">Fausto</span>
-                <span className="block text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
-                  Importados
-                </span>
+                <span className="block text-[10px] uppercase tracking-[0.35em] text-muted-foreground mt-0.5">Importados</span>
               </a>
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
                 Curadoria de fragrâncias importadas 100% originais. Autenticidade garantida desde 2024.
@@ -1070,5 +1096,3 @@ export function Store() {
     </div>
   )
 }
-
-

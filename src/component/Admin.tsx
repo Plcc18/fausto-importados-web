@@ -44,8 +44,20 @@ import {
   Upload,
   X,
   Loader2,
+  Bell,
+  RotateCcw,
+  TrendingUp,
+  FileText,
+  ChevronDown,
+  Search,
 } from "lucide-react"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/Shadcn-Components/ui/popover"
 import { emptyForm, type ProductFormData, type SmartImageUploaderProps } from "@/types"
+import { NotificationsPanel } from "@/component/NotificationsPanel"
 import Swal from "sweetalert2"
 
 // ============================================================================
@@ -227,33 +239,38 @@ export function Admin() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
+  const [salesStats, setSalesStats] = useState({ day: 0, month: 0, year: 0 })
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
+  const [adminFilters, setAdminFilters] = useState({
+    gender: "TODOS",
+    family: "TODOS",
+    onSale: false,
+    minPrice: "",
+    maxPrice: "",
+  })
+  const [adminSearch, setAdminSearch] = useState("")
 
   const handleLogout = async () => {
-    const result = await Swal.fire({
-      title: "Tem certeza?",
-      text: "Você realmente deseja sair da sua conta?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sim, sair",
-      cancelButtonText: "Cancelar",
-    })
-
-    if (result.isConfirmed) {
-      // Apaga o cookie no servidor
-      await authFetch("http://localhost:8080/auth/logout", { method: "POST" })
-
-      navigate("/admin/login")
-
-      await Swal.fire({
+    await authFetch("http://localhost:8080/auth/logout", { method: "POST" })
+    navigate("/admin/login")
+    setTimeout(() => {
+      Swal.fire({
         icon: "success",
-        title: "Logout",
-        text: "Você saiu da sua conta!",
+        title: "Até logo!",
+        text: "Você saiu da sua conta.",
+        timer: 2000,
+        showConfirmButton: false,
       })
-    }
+    }, 100)
   }
 
   useEffect(() => {
     fetchProducts()
+    fetchPendingCount()
+    fetchSalesStats()
   }, [])
 
   const fetchProducts = async () => {
@@ -270,6 +287,31 @@ export function Admin() {
   }
 
   const refreshProducts = () => fetchProducts()
+
+  const fetchSalesStats = async () => {
+    try {
+      const res = await authFetch("http://localhost:8080/api/orders/sales-stats")
+      const data = await res.json()
+      setSalesStats(data)
+    } catch { /* ignore */ }
+  }
+
+  const handleResetSales = async () => {
+    await authFetch("http://localhost:8080/api/orders/reset-sales", { method: "DELETE" })
+    setSalesStats({ day: 0, month: 0, year: 0 })
+    setResetConfirmOpen(false)
+  }
+
+  // Busca a contagem de pedidos pendentes para exibir no botão
+  const fetchPendingCount = async () => {
+    try {
+      const res = await authFetch("http://localhost:8080/api/orders/filter?status=PENDING")
+      const data = await res.json()
+      setPendingCount(Array.isArray(data) ? data.length : 0)
+    } catch {
+      // silently ignore
+    }
+  }
 
   const openCreateDialog = () => {
     setEditingProduct(null)
@@ -382,10 +424,26 @@ export function Admin() {
 
   const stats = {
     total: products.length,
-    inStock: products.filter((p) => p.inStock).length,
+    // Total de unidades em estoque (soma dos stockQuantity de todos os produtos)
+    inStock: products.reduce((sum, p) => sum + (p.stockQuantity ?? 0), 0),
     featured: products.filter((p) => p.featured).length,
-    totalValue: products.reduce((sum, p) => sum + p.price, 0),
+    // Valor total = preço × quantidade disponível de cada produto
+    totalValue: products.reduce((sum, p) => sum + p.price * (p.stockQuantity ?? 1), 0),
   }
+
+  const filteredAdminProducts = products.filter((p) => {
+    if (adminSearch.trim()) {
+      const t = adminSearch.toLowerCase()
+      if (!p.name.toLowerCase().includes(t) && !p.brand.toLowerCase().includes(t)) return false
+    }
+    if (adminFilters.gender !== "TODOS" && p.category !== adminFilters.gender) return false
+    if (adminFilters.family !== "TODOS" && p.olfactiveFamily?.toUpperCase() !== adminFilters.family) return false
+    if (adminFilters.onSale && !(p.originalPrice && p.originalPrice > p.price)) return false
+    const _min = adminFilters.minPrice !== "" ? Number(adminFilters.minPrice) : 0
+    const _max = adminFilters.maxPrice !== "" ? Number(adminFilters.maxPrice) : Infinity
+    if (p.price < _min || p.price > _max) return false
+    return true
+  })
 
   const categoryLabels = {
     MASCULINO: "Masculino",
@@ -397,81 +455,259 @@ export function Admin() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-lg font-semibold">Painel Administrativo</h1>
-              <p className="text-sm text-muted-foreground">Gerencie seus produtos</p>
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-semibold sm:text-lg">Painel Administrativo</h1>
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">Gerencie seus produtos</p>
             </div>
           </div>
-          <Button onClick={openCreateDialog} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Produto
-          </Button>
-          <Button variant={"outline"} onClick={handleLogout}>
-            Sair
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate("/admin/relatorio")}
+              title="Relatório de Vendas"
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="relative"
+              onClick={() => { setNotificationsOpen(true); fetchPendingCount() }}
+              title="Notificações"
+            >
+              <Bell className="h-4 w-4" />
+              {pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
+                  {pendingCount > 9 ? "9+" : pendingCount}
+                </span>
+              )}
+            </Button>
+            <Button onClick={openCreateDialog} className="gap-1 px-2 sm:px-4">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Novo Produto</span>
+            </Button>
+            <Button variant="outline" className="px-2 sm:px-4" onClick={() => setLogoutConfirmOpen(true)}>
+              Sair
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-8">
         {/* Estatísticas */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total de Produtos
-              </CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-            </CardContent>
-          </Card>
+        <div className="mb-8 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total de Produtos</CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-bold">{stats.total}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Em Estoque</CardTitle>
+                <Tag className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-bold">{stats.inStock}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Destaques</CardTitle>
+                <Tag className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-bold">{stats.featured}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Valor em Estoque</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">R$ {stats.totalValue.toFixed(2).replace(".", ",")}</div>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Em Estoque
-              </CardTitle>
-              <Tag className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.inStock}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Destaques
-              </CardTitle>
-              <Tag className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.featured}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Valor Total
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                R$ {stats.totalValue.toFixed(2).replace(".", ",")}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-green-200 bg-green-50/40">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Vendido Hoje</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-700">R$ {salesStats.day.toFixed(2).replace(".", ",")}</div>
+              </CardContent>
+            </Card>
+            <Card className="border-blue-200 bg-blue-50/40">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Vendido no Mês</CardTitle>
+                <TrendingUp className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-700">R$ {salesStats.month.toFixed(2).replace(".", ",")}</div>
+              </CardContent>
+            </Card>
+            <Card className="border-purple-200 bg-purple-50/40">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Vendido no Ano</CardTitle>
+                <TrendingUp className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-700">R$ {salesStats.year.toFixed(2).replace(".", ",")}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Resetar Vendas</CardTitle>
+                <RotateCcw className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <Button variant="destructive" size="sm" className="w-full" onClick={() => setResetConfirmOpen(true)}>
+                  Zerar todos os valores
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Tabela de Produtos */}
+        {/* Filtros do admin */}
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Buscar por nome ou marca..."
+              value={adminSearch}
+              onChange={(e) => setAdminSearch(e.target.value)}
+              className="rounded-full border border-border bg-transparent pl-9 pr-4 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-ring hover:border-foreground/50"
+            />
+            {adminSearch && (
+              <button onClick={() => setAdminSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
+                adminFilters.gender !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
+              }`}>
+                {adminFilters.gender === "TODOS" ? "Gênero" : adminFilters.gender.charAt(0) + adminFilters.gender.slice(1).toLowerCase()}
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-44 p-2" align="start">
+              {["TODOS", "FEMININO", "MASCULINO", "UNISSEX"].map((opt) => (
+                <button key={opt} onClick={() => setAdminFilters((prev) => ({ ...prev, gender: opt }))}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${adminFilters.gender === opt ? "bg-foreground text-background" : "hover:bg-muted"}`}>
+                  {opt === "TODOS" ? "Todos" : opt.charAt(0) + opt.slice(1).toLowerCase()}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
+                adminFilters.family !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
+              }`}>
+                {adminFilters.family === "TODOS" ? "Família Olfativa" : adminFilters.family.charAt(0) + adminFilters.family.slice(1).toLowerCase()}
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" align="start">
+              {["TODOS","FLORAL","AMADEIRADO","CITRICO","ORIENTAL","AQUATICO","FRUTADO","GOURMAND"].map((opt) => (
+                <button key={opt} onClick={() => setAdminFilters((prev) => ({ ...prev, family: opt }))}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${adminFilters.family === opt ? "bg-foreground text-background" : "hover:bg-muted"}`}>
+                  {opt === "TODOS" ? "Todas" : opt.charAt(0) + opt.slice(1).toLowerCase()}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
+                adminFilters.minPrice !== "" || adminFilters.maxPrice !== ""
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-transparent text-foreground hover:border-foreground/50"
+              }`}>
+                {adminFilters.minPrice === "" && adminFilters.maxPrice === ""
+                  ? "Preço"
+                  : `R$ ${adminFilters.minPrice || "0"} — R$ ${adminFilters.maxPrice || "∞"}`}
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-4" align="start">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Faixa de Preço</span>
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setAdminFilters((prev) => ({ ...prev, minPrice: "", maxPrice: "" }))}
+                  >
+                    Limpar
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground mb-1 block">Mínimo</label>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={adminFilters.minPrice}
+                      onChange={(e) => setAdminFilters((prev) => ({ ...prev, minPrice: e.target.value }))}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <span className="text-muted-foreground mt-5">—</span>
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground mb-1 block">Máximo</label>
+                    <input
+                      type="number"
+                      placeholder="∞"
+                      value={adminFilters.maxPrice}
+                      onChange={(e) => setAdminFilters((prev) => ({ ...prev, maxPrice: e.target.value }))}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <button
+            onClick={() => setAdminFilters((prev) => ({ ...prev, onSale: !prev.onSale }))}
+            className={`rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
+              adminFilters.onSale ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
+            }`}
+          >
+            Promoções
+          </button>
+
+
+          {(adminSearch || adminFilters.gender !== "TODOS" || adminFilters.family !== "TODOS" || adminFilters.onSale || adminFilters.minPrice !== "" || adminFilters.maxPrice !== "") && (
+            <button
+              onClick={() => { setAdminSearch(""); setAdminFilters({ gender: "TODOS", family: "TODOS", onSale: false, minPrice: "", maxPrice: "" }) }}
+              className="flex items-center gap-1 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-all hover:border-foreground/50 hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" /> Limpar
+            </button>
+          )}
+
+          <span className="ml-auto text-xs text-muted-foreground">
+            {filteredAdminProducts.length} de {products.length} produto{products.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>Produtos</CardTitle>
@@ -485,6 +721,7 @@ export function Admin() {
                     <TableHead>Produto</TableHead>
                     <TableHead>Categoria</TableHead>
                     <TableHead>Preço</TableHead>
+                    <TableHead>Qtd.</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -492,7 +729,7 @@ export function Admin() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10">
+                      <TableCell colSpan={7} className="text-center py-10">
                         <div className="flex flex-col items-center gap-2">
                           <Loader2 className="h-6 w-6 animate-spin" />
                           <span className="text-sm text-muted-foreground">
@@ -503,14 +740,14 @@ export function Admin() {
                     </TableRow>
                   ) : products.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10">
+                      <TableCell colSpan={7} className="text-center py-10">
                         <span className="text-muted-foreground">
                           Nenhum produto encontrado
                         </span>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    products.map((product) => (
+                    filteredAdminProducts.map((product) => (
                       <TableRow key={product.id}>
                         <TableCell>
                           <div className="relative h-12 w-12 overflow-hidden rounded-md bg-muted flex items-center justify-center">
@@ -554,6 +791,15 @@ export function Admin() {
                         </TableCell>
 
                         <TableCell>
+                          <span className={`font-medium tabular-nums ${
+                            (product.stockQuantity ?? 0) === 0 ? "text-destructive"
+                            : (product.stockQuantity ?? 0) <= 3 ? "text-yellow-600"
+                            : ""}`}>
+                            {product.stockQuantity ?? 0} un.
+                          </span>
+                        </TableCell>
+
+                        <TableCell>
                           <div className="flex flex-wrap gap-1">
                             <Badge variant={product.inStock ? "success" : "destructive"}>
                               {product.inStock ? "Disponível" : "Esgotado"}
@@ -593,7 +839,7 @@ export function Admin() {
 
             {/* Mobile */}
             <div className="md:hidden space-y-4">
-              {products.map((product) => (
+              {filteredAdminProducts.map((product) => (
                 <Card key={product.id}>
                   <CardContent className="flex items-center gap-4 p-4">
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted flex items-center justify-center">
@@ -613,11 +859,17 @@ export function Admin() {
                         {product.brand} • {product.size}
                       </p>
 
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap items-center gap-1">
                         <Badge variant={product.inStock ? "success" : "destructive"}>
                           {product.inStock ? "Disponível" : "Esgotado"}
                         </Badge>
                         {product.featured && <Badge variant="default">Destaque</Badge>}
+                        <span className={`text-xs font-medium tabular-nums ${
+                          (product.stockQuantity ?? 0) === 0 ? "text-destructive"
+                          : (product.stockQuantity ?? 0) <= 3 ? "text-yellow-600"
+                          : "text-muted-foreground"}`}>
+                          {product.stockQuantity ?? 0} un.
+                        </span>
                       </div>
 
                       <div className="mt-2 flex items-center justify-between">
@@ -897,6 +1149,52 @@ export function Admin() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Painel de Notificações */}
+      <NotificationsPanel
+        open={notificationsOpen}
+        onOpenChange={(v) => { setNotificationsOpen(v); if (!v) { fetchPendingCount(); fetchSalesStats() } }}
+      />
+
+      {/* Confirmação de reset de vendas */}
+      <Dialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Zerar valores de venda</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Isso vai zerar os valores de vendido hoje, no mês e no ano. Esta ação não pode ser desfeita.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetConfirmOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleResetSales}>
+              Sim, zerar tudo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de logout */}
+      <Dialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Sair da conta</DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground">
+            Tem certeza que deseja sair da sua conta?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLogoutConfirmOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleLogout}>
+              Sim, sair
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
