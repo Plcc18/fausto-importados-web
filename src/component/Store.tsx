@@ -6,7 +6,6 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { Product, CartItem } from '@/lib/types'
 import { Input } from "@/Shadcn-Components/ui/input"
 import {
-  getProducts,
   getCart,
   addToCart,
   updateCartQuantity,
@@ -61,7 +60,6 @@ import {
   CommandSeparator,
 } from '@/Shadcn-Components/ui/command'
 
-import { useNavigate } from "react-router-dom"
 import { useRef } from "react"
 import { API_URL } from "@/lib/api"
 
@@ -111,7 +109,6 @@ export function Store() {
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null)
 
   const [searchTerm, setSearchTerm] = useState<string>("")
-  const navigate = useNavigate()
   const collectionRef = useRef<HTMLDivElement | null>(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
@@ -287,14 +284,6 @@ export function Store() {
     if (filters.onSale) count++
     return count
   }, [filters])
-
-  const formatPrice = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-    }).format(value)
-  }
 
   const scrollToCollection = () => {
     collectionRef.current?.scrollIntoView({
@@ -553,7 +542,7 @@ export function Store() {
             <img
               src="/logoLoja.png"
               alt="Fausto Importados"
-              className="w-full max-w-[280px] sm:max-w-sm md:max-w-md object-contain"
+              className="w-full max-w-70 sm:max-w-sm md:max-w-md object-contain"
               style={{ filter: "drop-shadow(0 8px 32px rgba(0,0,0,0.18))" }}
             />
           </div>

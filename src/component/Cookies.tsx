@@ -40,19 +40,19 @@ export function Cookies() {
             </p>
             <ul className="mt-3 space-y-2 pl-4">
               <li className="flex gap-2">
-                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40 mt-2" />
+                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40" />
                 <span><strong className="text-foreground">Carrinho de compras:</strong> para manter os produtos adicionados ao carrinho entre sessões.</span>
               </li>
               <li className="flex gap-2">
-                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40 mt-2" />
+                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40" />
                 <span><strong className="text-foreground">Preferências:</strong> para lembrar configurações como tema e filtros de navegação.</span>
               </li>
               <li className="flex gap-2">
-                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40 mt-2" />
+                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40" />
                 <span><strong className="text-foreground">Segurança:</strong> para autenticar usuários e proteger contra acessos não autorizados.</span>
               </li>
               <li className="flex gap-2">
-                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40 mt-2" />
+                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/40" />
                 <span><strong className="text-foreground">Desempenho:</strong> para entender como os visitantes utilizam o site e melhorar a experiência.</span>
               </li>
             </ul>
