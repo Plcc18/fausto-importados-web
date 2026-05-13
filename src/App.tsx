@@ -26,7 +26,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   }, [])
 
   if (status === "loading") return null // ou um spinner se preferir
-  if (status === "denied") return <Navigate to="/admin/login" replace />
+  if (status === "denied") return <Navigate to="/nexus/login" replace />
   return <>{children}</>
 }
 
@@ -37,16 +37,16 @@ export function App() {
       <Routes>
         <Route path="/" element={<Store />} />
         <Route
-          path="/admin"
+          path="/nexus-24"
           element={
             <PrivateRoute>
               <Admin />
             </PrivateRoute>
           }
         />
-        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/nexus-24/login" element={<AdminLogin />} />
         <Route
-          path="/admin/relatorio"
+          path="/nexus-24/relatorio"
           element={
             <PrivateRoute>
               <SalesReport />

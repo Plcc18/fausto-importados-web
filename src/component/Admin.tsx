@@ -256,7 +256,7 @@ export function Admin() {
 
   const handleLogout = async () => {
     await authFetch(`${API_URL}/auth/logout`, { method: "POST" })
-    navigate("/admin/login")
+    navigate("/nexus-24/login")
     setTimeout(() => {
       Swal.fire({
         icon: "success",
@@ -379,7 +379,7 @@ export function Admin() {
 
       if (res.status === 401 || res.status === 403) {
         Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
-        navigate("/admin/login")
+        navigate("/nexus-24/login")
         return
       }
     } else {
@@ -392,7 +392,7 @@ export function Admin() {
 
       if (res.status === 401 || res.status === 403) {
         Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
-        navigate("/admin/login")
+        navigate("/nexus-24/login")
         return
       }
 
@@ -415,7 +415,7 @@ export function Admin() {
 
     if (res.status === 401 || res.status === 403) {
       Swal.fire({ icon: "error", title: "Ação negada", text: "Você não está autorizado!" })
-      navigate("/admin/login")
+      navigate("/nexus-24/login")
       return
     }
 
@@ -470,7 +470,7 @@ export function Admin() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => navigate("/admin/relatorio")}
+              onClick={() => navigate("/nexus-24/relatorio")}
               title="Relatório de Vendas"
             >
               <FileText className="h-4 w-4" />

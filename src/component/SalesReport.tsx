@@ -265,7 +265,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/admin")}>
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/nexus-24")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>

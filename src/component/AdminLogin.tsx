@@ -50,7 +50,7 @@ export function AdminLogin() {
         showConfirmButton: false,
       })
 
-      navigate("/admin")
+      navigate("/nexus-24")
     } catch (err: any) {
       toast.error(err.message || "Email ou senha incorretos. Tente novamente!", {
         style: { backgroundColor: "#FF6347", color: "#ffffff" },
