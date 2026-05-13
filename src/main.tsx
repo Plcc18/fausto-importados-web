@@ -4,8 +4,10 @@ import './index.css'
 import {App} from './App.tsx'
 import { BrowserRouter } from 'react-router-dom'
 import { inject } from '@vercel/analytics'
+import { injectSpeedInsights } from '@vercel/speed-insights'
 
 inject()
+injectSpeedInsights()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
