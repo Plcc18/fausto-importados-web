@@ -26,7 +26,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   }, [])
 
   if (status === "loading") return null // ou um spinner se preferir
-  if (status === "denied") return <Navigate to="/nexus/login" replace />
+  if (status === "denied") return <Navigate to="/nexus-24/login" replace />
   return <>{children}</>
 }
 
