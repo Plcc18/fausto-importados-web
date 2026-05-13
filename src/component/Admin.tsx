@@ -59,6 +59,7 @@ import {
 import { emptyForm, type ProductFormData, type SmartImageUploaderProps } from "@/types"
 import { NotificationsPanel } from "@/component/NotificationsPanel"
 import Swal from "sweetalert2"
+import { API_URL } from "@/lib/api"
 
 // ============================================================================
 // Helper — todas as requisições autenticadas usam credentials: "include"
@@ -107,7 +108,7 @@ function SmartImageUploader({
       const formData = new FormData()
       formData.append("image", file)
 
-      const response = await authFetch("http://localhost:8080/api/upload", {
+      const response = await authFetch("${API_URL}/api/upload", {
         method: "POST",
         body: formData,
       })
@@ -254,7 +255,7 @@ export function Admin() {
   const [adminSearch, setAdminSearch] = useState("")
 
   const handleLogout = async () => {
-    await authFetch("http://localhost:8080/auth/logout", { method: "POST" })
+    await authFetch("${API_URL}/auth/logout", { method: "POST" })
     navigate("/admin/login")
     setTimeout(() => {
       Swal.fire({
@@ -276,7 +277,7 @@ export function Admin() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const response = await fetch("http://localhost:8080/api/product")
+      const response = await fetch("${API_URL}/api/product")
       const data = await response.json()
       setProducts(data.content)
     } catch (error) {
@@ -290,14 +291,14 @@ export function Admin() {
 
   const fetchSalesStats = async () => {
     try {
-      const res = await authFetch("http://localhost:8080/api/orders/sales-stats")
+      const res = await authFetch("${API_URL}/api/orders/sales-stats")
       const data = await res.json()
       setSalesStats(data)
     } catch { /* ignore */ }
   }
 
   const handleResetSales = async () => {
-    await authFetch("http://localhost:8080/api/orders/reset-sales", { method: "DELETE" })
+    await authFetch("${API_URL}/api/orders/reset-sales", { method: "DELETE" })
     setSalesStats({ day: 0, month: 0, year: 0 })
     setResetConfirmOpen(false)
   }
@@ -305,7 +306,7 @@ export function Admin() {
   // Busca a contagem de pedidos pendentes para exibir no botão
   const fetchPendingCount = async () => {
     try {
-      const res = await authFetch("http://localhost:8080/api/orders/filter?status=PENDING")
+      const res = await authFetch("${API_URL}/api/orders/filter?status=PENDING")
       const data = await res.json()
       setPendingCount(Array.isArray(data) ? data.length : 0)
     } catch {
@@ -371,7 +372,7 @@ export function Admin() {
       const form = new FormData()
       form.append("product", JSON.stringify(productData))
 
-      const res = await authFetch(`http://localhost:8080/api/product/${editingProduct.id}`, {
+      const res = await authFetch(`${API_URL}/api/product/${editingProduct.id}`, {
         method: "PUT",
         body: form,
       })
@@ -383,7 +384,7 @@ export function Admin() {
       }
     } else {
       // POST — application/json
-      const res = await authFetch("http://localhost:8080/api/product", {
+      const res = await authFetch("${API_URL}/api/product", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(productData),
@@ -408,7 +409,7 @@ export function Admin() {
   }
 
   const handleDelete = async (id: string) => {
-    const res = await authFetch(`http://localhost:8080/api/product/${id}`, {
+    const res = await authFetch(`${API_URL}/api/product/${id}`, {
       method: "DELETE",
     })
 

@@ -106,7 +106,7 @@ export function SalesReport() {
   const fetchOrders = async () => {
     setLoading(true)
     try {
-      const res = await authFetch("http://localhost:8080/api/orders/report")
+      const res = await authFetch("${API_URL}/api/orders/report")
       const data = await res.json()
       setOrders(Array.isArray(data) ? data : [])
     } catch (err) {
@@ -121,7 +121,7 @@ export function SalesReport() {
   const handleReset = async () => {
     setResetting(true)
     try {
-      await authFetch("http://localhost:8080/api/orders/reset-report", { method: "DELETE" })
+      await authFetch("${API_URL}/api/orders/reset-report", { method: "DELETE" })
       setOrders([])
       setResetConfirmOpen(false)
     } catch (err) {

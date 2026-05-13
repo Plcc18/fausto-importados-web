@@ -15,7 +15,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<"loading" | "ok" | "denied">("loading")
 
   useEffect(() => {
-    fetch("http://localhost:8080/auth/me", {
+    fetch("${API_URL}/auth/me", {
       credentials: "include",
     })
       .then((res) => {

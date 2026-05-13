@@ -118,7 +118,7 @@ export function Store() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch("http://localhost:8080/api/product")
+        const response = await fetch("${API_URL}/api/product")
         const data = await response.json()
         setProducts(data.content)
       } catch (error) {

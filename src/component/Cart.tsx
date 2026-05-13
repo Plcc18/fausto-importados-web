@@ -98,7 +98,7 @@ function CheckoutModal({ open, onOpenChange, items, onCloseCart, onClear }: Chec
 
     try {
       // Salva pedido no backend como PENDING
-      await fetch('http://localhost:8080/api/orders', {
+      await fetch('${API_URL}/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

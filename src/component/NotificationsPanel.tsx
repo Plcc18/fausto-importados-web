@@ -19,6 +19,7 @@ import {
   DialogFooter,
 } from "@/Shadcn-Components/ui/dialog"
 import { Check, X, Clock, CheckCircle, XCircle, RefreshCw, Bell, Trash2 } from "lucide-react"
+import { API_URL } from "@/lib/api"
 
 interface OrderItem {
   id: string
@@ -70,8 +71,8 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
     setLoading(true)
     try {
       const url = filter === "ALL"
-        ? "http://localhost:8080/api/orders"
-        : `http://localhost:8080/api/orders/filter?status=${filter}`
+        ? "${API_URL}/api/orders"
+        : `${API_URL}/api/orders/filter?status=${filter}`
       const res = await authFetch(url)
       const data = await res.json()
       setOrders(Array.isArray(data) ? data : [])
@@ -88,7 +89,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
   }, [open, filter])
 
   const handleComplete = async (id: string) => {
-    const res = await authFetch(`http://localhost:8080/api/orders/${id}/complete`, { method: "POST" })
+    const res = await authFetch(`${API_URL}/api/orders/${id}/complete`, { method: "POST" })
     if (res.status === 409) {
       const data = await res.json()
       alert("⚠️ " + (data.error || "Estoque insuficiente para concluir o pedido."))
@@ -98,14 +99,14 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
   }
 
   const handleCancel = async (id: string) => {
-    await authFetch(`http://localhost:8080/api/orders/${id}/cancel`, { method: "POST" })
+    await authFetch(`${API_URL}/api/orders/${id}/cancel`, { method: "POST" })
     fetchOrders()
   }
 
   const handleClearHistory = async () => {
     setClearing(true)
     try {
-      await authFetch("http://localhost:8080/api/orders/clear-history", { method: "DELETE" })
+      await authFetch("${API_URL}/api/orders/clear-history", { method: "DELETE" })
       setOrders([])
       setClearConfirmOpen(false)
     } catch (err) {
