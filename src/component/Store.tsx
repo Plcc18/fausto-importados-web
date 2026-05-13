@@ -63,6 +63,7 @@ import {
 
 import { useNavigate } from "react-router-dom"
 import { useRef } from "react"
+import { API_URL } from "@/lib/api"
 
 type GenderFilter = 'todos' | 'feminino' | 'masculino' | 'unissex'
 type OlfativeFamily =
@@ -118,7 +119,7 @@ export function Store() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch("${API_URL}/api/product")
+        const response = await fetch(`${API_URL}/api/product`)
         const data = await response.json()
         setProducts(data.content)
       } catch (error) {

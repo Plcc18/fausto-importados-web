@@ -8,6 +8,7 @@ import { Termos } from "./component/Termos"
 import { Privacidade } from "./component/Privacidade"
 import { Cookies } from "./component/Cookies"
 import { useEffect, useState } from 'react'
+import { API_URL } from "@/lib/api"
 
 // Verifica com o backend se o cookie ainda é válido.
 // Retorna "loading" enquanto aguarda, "ok" se autenticado, "denied" se não.
@@ -15,7 +16,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<"loading" | "ok" | "denied">("loading")
 
   useEffect(() => {
-    fetch("${API_URL}/auth/me", {
+    fetch(`${API_URL}/auth/me`, {
       credentials: "include",
     })
       .then((res) => {

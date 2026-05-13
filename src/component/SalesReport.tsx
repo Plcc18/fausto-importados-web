@@ -27,6 +27,7 @@ import {
   PopoverTrigger,
 } from "@/Shadcn-Components/ui/popover"
 import { ArrowLeft, Download, Search, Trash2, TrendingUp, Package, X, RefreshCw, ChevronDown } from "lucide-react"
+import { API_URL } from "@/lib/api"
 
 const authFetch = (url: string, options: RequestInit = {}) =>
   fetch(url, { ...options, credentials: "include" })
@@ -106,7 +107,7 @@ export function SalesReport() {
   const fetchOrders = async () => {
     setLoading(true)
     try {
-      const res = await authFetch("${API_URL}/api/orders/report")
+      const res = await authFetch(`${API_URL}/api/orders/report`)
       const data = await res.json()
       setOrders(Array.isArray(data) ? data : [])
     } catch (err) {
@@ -121,7 +122,7 @@ export function SalesReport() {
   const handleReset = async () => {
     setResetting(true)
     try {
-      await authFetch("${API_URL}/api/orders/reset-report", { method: "DELETE" })
+      await authFetch(`${API_URL}/api/orders/reset-report`, { method: "DELETE" })
       setOrders([])
       setResetConfirmOpen(false)
     } catch (err) {

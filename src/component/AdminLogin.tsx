@@ -6,6 +6,7 @@ import { Label } from "@/Shadcn-Components/ui/label"
 import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react"
 import Swal from "sweetalert2"
+import { API_URL } from "@/lib/api"
 
 export function AdminLogin() {
   const [email, setEmail] = useState("")
@@ -19,7 +20,7 @@ export function AdminLogin() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("${API_URL}/auth/login", {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // credentials: "include" para o browser salvar o cookie

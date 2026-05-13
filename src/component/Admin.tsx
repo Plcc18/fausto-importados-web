@@ -108,7 +108,7 @@ function SmartImageUploader({
       const formData = new FormData()
       formData.append("image", file)
 
-      const response = await authFetch("${API_URL}/api/upload", {
+      const response = await authFetch(`${API_URL}/api/upload`, {
         method: "POST",
         body: formData,
       })
@@ -255,7 +255,7 @@ export function Admin() {
   const [adminSearch, setAdminSearch] = useState("")
 
   const handleLogout = async () => {
-    await authFetch("${API_URL}/auth/logout", { method: "POST" })
+    await authFetch(`${API_URL}/auth/logout`, { method: "POST" })
     navigate("/admin/login")
     setTimeout(() => {
       Swal.fire({
@@ -277,7 +277,7 @@ export function Admin() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const response = await fetch("${API_URL}/api/product")
+      const response = await fetch(`${API_URL}/api/product`)
       const data = await response.json()
       setProducts(data.content)
     } catch (error) {
@@ -291,7 +291,7 @@ export function Admin() {
 
   const fetchSalesStats = async () => {
     try {
-      const res = await authFetch("${API_URL}/api/orders/sales-stats")
+      const res = await authFetch(`${API_URL}/api/orders/sales-stats`)
       const data = await res.json()
       setSalesStats(data)
     } catch { /* ignore */ }
@@ -306,7 +306,7 @@ export function Admin() {
   // Busca a contagem de pedidos pendentes para exibir no botão
   const fetchPendingCount = async () => {
     try {
-      const res = await authFetch("${API_URL}/api/orders/filter?status=PENDING")
+      const res = await authFetch(`${API_URL}/api/orders/filter?status=PENDING`)
       const data = await res.json()
       setPendingCount(Array.isArray(data) ? data.length : 0)
     } catch {
@@ -384,7 +384,7 @@ export function Admin() {
       }
     } else {
       // POST — application/json
-      const res = await authFetch("${API_URL}/api/product", {
+      const res = await authFetch(`${API_URL}/api/product`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(productData),

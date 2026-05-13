@@ -71,7 +71,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
     setLoading(true)
     try {
       const url = filter === "ALL"
-        ? "${API_URL}/api/orders"
+        ? `${API_URL}/api/orders`
         : `${API_URL}/api/orders/filter?status=${filter}`
       const res = await authFetch(url)
       const data = await res.json()
@@ -106,7 +106,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
   const handleClearHistory = async () => {
     setClearing(true)
     try {
-      await authFetch("${API_URL}/api/orders/clear-history", { method: "DELETE" })
+      await authFetch(`${API_URL}/api/orders/clear-history`, { method: "DELETE" })
       setOrders([])
       setClearConfirmOpen(false)
     } catch (err) {

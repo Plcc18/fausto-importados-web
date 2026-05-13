@@ -24,6 +24,7 @@ import { Input } from '@/Shadcn-Components/ui/input'
 import { Label } from '@/Shadcn-Components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/Shadcn-Components/ui/radio-group'
 import Swal from 'sweetalert2'
+import { API_URL } from "@/lib/api"
 
 interface CartProps {
   isOpen: boolean
@@ -98,7 +99,7 @@ function CheckoutModal({ open, onOpenChange, items, onCloseCart, onClear }: Chec
 
     try {
       // Salva pedido no backend como PENDING
-      await fetch('${API_URL}/api/orders', {
+      await fetch(`${API_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
