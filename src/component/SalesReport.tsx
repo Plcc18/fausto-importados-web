@@ -28,6 +28,7 @@ import {
 } from "@/Shadcn-Components/ui/popover"
 import { ArrowLeft, Download, Search, Trash2, TrendingUp, Package, X, RefreshCw, ChevronDown } from "lucide-react"
 import { API_URL } from "@/lib/api"
+import { ThemeToggle } from "@/component/ThemeToggle"
 
 const authFetch = (url: string, options: RequestInit = {}) =>
   fetch(url, { ...options, credentials: "include" })
@@ -274,6 +275,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
             </div>
           </div>
           <div className="flex items-center gap-2">
+            < ThemeToggle />
             <Button
               variant="outline"
               size="sm"
@@ -331,13 +333,13 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
               <p className="text-xs text-muted-foreground mt-1">no período selecionado</p>
             </CardContent>
           </Card>
-          <Card className="border-green-200 bg-green-50/40">
+          <Card className="border-green-200 bg-green-50/40 dark:border-green-900 dark:bg-green-950/30">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Receita — {periodLabel[period]}</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-700">{fmt(totalRevenue)}</div>
+              <div className="text-2xl font-bold text-green-700 dark:text-green-400">{fmt(totalRevenue)}</div>
               <p className="text-xs text-muted-foreground mt-1">com os filtros aplicados</p>
             </CardContent>
           </Card>

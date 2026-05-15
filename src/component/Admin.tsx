@@ -60,6 +60,7 @@ import { emptyForm, type ProductFormData, type SmartImageUploaderProps } from "@
 import { NotificationsPanel } from "@/component/NotificationsPanel"
 import Swal from "sweetalert2"
 import { API_URL } from "@/lib/api"
+import { ThemeToggle } from "@/component/ThemeToggle"
 
 // ============================================================================
 // Helper — todas as requisições autenticadas usam credentials: "include"
@@ -278,6 +279,7 @@ export function Admin() {
     try {
       setLoading(true)
       const response = await fetch(`${API_URL}/api/product`)
+      if (!response.ok) return
       const data = await response.json()
       setProducts(data.content)
     } catch (error) {
@@ -292,13 +294,14 @@ export function Admin() {
   const fetchSalesStats = async () => {
     try {
       const res = await authFetch(`${API_URL}/api/orders/sales-stats`)
+      if (!res.ok) return
       const data = await res.json()
       setSalesStats(data)
     } catch { /* ignore */ }
   }
 
   const handleResetSales = async () => {
-    await authFetch("${API_URL}/api/orders/reset-sales", { method: "DELETE" })
+    await authFetch(`${API_URL}/api/orders/reset-sales`, { method: "DELETE" })
     setSalesStats({ day: 0, month: 0, year: 0 })
     setResetConfirmOpen(false)
   }
@@ -307,6 +310,7 @@ export function Admin() {
   const fetchPendingCount = async () => {
     try {
       const res = await authFetch(`${API_URL}/api/orders/filter?status=PENDING`)
+      if (!res.ok) return
       const data = await res.json()
       setPendingCount(Array.isArray(data) ? data.length : 0)
     } catch {
@@ -467,6 +471,7 @@ export function Admin() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
             <Button
               variant="outline"
               size="icon"
@@ -537,31 +542,31 @@ export function Admin() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-green-200 bg-green-50/40">
+            <Card className="border-green-200 bg-green-50/40 dark:border-green-900 dark:bg-green-950/30">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Vendido Hoje</CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-600" />
+                <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-700">R$ {salesStats.day.toFixed(2).replace(".", ",")}</div>
+                <div className="text-2xl font-bold text-green-700 dark:text-green-400">R$ {salesStats.day.toFixed(2).replace(".", ",")}</div>
               </CardContent>
             </Card>
-            <Card className="border-blue-200 bg-blue-50/40">
+            <Card className="border-blue-200 bg-blue-50/40 dark:border-blue-900 dark:bg-blue-950/30">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Vendido no Mês</CardTitle>
-                <TrendingUp className="h-4 w-4 text-blue-600" />
+                <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-700">R$ {salesStats.month.toFixed(2).replace(".", ",")}</div>
+                <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">R$ {salesStats.month.toFixed(2).replace(".", ",")}</div>
               </CardContent>
             </Card>
-            <Card className="border-purple-200 bg-purple-50/40">
+            <Card className="border-purple-200 bg-purple-50/40 dark:border-purple-900 dark:bg-purple-950/30">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Vendido no Ano</CardTitle>
-                <TrendingUp className="h-4 w-4 text-purple-600" />
+                <TrendingUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-purple-700">R$ {salesStats.year.toFixed(2).replace(".", ",")}</div>
+                <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">R$ {salesStats.year.toFixed(2).replace(".", ",")}</div>
               </CardContent>
             </Card>
             <Card>

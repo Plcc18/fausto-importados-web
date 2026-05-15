@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react"
 import Swal from "sweetalert2"
 import { API_URL } from "@/lib/api"
+import { ThemeToggle } from "@/component/ThemeToggle"
 
 export function AdminLogin() {
   const [email, setEmail] = useState("")
@@ -62,6 +63,9 @@ export function AdminLogin() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 text-center">

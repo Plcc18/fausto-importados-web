@@ -62,6 +62,7 @@ import {
 
 import { useRef } from "react"
 import { API_URL } from "@/lib/api"
+import { ThemeToggle } from "@/component/ThemeToggle"
 
 type GenderFilter = 'todos' | 'feminino' | 'masculino' | 'unissex'
 type OlfativeFamily =
@@ -469,6 +470,7 @@ export function Store() {
 
             {/* Right Actions */}
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               <button
                 onClick={() => setIsCartOpen(true)}
                 className={cn(
