@@ -63,6 +63,7 @@ import {
 import { useRef } from "react"
 import { API_URL } from "@/lib/api"
 import { ThemeToggle } from "@/component/ThemeToggle"
+import { useCartReconciliation } from "@/lib/useCartReconciliation"
 
 type GenderFilter = 'todos' | 'feminino' | 'masculino' | 'unissex'
 type OlfativeFamily =
@@ -99,6 +100,10 @@ export function Store() {
   const [products, setProducts] = useState<Product[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
+  // Reconcilia o carrinho com o backend sempre que o carrinho for aberto
+  useCartReconciliation(cart, (reconciled) => {
+    setCart(reconciled)
+  }, isCartOpen)
   const [filters, setFilters] = useState<Filters>({
     gender: 'todos',
     family: 'todos',
@@ -113,7 +118,6 @@ export function Store() {
   const collectionRef = useRef<HTMLDivElement | null>(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -125,8 +129,20 @@ export function Store() {
       }
     }
 
+    // Carrega na montagem inicial
     fetchProducts()
     setCart(getCart())
+
+    // Recarrega silenciosamente quando o usuário volta para a aba
+    // (ex: estava no admin editando produto e voltou para a loja)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchProducts()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => document.removeEventListener("visibilitychange", handleVisibility)
   }, [])
 
   const quickFilters: QuickFilter[] = useMemo(
