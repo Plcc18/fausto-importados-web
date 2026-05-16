@@ -61,6 +61,8 @@ import { NotificationsPanel } from "@/component/NotificationsPanel"
 import Swal from "sweetalert2"
 import { API_URL } from "@/lib/api"
 import { ThemeToggle } from "@/component/ThemeToggle"
+import { usePagination } from "@/lib/usePagination"
+import { Pagination } from "@/component/Pagination"
 
 // ============================================================================
 // Helper — todas as requisições autenticadas usam credentials: "include"
@@ -450,6 +452,15 @@ export function Admin() {
     return true
   })
 
+  const PAGE_SIZE = 10
+  const {
+    page, setPage, totalPages, paginated,
+    hasNext, hasPrev, next, prev, goTo,
+  } = usePagination(filteredAdminProducts, PAGE_SIZE)
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1) }, [adminSearch, adminFilters])
+
   const categoryLabels = {
     MASCULINO: "Masculino",
     FEMININO: "Feminino",
@@ -604,9 +615,8 @@ export function Admin() {
 
           <Popover>
             <PopoverTrigger asChild>
-              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
-                adminFilters.gender !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
-              }`}>
+              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.gender !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
+                }`}>
                 {adminFilters.gender === "TODOS" ? "Gênero" : adminFilters.gender.charAt(0) + adminFilters.gender.slice(1).toLowerCase()}
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
               </button>
@@ -623,15 +633,14 @@ export function Admin() {
 
           <Popover>
             <PopoverTrigger asChild>
-              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
-                adminFilters.family !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
-              }`}>
+              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.family !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
+                }`}>
                 {adminFilters.family === "TODOS" ? "Família Olfativa" : adminFilters.family.charAt(0) + adminFilters.family.slice(1).toLowerCase()}
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-2" align="start">
-              {["TODOS","FLORAL","AMADEIRADO","CITRICO","ORIENTAL","AQUATICO","FRUTADO","GOURMAND"].map((opt) => (
+              {["TODOS", "FLORAL", "AMADEIRADO", "CITRICO", "ORIENTAL", "AQUATICO", "FRUTADO", "GOURMAND"].map((opt) => (
                 <button key={opt} onClick={() => setAdminFilters((prev) => ({ ...prev, family: opt }))}
                   className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${adminFilters.family === opt ? "bg-foreground text-background" : "hover:bg-muted"}`}>
                   {opt === "TODOS" ? "Todas" : opt.charAt(0) + opt.slice(1).toLowerCase()}
@@ -641,11 +650,10 @@ export function Admin() {
           </Popover>
           <Popover>
             <PopoverTrigger asChild>
-              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
-                adminFilters.minPrice !== "" || adminFilters.maxPrice !== ""
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-transparent text-foreground hover:border-foreground/50"
-              }`}>
+              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.minPrice !== "" || adminFilters.maxPrice !== ""
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-transparent text-foreground hover:border-foreground/50"
+                }`}>
                 {adminFilters.minPrice === "" && adminFilters.maxPrice === ""
                   ? "Preço"
                   : `R$ ${adminFilters.minPrice || "0"} — R$ ${adminFilters.maxPrice || "∞"}`}
@@ -692,9 +700,8 @@ export function Admin() {
 
           <button
             onClick={() => setAdminFilters((prev) => ({ ...prev, onSale: !prev.onSale }))}
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
-              adminFilters.onSale ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
-            }`}
+            className={`rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${adminFilters.onSale ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
+              }`}
           >
             Promoções
           </button>
@@ -753,7 +760,7 @@ export function Admin() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredAdminProducts.map((product) => (
+                    paginated.map((product) => (
                       <TableRow key={product.id}>
                         <TableCell>
                           <div className="relative h-12 w-12 overflow-hidden rounded-md bg-muted flex items-center justify-center">
@@ -797,10 +804,9 @@ export function Admin() {
                         </TableCell>
 
                         <TableCell>
-                          <span className={`font-medium tabular-nums ${
-                            (product.stockQuantity ?? 0) === 0 ? "text-destructive"
+                          <span className={`font-medium tabular-nums ${(product.stockQuantity ?? 0) === 0 ? "text-destructive"
                             : (product.stockQuantity ?? 0) <= 3 ? "text-yellow-600"
-                            : ""}`}>
+                              : ""}`}>
                             {product.stockQuantity ?? 0} un.
                           </span>
                         </TableCell>
@@ -845,7 +851,7 @@ export function Admin() {
 
             {/* Mobile */}
             <div className="md:hidden space-y-4">
-              {filteredAdminProducts.map((product) => (
+              {paginated.map((product) => (
                 <Card key={product.id}>
                   <CardContent className="flex items-center gap-4 p-4">
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted flex items-center justify-center">
@@ -870,10 +876,9 @@ export function Admin() {
                           {product.inStock ? "Disponível" : "Esgotado"}
                         </Badge>
                         {product.featured && <Badge variant="default">Destaque</Badge>}
-                        <span className={`text-xs font-medium tabular-nums ${
-                          (product.stockQuantity ?? 0) === 0 ? "text-destructive"
+                        <span className={`text-xs font-medium tabular-nums ${(product.stockQuantity ?? 0) === 0 ? "text-destructive"
                           : (product.stockQuantity ?? 0) <= 3 ? "text-yellow-600"
-                          : "text-muted-foreground"}`}>
+                            : "text-muted-foreground"}`}>
                           {product.stockQuantity ?? 0} un.
                         </span>
                       </div>
@@ -928,6 +933,15 @@ export function Admin() {
               </div>
             )}
           </CardContent>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPrev={prev}
+            onNext={next}
+            onGoTo={goTo}
+            totalItems={filteredAdminProducts.length}
+            pageSize={PAGE_SIZE}
+          />
         </Card>
       </main>
 
@@ -1150,8 +1164,8 @@ export function Admin() {
                 {imageUploading
                   ? "Enviando imagem..."
                   : editingProduct
-                  ? "Salvar Alterações"
-                  : "Criar Produto"}
+                    ? "Salvar Alterações"
+                    : "Criar Produto"}
               </Button>
             </DialogFooter>
           </form>
