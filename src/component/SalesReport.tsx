@@ -26,7 +26,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/Shadcn-Components/ui/popover"
-import { ArrowLeft, Download, Search, Trash2, TrendingUp, Package, X, RefreshCw, ChevronDown } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/Shadcn-Components/ui/select"
+import { ArrowLeft, Download, Search, Trash2, TrendingUp, Package, X, RefreshCw, ChevronDown, BarChart2, CalendarDays } from "lucide-react"
 import { API_URL } from "@/lib/api"
 import { ThemeToggle } from "@/component/ThemeToggle"
 
@@ -65,7 +72,7 @@ interface ProductSummary {
   totalRevenue: number
 }
 
-type Period = "all" | "day" | "month" | "year"
+type Period = "all" | "day" | "month" | "year" | "custom"
 
 const fmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v)
@@ -75,20 +82,346 @@ const periodLabel: Record<Period, string> = {
   day: "Hoje",
   month: "Este Mês",
   year: "Este Ano",
+  custom: "Personalizado",
 }
 
-function filterByPeriod(orders: Order[], period: Period): Order[] {
-  if (period === "all") return orders
+// ─── Custom date state ────────────────────────────────────────────────────────
+interface CustomRange {
+  mode: "day" | "month" | "year"
+  day: string    // YYYY-MM-DD
+  month: string  // YYYY-MM
+  year: string   // YYYY
+}
+
+function filterByPeriod(orders: Order[], period: Period, custom: CustomRange): Order[] {
   const now = new Date()
   return orders.filter((o) => {
     const d = new Date(o.createdAt)
     if (period === "day") return d.toDateString() === now.toDateString()
-    if (period === "month") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    if (period === "month")
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
     if (period === "year") return d.getFullYear() === now.getFullYear()
+    if (period === "custom") {
+      if (custom.mode === "day" && custom.day) {
+        return d.toISOString().slice(0, 10) === custom.day
+      }
+      if (custom.mode === "month" && custom.month) {
+        return d.toISOString().slice(0, 7) === custom.month
+      }
+      if (custom.mode === "year" && custom.year) {
+        return String(d.getFullYear()) === custom.year
+      }
+    }
     return true
   })
 }
 
+// ─── Bar chart component ──────────────────────────────────────────────────────
+const TOP_OPTIONS = [5, 10, 15, 20] as const
+
+function BarChart({
+  data,
+  limit,
+  onLimitChange,
+}: {
+  data: ProductSummary[]
+  limit: number
+  onLimitChange: (n: number) => void
+}) {
+  // Always rank by units sold, regardless of how the table is sorted
+  const top = [...data].sort((a, b) => b.totalQuantity - a.totalQuantity).slice(0, limit)
+  if (top.length === 0) return null
+  const maxQty = Math.max(...top.map((d) => d.totalQuantity))
+
+  return (
+    <Card className="mb-8">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center justify-between gap-2 text-sm font-medium">
+          <span className="flex items-center gap-2">
+            <BarChart2 className="h-4 w-4 text-muted-foreground" />
+            Mais Vendidos — unidades
+          </span>
+          <div className="flex items-center gap-1 rounded-full border border-border overflow-hidden">
+            {TOP_OPTIONS.map((n) => (
+              <button
+                key={n}
+                onClick={() => onLimitChange(n)}
+                className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                  limit === n
+                    ? "bg-foreground text-background"
+                    : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                Top {n}
+              </button>
+            ))}
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {top.map((item, i) => {
+            const pct = maxQty > 0 ? (item.totalQuantity / maxQty) * 100 : 0
+            // Cycle through a palette
+            const colors = [
+              "bg-blue-500 dark:bg-blue-400",
+              "bg-violet-500 dark:bg-violet-400",
+              "bg-emerald-500 dark:bg-emerald-400",
+              "bg-amber-500 dark:bg-amber-400",
+              "bg-rose-500 dark:bg-rose-400",
+              "bg-cyan-500 dark:bg-cyan-400",
+              "bg-orange-500 dark:bg-orange-400",
+              "bg-pink-500 dark:bg-pink-400",
+            ]
+            const bar = colors[i % colors.length]
+
+            return (
+              <div key={item.key} className="group flex items-center gap-3">
+                <span className="w-5 text-right text-xs font-mono text-muted-foreground">
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-medium">
+                      {item.productName}
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        {item.productSize}ml
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums">
+                      {item.totalQuantity} un.
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${bar}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">
+                  {fmt(item.totalRevenue)}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Custom date picker panel ─────────────────────────────────────────────────
+function CustomDatePicker({
+  value,
+  onChange,
+  orders,
+}: {
+  value: CustomRange
+  onChange: (v: CustomRange) => void
+  orders: Order[]
+}) {
+  const currentYear = new Date().getFullYear()
+
+  // Derive the oldest year from actual order data so no historic year is ever lost.
+  // Falls back to currentYear if there are no orders yet.
+  const oldestYear = useMemo(() => {
+    if (orders.length === 0) return currentYear
+    return Math.min(...orders.map((o) => new Date(o.createdAt).getFullYear()))
+  }, [orders, currentYear])
+
+  // List every year from the oldest order up to today, newest first.
+  const years = Array.from(
+    { length: currentYear - oldestYear + 1 },
+    (_, i) => String(currentYear - i)
+  )
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Tipo de período
+        </p>
+        <div className="flex gap-2">
+          {(["day", "month", "year"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => onChange({ ...value, mode: m })}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                value.mode === m
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border text-foreground hover:border-foreground/50"
+              }`}
+            >
+              {m === "day" ? "Dia" : m === "month" ? "Mês" : "Ano"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {value.mode === "day" && (() => {
+        // Parse current day value into parts
+        const [selYear, selMonth, selDay] = value.day
+          ? value.day.split("-").map(Number)
+          : [new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate()]
+
+        const now = new Date()
+        const todayY = now.getFullYear()
+        const todayM = now.getMonth() + 1
+        const todayD = now.getDate()
+
+        // Days in selected month
+        const daysInMonth = new Date(selYear, selMonth, 0).getDate()
+        const dayOptions = Array.from({ length: daysInMonth }, (_, i) => i + 1).filter((d) => {
+          if (selYear === todayY && selMonth === todayM) return d <= todayD
+          if (selYear === todayY && selMonth > todayM) return false
+          return true
+        })
+
+        const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1).filter((m) => {
+          if (selYear === todayY) return m <= todayM
+          return true
+        })
+
+        const yearOptions = Array.from(
+          { length: todayY - oldestYear + 1 },
+          (_, i) => todayY - i
+        )
+
+        const monthNames = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+
+        const update = (y: number, m: number, d: number) => {
+          const mm = String(m).padStart(2, "0")
+          const dd = String(d).padStart(2, "0")
+          onChange({ ...value, day: `${y}-${mm}-${dd}` })
+        }
+
+        return (
+          <div className="space-y-2">
+            <label className="text-xs text-muted-foreground">Selecione o dia</label>
+            <div className="grid grid-cols-3 gap-2">
+              {/* Day */}
+              <Select value={String(selDay)} onValueChange={(v) => update(selYear, selMonth, Number(v))}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Dia" /></SelectTrigger>
+                <SelectContent>
+                  {dayOptions.map((d) => (
+                    <SelectItem key={d} value={String(d)}>{String(d).padStart(2,"0")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* Month */}
+              <Select value={String(selMonth)} onValueChange={(v) => update(selYear, Number(v), Math.min(selDay, new Date(selYear, Number(v), 0).getDate()))}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Mês" /></SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map((m) => (
+                    <SelectItem key={m} value={String(m)}>{monthNames[m - 1]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* Year */}
+              <Select value={String(selYear)} onValueChange={(v) => update(Number(v), selMonth, Math.min(selDay, new Date(Number(v), selMonth, 0).getDate()))}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Ano" /></SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )
+      })()}
+
+      {value.mode === "month" && (() => {
+        const [selYear, selMonth] = value.month
+          ? value.month.split("-").map(Number)
+          : [new Date().getFullYear(), new Date().getMonth() + 1]
+
+        const now = new Date()
+        const todayY = now.getFullYear()
+        const todayM = now.getMonth() + 1
+
+        const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
+
+        const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1).filter((m) => {
+          if (selYear === todayY) return m <= todayM
+          return true
+        })
+
+        const yearOptions = Array.from(
+          { length: todayY - oldestYear + 1 },
+          (_, i) => todayY - i
+        )
+
+        const update = (y: number, m: number) => {
+          onChange({ ...value, month: `${y}-${String(m).padStart(2, "0")}` })
+        }
+
+        return (
+          <div className="space-y-2">
+            <label className="text-xs text-muted-foreground">Selecione o mês</label>
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={String(selMonth)} onValueChange={(v) => update(selYear, Number(v))}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Mês" /></SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map((m) => (
+                    <SelectItem key={m} value={String(m)}>{monthNames[m - 1]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={String(selYear)} onValueChange={(v) => update(Number(v), selMonth)}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Ano" /></SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )
+      })()}
+
+      {value.mode === "year" && (
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Selecione o ano</label>
+          <Select
+            value={value.year}
+            onValueChange={(v) => onChange({ ...value, year: v })}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((y) => (
+                <SelectItem key={y} value={y}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Custom date label helper ─────────────────────────────────────────────────
+function customLabel(c: CustomRange): string {
+  if (c.mode === "day" && c.day) {
+    const [y, m, d] = c.day.split("-")
+    return `${d}/${m}/${y}`
+  }
+  if (c.mode === "month" && c.month) {
+    const [y, m] = c.month.split("-")
+    const monthName = new Date(Number(y), Number(m) - 1).toLocaleString("pt-BR", { month: "long" })
+    return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${y}`
+  }
+  if (c.mode === "year" && c.year) return c.year
+  return "Personalizado"
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export function SalesReport() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
@@ -96,6 +429,15 @@ export function SalesReport() {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [period, setPeriod] = useState<Period>("all")
+  const [customRange, setCustomRange] = useState<CustomRange>({
+    mode: "month",
+    day: new Date().toISOString().slice(0, 10),
+    month: new Date().toISOString().slice(0, 7),
+    year: String(new Date().getFullYear()),
+  })
+  const [customPickerOpen, setCustomPickerOpen] = useState(false)
+  const [activeView, setActiveView] = useState<"chart" | "table">("chart")
+  const [chartLimit, setChartLimit] = useState<number>(10)
 
   // Filters
   const [search, setSearch] = useState("")
@@ -133,10 +475,11 @@ export function SalesReport() {
     }
   }
 
-  // Filter by period first
-  const periodOrders = useMemo(() => filterByPeriod(orders, period), [orders, period])
+  const periodOrders = useMemo(
+    () => filterByPeriod(orders, period, customRange),
+    [orders, period, customRange]
+  )
 
-  // Then aggregate
   const summaries = useMemo<ProductSummary[]>(() => {
     const map = new Map<string, ProductSummary>()
     for (const order of periodOrders) {
@@ -164,7 +507,6 @@ export function SalesReport() {
     return Array.from(map.values()).sort((a, b) => b.totalRevenue - a.totalRevenue)
   }, [periodOrders])
 
-  // Apply search/filter
   const filtered = useMemo(() => summaries.filter((s) => {
     if (search.trim() && !s.productName.toLowerCase().includes(search.toLowerCase())) return false
     if (category !== "TODOS" && s.productCategory !== category) return false
@@ -181,19 +523,17 @@ export function SalesReport() {
   const hasFilters = search || category !== "TODOS" || family !== "TODOS" || onSale || minPrice || maxPrice
 
   const clearFilters = () => {
-    setSearch("")
-    setCategory("TODOS")
-    setFamily("TODOS")
-    setOnSale(false)
-    setMinPrice("")
-    setMaxPrice("")
+    setSearch(""); setCategory("TODOS"); setFamily("TODOS")
+    setOnSale(false); setMinPrice(""); setMaxPrice("")
   }
+
+  const activePeriodLabel =
+    period === "custom" ? customLabel(customRange) : periodLabel[period]
 
   const handleDownloadPDF = () => {
     const now = new Date()
     const dateStr = now.toLocaleDateString("pt-BR")
     const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-    const periodStr = periodLabel[period]
 
     const rows = filtered.map((p, i) => `
       <tr style="background:${i % 2 === 0 ? "#fff" : "#f9f9f9"}">
@@ -205,7 +545,7 @@ export function SalesReport() {
       </tr>`).join("")
 
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
-<title>Relatório de Vendas — ${periodStr} — Fausto Importados</title>
+<title>Relatório de Vendas — ${activePeriodLabel} — Fausto Importados</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:Georgia,serif;color:#111;background:#fff;padding:48px}
@@ -226,7 +566,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
 .footer{margin-top:36px;text-align:center;font-size:11px;color:#aaa;padding-top:16px;border-top:1px solid #e5e7eb}
 </style></head><body>
 <div class="header">
-  <div class="brand">Fausto Importados<small>Relatório de Vendas</small><span class="period">${periodStr}</span></div>
+  <div class="brand">Fausto Importados<small>Relatório de Vendas</small><span class="period">${activePeriodLabel}</span></div>
   <div class="meta">Gerado em ${dateStr} às ${timeStr}</div>
 </div>
 <div class="stats">
@@ -244,7 +584,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
   </tr></thead>
   <tbody>${rows}</tbody>
   <tfoot><tr>
-    <td colspan="2">TOTAL — ${periodStr.toUpperCase()}</td>
+    <td colspan="2">TOTAL — ${activePeriodLabel.toUpperCase()}</td>
     <td style="text-align:center">${totalUnits} un.</td>
     <td></td>
     <td style="text-align:right">${fmt(totalRevenue)}</td>
@@ -275,7 +615,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            < ThemeToggle />
+            <ThemeToggle />
             <Button
               variant="outline"
               size="sm"
@@ -287,7 +627,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
             </Button>
             <Button size="sm" className="gap-2" onClick={handleDownloadPDF} disabled={filtered.length === 0}>
               <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Baixar PDF — {periodLabel[period]}</span>
+              <span className="hidden sm:inline">Baixar PDF — {activePeriodLabel}</span>
             </Button>
           </div>
         </div>
@@ -295,13 +635,13 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
 
       <main className="mx-auto max-w-7xl px-4 py-8">
         {/* Period tabs */}
-        <div className="mb-6 flex gap-2 flex-wrap">
+        <div className="mb-6 flex flex-wrap gap-2 items-center">
           {(["all", "day", "month", "year"] as Period[]).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               className={`rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
-                period === p
+                period === p && period !== "custom"
                   ? "border-foreground bg-foreground text-background"
                   : "border-border bg-transparent text-foreground hover:border-foreground/50"
               }`}
@@ -309,6 +649,40 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
               {periodLabel[p]}
             </button>
           ))}
+
+          {/* Custom date picker */}
+          <Popover open={customPickerOpen} onOpenChange={setCustomPickerOpen}>
+            <PopoverTrigger asChild>
+              <button
+                onClick={() => setPeriod("custom")}
+                className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                  period === "custom"
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-transparent text-foreground hover:border-foreground/50"
+                }`}
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+                {period === "custom" ? customLabel(customRange) : "Personalizado"}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-4" align="start">
+              <CustomDatePicker
+                value={customRange}
+                onChange={(v) => {
+                  setCustomRange(v)
+                  setPeriod("custom")
+                }}
+                orders={orders}
+              />
+              <Button
+                className="mt-4 w-full"
+                size="sm"
+                onClick={() => setCustomPickerOpen(false)}
+              >
+                Aplicar
+              </Button>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Summary cards */}
@@ -335,7 +709,9 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
           </Card>
           <Card className="border-green-200 bg-green-50/40 dark:border-green-900 dark:bg-green-950/30">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Receita — {periodLabel[period]}</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Receita — {activePeriodLabel}
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
             </CardHeader>
             <CardContent>
@@ -345,8 +721,33 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
           </Card>
         </div>
 
-        {/* Filters — same style as Store */}
+        {/* View toggle + filters */}
         <div className="mb-6 flex flex-wrap items-center gap-2">
+          {/* Chart / Table toggle */}
+          <div className="flex rounded-full border border-border overflow-hidden">
+            <button
+              onClick={() => setActiveView("chart")}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+                activeView === "chart"
+                  ? "bg-foreground text-background"
+                  : "bg-transparent text-foreground hover:bg-muted"
+              }`}
+            >
+              <BarChart2 className="h-3.5 w-3.5" />
+              Gráfico
+            </button>
+            <button
+              onClick={() => setActiveView("table")}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+                activeView === "table"
+                  ? "bg-foreground text-background"
+                  : "bg-transparent text-foreground hover:bg-muted"
+              }`}
+            >
+              Tabela
+            </button>
+          </div>
+
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -435,7 +836,6 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
             </PopoverContent>
           </Popover>
 
-          {/* Promotions */}
           <button
             onClick={() => setOnSale((v) => !v)}
             className={`rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
@@ -478,73 +878,91 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
           </div>
         )}
 
+        {/* Chart view */}
+        {activeView === "chart" && !loading && filtered.length > 0 && (
+          <BarChart data={filtered} limit={chartLimit} onLimitChange={setChartLimit} />
+        )}
+
         {/* Table */}
-        <Card>
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <TrendingUp className="h-12 w-12 text-muted-foreground mb-3" />
-                <p className="font-medium">Nenhuma venda encontrada</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {hasFilters ? "Ajuste os filtros" : "Confirme pedidos no painel para ver o relatório"}
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="hidden md:block">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Perfume</TableHead>
-                        <TableHead className="text-center">Tamanho</TableHead>
-                        <TableHead className="text-center">Qtd. Vendida</TableHead>
-                        <TableHead className="text-right">Preço Unit.</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filtered.map((p) => (
-                        <TableRow key={p.key}>
-                          <TableCell className="font-medium">{p.productName}</TableCell>
-                          <TableCell className="text-center"><Badge variant="outline">{p.productSize}ml</Badge></TableCell>
-                          <TableCell className="text-center font-mono tabular-nums">{p.totalQuantity}</TableCell>
-                          <TableCell className="text-right">{fmt(p.unitPrice)}</TableCell>
-                          <TableCell className="text-right font-semibold">{fmt(p.totalRevenue)}</TableCell>
+        {activeView === "table" && (
+          <Card>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex items-center justify-center py-16">
+                  <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <TrendingUp className="h-12 w-12 text-muted-foreground mb-3" />
+                  <p className="font-medium">Nenhuma venda encontrada</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {hasFilters ? "Ajuste os filtros" : "Confirme pedidos no painel para ver o relatório"}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Perfume</TableHead>
+                          <TableHead className="text-center">Tamanho</TableHead>
+                          <TableHead className="text-center">Qtd. Vendida</TableHead>
+                          <TableHead className="text-right">Preço Unit.</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <div className="flex items-center justify-between border-t bg-muted/30 px-4 py-3">
-                    <span className="text-sm font-semibold">{totalUnits} unidades · {filtered.length} produto{filtered.length !== 1 ? "s" : ""}</span>
-                    <span className="text-lg font-bold">{fmt(totalRevenue)}</span>
-                  </div>
-                </div>
-                <div className="md:hidden divide-y">
-                  {filtered.map((p) => (
-                    <div key={p.key} className="p-4 space-y-1">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-medium">{p.productName}</p>
-                          <p className="text-xs text-muted-foreground">{p.productSize}ml · {p.totalQuantity} un. vendidas</p>
-                        </div>
-                        <span className="font-bold">{fmt(p.totalRevenue)}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{fmt(p.unitPrice)} / un.</p>
+                      </TableHeader>
+                      <TableBody>
+                        {filtered.map((p) => (
+                          <TableRow key={p.key}>
+                            <TableCell className="font-medium">{p.productName}</TableCell>
+                            <TableCell className="text-center"><Badge variant="outline">{p.productSize}ml</Badge></TableCell>
+                            <TableCell className="text-center font-mono tabular-nums">{p.totalQuantity}</TableCell>
+                            <TableCell className="text-right">{fmt(p.unitPrice)}</TableCell>
+                            <TableCell className="text-right font-semibold">{fmt(p.totalRevenue)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="flex items-center justify-between border-t bg-muted/30 px-4 py-3">
+                      <span className="text-sm font-semibold">{totalUnits} unidades · {filtered.length} produto{filtered.length !== 1 ? "s" : ""}</span>
+                      <span className="text-lg font-bold">{fmt(totalRevenue)}</span>
                     </div>
-                  ))}
-                  <div className="flex items-center justify-between p-4 bg-muted/30 font-semibold">
-                    <span>Total ({totalUnits} un.)</span>
-                    <span>{fmt(totalRevenue)}</span>
                   </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                  <div className="md:hidden divide-y">
+                    {filtered.map((p) => (
+                      <div key={p.key} className="p-4 space-y-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium">{p.productName}</p>
+                            <p className="text-xs text-muted-foreground">{p.productSize}ml · {p.totalQuantity} un. vendidas</p>
+                          </div>
+                          <span className="font-bold">{fmt(p.totalRevenue)}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{fmt(p.unitPrice)} / un.</p>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between p-4 bg-muted/30 font-semibold">
+                      <span>Total ({totalUnits} un.)</span>
+                      <span>{fmt(totalRevenue)}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Empty state for chart view */}
+        {activeView === "chart" && !loading && filtered.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <TrendingUp className="h-12 w-12 text-muted-foreground mb-3" />
+            <p className="font-medium">Nenhuma venda encontrada</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {hasFilters ? "Ajuste os filtros" : "Confirme pedidos no painel para ver o relatório"}
+            </p>
+          </div>
+        )}
       </main>
 
       <Dialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>

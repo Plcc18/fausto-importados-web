@@ -231,7 +231,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
                             <Button
                               size="sm"
                               variant="outline"
-                              className="gap-1 text-red-600 border-red-200 hover:bg-red-50"
+                              className="gap-1 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-500 dark:text-red-500 dark:hover:bg-red-600 dark:hover:text-amber-50"
                               onClick={() => handleCancel(order.id)}
                             >
                               <X className="h-3.5 w-3.5" />
@@ -239,7 +239,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
                             </Button>
                             <Button
                               size="sm"
-                              className="gap-1 bg-green-600 hover:bg-green-700"
+                              className="gap-1 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-400 dark:text-amber-50"
                               onClick={() => handleComplete(order.id)}
                             >
                               <Check className="h-3.5 w-3.5" />

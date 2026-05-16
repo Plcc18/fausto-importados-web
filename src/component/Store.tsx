@@ -161,7 +161,7 @@ export function Store() {
 
   const familyFilters = [
     { value: 'floral', label: 'Floral', icon: Flower2 },
-    { value: 'Amadeirado', label: 'Amadeirado', icon: TreePine },
+    { value: 'amadeirado', label: 'Amadeirado', icon: TreePine },
     { value: 'citrico', label: 'Cítrico', icon: Citrus },
     { value: 'oriental', label: 'Oriental', icon: Moon },
     { value: 'aquatico', label: 'Aquático', icon: Waves },
