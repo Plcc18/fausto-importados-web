@@ -88,7 +88,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           </p>
 
           {/* Name: clamp to 2 lines so short & long names take the same space */}
-          <h3 className="mt-1 text-sm sm:text-base font-medium text-foreground line-clamp-2 min-h-[2.5rem] leading-snug">
+          <h3 className="mt-1 text-sm sm:text-base font-medium text-foreground line-clamp-2 min-h-10 leading-snug">
             {product.name}
           </h3>
 

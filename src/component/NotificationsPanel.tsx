@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import { Button } from "@/Shadcn-Components/ui/button"
 import { Badge } from "@/Shadcn-Components/ui/badge"
 import { Separator } from "@/Shadcn-Components/ui/separator"
-import { ScrollArea } from "@/Shadcn-Components/ui/scroll-area"
 import {
   Sheet,
   SheetContent,
@@ -47,9 +46,9 @@ const paymentLabels: Record<string, string> = {
 }
 
 const statusConfig = {
-  PENDING: { label: "Pendente", icon: Clock, className: "text-yellow-600 bg-yellow-50 border-yellow-200" },
-  COMPLETED: { label: "Concluído", icon: CheckCircle, className: "text-green-600 bg-green-50 border-green-200" },
-  CANCELLED: { label: "Cancelado", icon: XCircle, className: "text-red-600 bg-red-50 border-red-200" },
+  PENDING:   { label: "Pendente",  icon: Clock,        className: "text-yellow-600 bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800" },
+  COMPLETED: { label: "Concluído", icon: CheckCircle,   className: "text-green-600 bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" },
+  CANCELLED: { label: "Cancelado", icon: XCircle,       className: "text-red-600 bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800" },
 }
 
 const authFetch = (url: string, options: RequestInit = {}) =>
@@ -127,9 +126,19 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        {/* [&>button]:hidden esconde o botão de fechar padrão do SheetContent para usar o nosso */}
-        <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col p-0 [&>button]:hidden">
-          <SheetHeader className="px-6 py-4 border-b shrink-0">
+        {/*
+          Estrutura de layout do Sheet:
+          - SheetContent usa flex flex-col e h-full para ocupar toda a altura
+          - SheetHeader é shrink-0 (não encolhe)
+          - A lista de pedidos cresce com flex-1 e overflow-y-auto direto na div
+            (sem ScrollArea do Radix, que às vezes bloqueia o scroll nativo no mobile)
+        */}
+        <SheetContent
+          side="right"
+          className="flex h-full w-full flex-col p-0 sm:max-w-lg [&>button]:hidden"
+        >
+          {/* Header — fixo no topo, não rola */}
+          <SheetHeader className="shrink-0 border-b px-6 py-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
@@ -165,6 +174,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
               </div>
             </div>
 
+            {/* Filtros de status */}
             <div className="flex gap-2 mt-3 flex-wrap">
               {(["ALL", "PENDING", "COMPLETED", "CANCELLED"] as const).map((s) => (
                 <Button
@@ -180,7 +190,8 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
             </div>
           </SheetHeader>
 
-          <ScrollArea className="flex-1 px-6 py-4">
+          {/* Lista de pedidos — ocupa o espaço restante e rola */}
+          <div className="flex-1 overflow-y-auto px-6 py-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -191,7 +202,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
                 <p className="text-muted-foreground">Nenhum pedido encontrado</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 pb-4">
                 {orders.map((order) => {
                   const cfg = statusConfig[order.status]
                   const StatusIcon = cfg.icon
@@ -231,7 +242,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
                             <Button
                               size="sm"
                               variant="outline"
-                              className="gap-1 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-500 dark:text-red-500 dark:hover:bg-red-600 dark:hover:text-amber-50"
+                              className="gap-1 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
                               onClick={() => handleCancel(order.id)}
                             >
                               <X className="h-3.5 w-3.5" />
@@ -239,7 +250,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
                             </Button>
                             <Button
                               size="sm"
-                              className="gap-1 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-400 dark:text-amber-50"
+                              className="gap-1 bg-green-600 hover:bg-green-700"
                               onClick={() => handleComplete(order.id)}
                             >
                               <Check className="h-3.5 w-3.5" />
@@ -253,7 +264,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
                 })}
               </div>
             )}
-          </ScrollArea>
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -266,9 +277,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
             Isso vai apagar todos os pedidos concluídos e cancelados. Pedidos pendentes não serão removidos.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setClearConfirmOpen(false)}>
-              Cancelar
-            </Button>
+            <Button variant="outline" onClick={() => setClearConfirmOpen(false)}>Cancelar</Button>
             <Button variant="destructive" onClick={handleClearHistory} disabled={clearing}>
               {clearing ? "Limpando..." : "Limpar histórico"}
             </Button>
