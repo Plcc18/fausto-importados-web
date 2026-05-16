@@ -21,44 +21,36 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const hasDiscount = product.originalPrice && product.originalPrice > product.price
   const isFeatured = product.featured === true
 
-  // Considera esgotado se inStock for false OU se stockQuantity for 0
-  const isOutOfStock = !product.inStock || (product.stockQuantity !== undefined && product.stockQuantity <= 0)
+  const isOutOfStock =
+    !product.inStock ||
+    (product.stockQuantity !== undefined && product.stockQuantity <= 0)
 
   const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) {
-      onAddToCart(product)
-    }
+    for (let i = 0; i < quantity; i++) onAddToCart(product)
     setQuantity(1)
     setIsModalOpen(false)
   }
 
+  // Abbreviated labels keep the meta line short on mobile
   const categoryLabels: Record<string, string> = {
-    masculino: "Masculino",
-    feminino: "Feminino",
-    unissex: "Unissex",
-    MASCULINO: "Masculino",
-    FEMININO: "Feminino",
-    UNISSEX: "Unissex",
+    masculino: "Masc.", feminino: "Fem.", unissex: "Unissex",
+    MASCULINO: "Masc.", FEMININO: "Fem.", UNISSEX: "Unissex",
+  }
+  const categoryLabelsFull: Record<string, string> = {
+    masculino: "Masculino", feminino: "Feminino", unissex: "Unissex",
+    MASCULINO: "Masculino", FEMININO: "Feminino", UNISSEX: "Unissex",
   }
 
-  // Badge de estoque exibido nos cards e no modal
+  const familyShort = product.olfactiveFamily
+    ? product.olfactiveFamily.charAt(0).toUpperCase() +
+      product.olfactiveFamily.slice(1).toLowerCase()
+    : ""
+
   const StockBadge = () => {
-    if (isOutOfStock) return null
-    if (product.stockQuantity === undefined || product.stockQuantity === null) return null
-
-    if (product.stockQuantity <= 3) {
-      return (
-        <Badge variant="destructive" className="text-xs">
-          Últimas {product.stockQuantity} unidade{product.stockQuantity > 1 ? "s" : ""}
-        </Badge>
-      )
-    }
-
-    return (
-      <Badge variant="secondary" className="text-xs">
-        {product.stockQuantity} em estoque
-      </Badge>
-    )
+    if (isOutOfStock || product.stockQuantity == null) return null
+    if (product.stockQuantity <= 3)
+      return <Badge variant="destructive" className="text-xs">Últimas {product.stockQuantity} un.</Badge>
+    return <Badge variant="secondary" className="text-xs">{product.stockQuantity} em estoque</Badge>
   }
 
   return (
@@ -67,6 +59,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         className="group cursor-pointer overflow-hidden border-0 bg-card shadow-sm transition-all duration-300 hover:shadow-lg"
         onClick={() => setIsModalOpen(true)}
       >
+        {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-muted">
           <img
             src={product.image || "/placeholder.svg"}
@@ -74,14 +67,10 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             className="w-full h-full object-contain p-3 transition-transform duration-500 group-hover:scale-105"
           />
           {hasDiscount && (
-            <Badge className="absolute top-3 right-3 bg-primary text-primary-foreground">
-              Oferta
-            </Badge>
+            <Badge className="absolute top-3 right-3 bg-primary text-primary-foreground">Oferta</Badge>
           )}
           {isFeatured && (
-            <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">
-              Destaque
-            </Badge>
+            <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">Destaque</Badge>
           )}
           {isOutOfStock && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80">
@@ -89,37 +78,46 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             </div>
           )}
         </div>
-        <CardContent className="p-4 flex flex-col">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+
+        {/* Body — every section has a fixed/min height so all cards align */}
+        <CardContent className="flex flex-col p-3 sm:p-4">
+
+          {/* Brand */}
+          <p className="text-xs uppercase tracking-wider text-muted-foreground truncate">
             {product.brand}
           </p>
-          <h3 className="mt-1 text-lg font-medium text-foreground">
+
+          {/* Name: clamp to 2 lines so short & long names take the same space */}
+          <h3 className="mt-1 text-sm sm:text-base font-medium text-foreground line-clamp-2 min-h-[2.5rem] leading-snug">
             {product.name}
           </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {product.size}ml | {categoryLabels[product.category]} | {product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1).toLowerCase()}
+
+          {/* Meta line: always one line, truncates if too long */}
+          <p className="mt-1 text-xs text-muted-foreground truncate leading-none">
+            {product.size}ml · {categoryLabels[product.category]} · {familyShort}
           </p>
 
-          {/* Badge de estoque no card */}
-          <div className="mt-2">
+          {/* Stock badge: fixed height — absence of badge doesn't shift what's below */}
+          <div className="mt-2 h-5 flex items-center">
             <StockBadge />
           </div>
 
-          <div className="mt-3 min-h-11 flex flex-col justify-center">
-            <span className="text-lg font-semibold text-foreground">
+          {/* Price block: fixed height whether or not there's a strikethrough */}
+          <div className="mt-2 h-10 flex flex-col justify-center">
+            <span className="text-base sm:text-lg font-semibold text-foreground leading-tight">
               R$ {product.price.toFixed(2).replace(".", ",")}
             </span>
-            {hasDiscount ? (
-              <span className="text-sm text-muted-foreground line-through">
-                R$ {product.originalPrice?.toFixed(2).replace(".", ",")}
-              </span>
-            ) : (
-              <span className="text-sm invisible">placeholder</span>
-            )}
+            {/* Invisible placeholder preserves height when there's no discount */}
+            <span className={`text-xs leading-tight ${hasDiscount ? "text-muted-foreground line-through" : "invisible"}`}>
+              {hasDiscount
+                ? `R$ ${product.originalPrice?.toFixed(2).replace(".", ",")}`
+                : "-"}
+            </span>
           </div>
 
+          {/* Button: always at the same position because everything above is fixed height */}
           <Button
-            className="mt-4 w-full gap-2"
+            className="mt-3 w-full gap-2"
             onClick={(e) => {
               e.stopPropagation()
               onAddToCart(product)
@@ -135,6 +133,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         </CardContent>
       </Card>
 
+      {/* Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-3xl p-0 h-[95vh] md:h-auto overflow-y-auto">
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
@@ -151,34 +150,38 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                 </div>
               )}
             </div>
+
             <div className="flex flex-col p-6 md:flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline">{categoryLabels[product.category]}</Badge>
-                <Badge variant="secondary">
-                  {product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1).toLowerCase()}
-                </Badge>
-                {hasDiscount && (
-                  <Badge className="bg-accent text-accent-foreground">Oferta</Badge>
-                )}
+                <Badge variant="outline">{categoryLabelsFull[product.category]}</Badge>
+                <Badge variant="secondary">{familyShort}</Badge>
+                {hasDiscount && <Badge className="bg-accent text-accent-foreground">Oferta</Badge>}
               </div>
+
               <p className="mt-4 text-sm uppercase tracking-wider text-muted-foreground">
                 {product.brand}
               </p>
-              <h2 className="mt-1 text-2xl font-semibold text-foreground">
-                {product.name}
-              </h2>
+              <h2 className="mt-1 text-2xl font-semibold text-foreground">{product.name}</h2>
               <p className="text-sm text-muted-foreground">{product.size}ml</p>
 
-              {/* Badge de estoque no modal */}
               <div className="mt-2">
-                <StockBadge />
+                {product.stockQuantity != null && !isOutOfStock && (
+                  product.stockQuantity <= 3 ? (
+                    <Badge variant="destructive" className="text-xs">
+                      Últimas {product.stockQuantity} unidade{product.stockQuantity > 1 ? "s" : ""}
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">
+                      {product.stockQuantity} em estoque
+                    </Badge>
+                  )
+                )}
               </div>
 
               <Separator className="my-4" />
-              <p className="text-muted-foreground leading-relaxed">
-                {product.description}
-              </p>
+              <p className="text-muted-foreground leading-relaxed">{product.description}</p>
               <Separator className="my-4" />
+
               <div className="flex items-center gap-3">
                 <span className="text-2xl font-bold text-foreground">
                   R$ {product.price.toFixed(2).replace(".", ",")}
@@ -189,13 +192,10 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                   </span>
                 )}
               </div>
+
               <div className="mt-4 flex items-center gap-4">
                 <div className="flex items-center gap-2 rounded-md border border-input">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  >
+                  <Button variant="ghost" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
                     <Minus className="h-4 w-4" />
                   </Button>
                   <span className="w-8 text-center font-medium">{quantity}</span>
@@ -203,23 +203,15 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                      // Não deixa adicionar mais do que tem em estoque
                       const max = product.stockQuantity ?? Infinity
                       setQuantity(Math.min(quantity + 1, max))
                     }}
-                    disabled={
-                      product.stockQuantity !== undefined &&
-                      quantity >= product.stockQuantity
-                    }
+                    disabled={product.stockQuantity !== undefined && quantity >= product.stockQuantity}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-                <Button
-                  className="flex-1 gap-2"
-                  onClick={handleAddToCart}
-                  disabled={isOutOfStock}
-                >
+                <Button className="flex-1 gap-2" onClick={handleAddToCart} disabled={isOutOfStock}>
                   <ShoppingBag className="h-4 w-4" />
                   Adicionar ao Carrinho
                 </Button>
