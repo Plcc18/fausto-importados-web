@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import type { Product } from "@/lib/types"
 import { Button } from "@/Shadcn-Components/ui/button"
@@ -50,6 +50,7 @@ import {
   FileText,
   ChevronDown,
   Search,
+  LogOut,
 } from "lucide-react"
 import {
   Popover,
@@ -64,6 +65,7 @@ import { usePagination } from "@/lib/usePagination"
 import Swal from "sweetalert2"
 import { API_URL } from "@/lib/api"
 import { toast } from "sonner"
+import { useAdminPushNotifications } from "@/lib/useAdminPushNotifications"
 
 const authFetch = (url: string, options: RequestInit = {}) =>
   fetch(url, { ...options, credentials: "include" })
@@ -189,7 +191,7 @@ export function Admin() {
   const [imageUploading, setImageUploading] = useState(false)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [pendingCount, setPendingCount] = useState(0)
+  //const [pendingCount, setPendingCount] = useState(0)
   const [salesStats, setSalesStats] = useState({ day: 0, month: 0, year: 0 })
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [adminFilters, setAdminFilters] = useState({
@@ -197,91 +199,16 @@ export function Admin() {
   })
   const [adminSearch, setAdminSearch] = useState("")
 
-  // ── Polling de novos pedidos ──────────────────────────────────────────────
-  // AudioContext precisa ser criado após interação do usuário (política do browser).
-  // Guardamos a referência e a criamos na primeira vez que o admin clicar em qualquer coisa.
-  const audioCtxRef = useRef<AudioContext | null>(null)
-  const lastPendingRef = useRef<number | null>(null)
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  // Cria/reutiliza o AudioContext (seguro chamar múltiplas vezes)
-  const getAudioCtx = useCallback((): AudioContext | null => {
-    try {
-      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
-        audioCtxRef.current = new AudioContext()
-      }
-      // Resume se estiver suspenso (política autoplay)
-      if (audioCtxRef.current.state === "suspended") {
-        audioCtxRef.current.resume()
-      }
-      return audioCtxRef.current
-    } catch {
-      return null
-    }
-  }, [])
-
-  // Inicializa o AudioContext na primeira interação do usuário na página
-  useEffect(() => {
-    const unlock = () => { getAudioCtx(); document.removeEventListener("click", unlock) }
-    document.addEventListener("click", unlock)
-    return () => document.removeEventListener("click", unlock)
-  }, [getAudioCtx])
-
-  const playChime = useCallback(() => {
-    const ctx = getAudioCtx()
-    if (!ctx) return
-    // Dois tons: E5 (659 Hz) e G#5 (831 Hz)
-    const notes = [659.25, 830.61]
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.type = "sine"
-      osc.frequency.value = freq
-      const t = ctx.currentTime + i * 0.2
-      gain.gain.setValueAtTime(0, t)
-      gain.gain.linearRampToValueAtTime(0.2, t + 0.02)
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6)
-      osc.start(t)
-      osc.stop(t + 0.65)
-    })
-  }, [getAudioCtx])
-
-  const pollPending = useCallback(async () => {
-    try {
-      const res = await authFetch(`${API_URL}/api/orders/filter?status=PENDING`)
-      if (!res.ok) return
-      const data = await res.json()
-      const count: number = Array.isArray(data) ? data.length : 0
-
-      // Só dispara alerta se o count AUMENTOU em relação à última leitura
-      if (lastPendingRef.current !== null && count > lastPendingRef.current) {
-        playChime()
+  const { pendingCount, poll: pollPending } =
+    useAdminPushNotifications({
+      onNewOrder: (count) => {
         toast("🛎️ Novo pedido recebido!", {
           description: `Você tem ${count} pedido${count > 1 ? "s" : ""} pendente${count > 1 ? "s" : ""}.`,
           duration: 8000,
-          action: {
-            label: "Ver pedidos",
-            onClick: () => setNotificationsOpen(true),
-          },
+          action: { label: "Ver pedidos", onClick: () => setNotificationsOpen(true) },
         })
-      }
-
-      lastPendingRef.current = count
-      setPendingCount(count)
-    } catch {
-      // falha de rede — ignora silenciosamente
-    }
-  }, [playChime])
-
-  // Inicia o polling quando o componente monta, limpa ao desmontar
-  useEffect(() => {
-    pollPending() // primeira chamada imediata
-    pollingRef.current = setInterval(pollPending, 15_000)
-    return () => { if (pollingRef.current) clearInterval(pollingRef.current) }
-  }, [pollPending])
-  // ── fim polling ───────────────────────────────────────────────────────────
+      },
+    })
 
   const handleLogout = async () => {
     await authFetch(`${API_URL}/auth/logout`, { method: "POST" })
@@ -429,6 +356,8 @@ export function Admin() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4">
+
+          {/* Esquerda */}
           <div className="flex min-w-0 items-center gap-2">
             <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/")}>
               <ArrowLeft className="h-5 w-5" />
@@ -438,17 +367,29 @@ export function Admin() {
               <p className="hidden truncate text-xs text-muted-foreground sm:block">Gerencie seus produtos</p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+
+          {/* Direita */}
+          <div className="flex shrink-0 items-center gap-1.5">
+
             <ThemeToggle />
-            <Button variant="outline" size="icon" onClick={() => navigate("/nexus-24/relatorio")} title="Relatório de Vendas">
+
+            {/* Relatório */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate("/nexus-24/relatorio")}
+              title="Relatório de Vendas"
+            >
               <FileText className="h-4 w-4" />
             </Button>
+
+            {/* Pedidos pendentes */}
             <Button
               variant="outline"
               size="icon"
               className="relative"
               onClick={() => { setNotificationsOpen(true); pollPending() }}
-              title="Notificações"
+              title="Ver pedidos"
             >
               <Bell className="h-4 w-4" />
               {pendingCount > 0 && (
@@ -457,13 +398,23 @@ export function Admin() {
                 </span>
               )}
             </Button>
+
+            {/* Novo produto */}
             <Button onClick={openCreateDialog} className="gap-1 px-2 sm:px-4">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Novo Produto</span>
             </Button>
-            <Button variant="outline" className="px-2 sm:px-4" onClick={() => setLogoutConfirmOpen(true)}>
-              Sair
+
+            {/* Sair */}
+            <Button
+              variant="outline"
+              className="gap-1 px-2 sm:px-4"
+              onClick={() => setLogoutConfirmOpen(true)}
+            >
+              <LogOut className="h-4 w-4 sm:hidden" />
+              <span className="hidden sm:inline">Sair</span>
             </Button>
+
           </div>
         </div>
       </header>
@@ -589,7 +540,7 @@ export function Admin() {
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-2" align="start">
-              {["TODOS","FLORAL","AMADEIRADO","CITRICO","ORIENTAL","AQUATICO","FRUTADO","GOURMAND"].map((opt) => (
+              {["TODOS", "FLORAL", "AMADEIRADO", "CITRICO", "ORIENTAL", "AQUATICO", "FRUTADO", "GOURMAND"].map((opt) => (
                 <button key={opt} onClick={() => setAdminFilters((prev) => ({ ...prev, family: opt }))}
                   className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${adminFilters.family === opt ? "bg-foreground text-background" : "hover:bg-muted"}`}>
                   {opt === "TODOS" ? "Todas" : opt.charAt(0) + opt.slice(1).toLowerCase()}

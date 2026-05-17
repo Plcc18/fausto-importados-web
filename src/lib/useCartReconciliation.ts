@@ -5,17 +5,15 @@ import { API_URL } from "@/lib/api"
 /**
  * Reconciles the local cart against live backend data.
  *
- * On mount (and whenever the cart is opened), fetches /api/product and:
- * - Updates price, name, image, inStock, stockQuantity from the backend.
- * - Clamps quantity to stockQuantity if the backend has less.
- * - Removes items whose product no longer exists in the backend.
- *
- * Calls setCart with the reconciled list only when something actually changed.
+ * Calls setCart with the reconciled list and setStockChangedIds with the
+ * IDs of products whose quantity was clamped due to stock changes — so the
+ * UI can show a targeted warning to the user.
  */
 export function useCartReconciliation(
   cart: CartItem[],
   setCart: (items: CartItem[]) => void,
-  triggerKey: unknown // pass `isCartOpen` so it re-runs when user opens cart
+  triggerKey: unknown,
+  setStockChangedIds?: (ids: string[]) => void
 ) {
   const isFetching = useRef(false)
 
@@ -32,17 +30,17 @@ export function useCartReconciliation(
 
         let changed = false
         const reconciled: CartItem[] = []
+        const changedIds: string[] = []
 
         for (const item of cart) {
           const live = productMap.get(item.product.id)
 
-          // Product removed from backend → drop from cart
           if (!live) {
             changed = true
+            changedIds.push(item.product.id)
             continue
           }
 
-          // Detect any field change
           const priceChanged = live.price !== item.product.price
           const stockChanged = live.stockQuantity !== item.product.stockQuantity
           const inStockChanged = live.inStock !== item.product.inStock
@@ -50,23 +48,22 @@ export function useCartReconciliation(
           const nameChanged = live.name !== item.product.name
 
           const anyChange =
-            priceChanged ||
-            stockChanged ||
-            inStockChanged ||
-            imageChanged ||
-            nameChanged
+            priceChanged || stockChanged || inStockChanged || imageChanged || nameChanged
 
-          // Clamp quantity to available stock
           const maxQty =
             live.stockQuantity !== undefined && live.stockQuantity !== null
               ? live.stockQuantity
               : item.quantity
           const newQty = Math.min(item.quantity, Math.max(maxQty, 0))
-          if (newQty !== item.quantity) changed = true
 
-          if (anyChange) changed = true
+          // Marca como "changed" somente quando a QUANTIDADE foi reduzida por estoque
+          if (newQty !== item.quantity) {
+            changed = true
+            changedIds.push(item.product.id)
+          } else if (anyChange) {
+            changed = true
+          }
 
-          // If out of stock, still keep in cart (show as unavailable) — do not silently remove
           reconciled.push({
             product: anyChange ? { ...item.product, ...live } : item.product,
             quantity: newQty,
@@ -74,9 +71,11 @@ export function useCartReconciliation(
         }
 
         if (changed) {
-          // Persist to localStorage
           localStorage.setItem("perfumaria_cart", JSON.stringify(reconciled))
           setCart(reconciled)
+          if (changedIds.length > 0) {
+            setStockChangedIds?.(changedIds)
+          }
         }
       })
       .catch(() => {

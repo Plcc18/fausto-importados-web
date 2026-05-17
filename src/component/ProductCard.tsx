@@ -1,29 +1,51 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { Product } from "@/lib/types"
 import { Card, CardContent } from "@/Shadcn-Components/ui/card"
 import { Button } from "@/Shadcn-Components/ui/button"
 import { Badge } from "@/Shadcn-Components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/Shadcn-Components/ui/dialog"
 import { Separator } from "@/Shadcn-Components/ui/separator"
-import { ShoppingBag, Plus, Minus } from "lucide-react"
+import { ShoppingBag, Plus, Minus, Heart, Share2, Check, X } from "lucide-react"
 import { toast } from "sonner"
 
 interface ProductCardProps {
   product: Product
   onAddToCart: (product: Product) => void
+  isFavorite?: boolean
+  onToggleFavorite?: (id: string) => void
+  onShare?: (id: string) => void
+  copiedId?: string | null
+  highlight?: boolean
+  onHighlightAck?: () => void
 }
 
-export function ProductCard({ product, onAddToCart }: ProductCardProps) {
+export function ProductCard({
+  product,
+  onAddToCart,
+  isFavorite = false,
+  onToggleFavorite,
+  onShare,
+  copiedId,
+  highlight = false,
+  onHighlightAck,
+}: ProductCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [quantity, setQuantity] = useState(1)
+
   const hasDiscount = product.originalPrice && product.originalPrice > product.price
   const isFeatured = product.featured === true
-
   const isOutOfStock =
     !product.inStock ||
     (product.stockQuantity !== undefined && product.stockQuantity <= 0)
+
+  useEffect(() => {
+    if (highlight) {
+      setIsModalOpen(true)
+      onHighlightAck?.()
+    }
+  }, [highlight])
 
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) onAddToCart(product)
@@ -31,7 +53,6 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
     setIsModalOpen(false)
   }
 
-  // Abbreviated labels keep the meta line short on mobile
   const categoryLabels: Record<string, string> = {
     masculino: "Masc.", feminino: "Fem.", unissex: "Unissex",
     MASCULINO: "Masc.", FEMININO: "Fem.", UNISSEX: "Unissex",
@@ -42,9 +63,10 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   }
 
   const familyShort = product.olfactiveFamily
-    ? product.olfactiveFamily.charAt(0).toUpperCase() +
-      product.olfactiveFamily.slice(1).toLowerCase()
+    ? product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1).toLowerCase()
     : ""
+
+  const isCopied = copiedId === product.id
 
   const StockBadge = () => {
     if (isOutOfStock || product.stockQuantity == null) return null
@@ -59,17 +81,19 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         className="group cursor-pointer overflow-hidden border-0 bg-card shadow-sm transition-all duration-300 hover:shadow-lg"
         onClick={() => setIsModalOpen(true)}
       >
-        {/* Image */}
+        {/* Imagem */}
         <div className="relative aspect-square overflow-hidden bg-muted">
           <img
             src={product.image || "/placeholder.svg"}
             alt={product.name}
+            loading="lazy"
             className="w-full h-full object-contain p-3 transition-transform duration-500 group-hover:scale-105"
           />
+
           {hasDiscount && (
             <Badge className="absolute top-3 right-3 bg-primary text-primary-foreground">Oferta</Badge>
           )}
-          {isFeatured && (
+          {isFeatured && !hasDiscount && (
             <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">Destaque</Badge>
           )}
           {isOutOfStock && (
@@ -77,45 +101,57 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
               <Badge variant="destructive">Esgotado</Badge>
             </div>
           )}
+
+          {/* Favorito + Compartilhar — sempre visíveis, canto superior esquerdo/direito */}
+          {(onToggleFavorite || onShare) && (
+            <div className="absolute bottom-2 right-2 flex gap-1.5">
+              {onToggleFavorite && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleFavorite(product.id) }}
+                  title={isFavorite ? "Remover dos favoritos" : "Salvar nos favoritos"}
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-background/90 shadow-sm backdrop-blur-sm transition-colors hover:bg-background active:scale-95"
+                >
+                  <Heart
+                    className={`h-3.5 w-3.5 transition-colors ${
+                      isFavorite ? "fill-red-500 text-red-500" : "text-muted-foreground"
+                    }`}
+                  />
+                </button>
+              )}
+              {onShare && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onShare(product.id) }}
+                  title="Copiar link do produto"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-background/90 shadow-sm backdrop-blur-sm transition-colors hover:bg-background active:scale-95"
+                >
+                  {isCopied
+                    ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    : <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  }
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Body — every section has a fixed/min height so all cards align */}
+        {/* Corpo do card */}
         <CardContent className="flex flex-col p-3 sm:p-4">
-
-          {/* Brand */}
-          <p className="text-xs uppercase tracking-wider text-muted-foreground truncate">
-            {product.brand}
-          </p>
-
-          {/* Name: clamp to 2 lines so short & long names take the same space */}
+          <p className="text-xs uppercase tracking-wider text-muted-foreground truncate">{product.brand}</p>
           <h3 className="mt-1 text-sm sm:text-base font-medium text-foreground line-clamp-2 min-h-10 leading-snug">
             {product.name}
           </h3>
-
-          {/* Meta line: always one line, truncates if too long */}
           <p className="mt-1 text-xs text-muted-foreground truncate leading-none">
             {product.size}ml · {categoryLabels[product.category]} · {familyShort}
           </p>
-
-          {/* Stock badge: fixed height — absence of badge doesn't shift what's below */}
-          <div className="mt-2 h-5 flex items-center">
-            <StockBadge />
-          </div>
-
-          {/* Price block: fixed height whether or not there's a strikethrough */}
+          <div className="mt-2 h-5 flex items-center"><StockBadge /></div>
           <div className="mt-2 h-10 flex flex-col justify-center">
             <span className="text-base sm:text-lg font-semibold text-foreground leading-tight">
               R$ {product.price.toFixed(2).replace(".", ",")}
             </span>
-            {/* Invisible placeholder preserves height when there's no discount */}
             <span className={`text-xs leading-tight ${hasDiscount ? "text-muted-foreground line-through" : "invisible"}`}>
-              {hasDiscount
-                ? `R$ ${product.originalPrice?.toFixed(2).replace(".", ",")}`
-                : "-"}
+              {hasDiscount ? `R$ ${product.originalPrice?.toFixed(2).replace(".", ",")}` : "-"}
             </span>
           </div>
-
-          {/* Button: always at the same position because everything above is fixed height */}
           <Button
             className="mt-3 w-full gap-2"
             onClick={(e) => {
@@ -133,16 +169,28 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         </CardContent>
       </Card>
 
-      {/* Modal */}
+      {/* ── Modal de detalhes ── */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-3xl p-0 h-[95vh] md:h-auto overflow-y-auto">
+        <DialogContent className="max-w-3xl p-0 max-h-[95vh] flex flex-col overflow-hidden">
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
-          <div className="flex flex-col md:flex-row">
-            <div className="relative bg-muted md:flex-1 flex items-center justify-center min-h-75">
+
+          {/* Botão fechar — fixo, sempre visível sobre qualquer conteúdo */}
+          <button
+            onClick={() => setIsModalOpen(false)}
+            className="absolute right-3 top-3 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 shadow-md backdrop-blur-sm transition-colors hover:bg-muted"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+
+          {/* Conteúdo rolável */}
+          <div className="flex flex-col md:flex-row overflow-y-auto">
+            {/* Imagem */}
+            <div className="relative bg-muted md:flex-1 flex items-center justify-center min-h-64 shrink-0">
               <img
                 src={product.image || "/placeholder.svg"}
                 alt={product.name}
-                className="max-w-full max-h-full object-contain p-6"
+                className="max-w-full max-h-72 md:max-h-96 object-contain p-6"
               />
               {isOutOfStock && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/80">
@@ -151,6 +199,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
               )}
             </div>
 
+            {/* Detalhes */}
             <div className="flex flex-col p-6 md:flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline">{categoryLabelsFull[product.category]}</Badge>
@@ -158,9 +207,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                 {hasDiscount && <Badge className="bg-accent text-accent-foreground">Oferta</Badge>}
               </div>
 
-              <p className="mt-4 text-sm uppercase tracking-wider text-muted-foreground">
-                {product.brand}
-              </p>
+              <p className="mt-4 text-sm uppercase tracking-wider text-muted-foreground">{product.brand}</p>
               <h2 className="mt-1 text-2xl font-semibold text-foreground">{product.name}</h2>
               <p className="text-sm text-muted-foreground">{product.size}ml</p>
 
@@ -171,9 +218,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                       Últimas {product.stockQuantity} unidade{product.stockQuantity > 1 ? "s" : ""}
                     </Badge>
                   ) : (
-                    <Badge variant="secondary" className="text-xs">
-                      {product.stockQuantity} em estoque
-                    </Badge>
+                    <Badge variant="secondary" className="text-xs">{product.stockQuantity} em estoque</Badge>
                   )
                 )}
               </div>
@@ -215,6 +260,25 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
                   <ShoppingBag className="h-4 w-4" />
                   Adicionar ao Carrinho
                 </Button>
+              </div>
+
+              {/* Favorito + Compartilhar no modal */}
+              <div className="mt-4 flex gap-2">
+                {onToggleFavorite && (
+                  <Button variant="outline" className="flex-1 gap-2" onClick={() => onToggleFavorite(product.id)}>
+                    <Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
+                    {isFavorite ? "Remover favorito" : "Salvar"}
+                  </Button>
+                )}
+                {onShare && (
+                  <Button variant="outline" className="gap-2" onClick={() => onShare(product.id)}>
+                    {isCopied
+                      ? <Check className="h-4 w-4 text-emerald-500" />
+                      : <Share2 className="h-4 w-4" />
+                    }
+                    {isCopied ? "Copiado!" : "Compartilhar"}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
