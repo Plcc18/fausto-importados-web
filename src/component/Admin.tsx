@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import type { Product } from "@/lib/types"
 import { Button } from "@/Shadcn-Components/ui/button"
@@ -51,6 +51,8 @@ import {
   ChevronDown,
   Search,
   LogOut,
+  ArrowUpDown,
+  Check
 } from "lucide-react"
 import {
   Popover,
@@ -197,6 +199,9 @@ export function Admin() {
   const [adminFilters, setAdminFilters] = useState({
     gender: "TODOS", family: "TODOS", onSale: false, minPrice: "", maxPrice: "",
   })
+  type AdminSortKey = 'default' | 'price_asc' | 'price_desc' | 'name_asc' | 'stock_asc'
+  const [adminSort, setAdminSort] = useState<AdminSortKey>('default')
+
   const [adminSearch, setAdminSearch] = useState("")
 
   const { pendingCount, poll: pollPending } =
@@ -328,26 +333,34 @@ export function Admin() {
     totalValue: products.reduce((sum, p) => sum + p.price * (p.stockQuantity ?? 1), 0),
   }
 
-  const filteredAdminProducts = products.filter((p) => {
-    if (adminSearch.trim()) {
-      const t = adminSearch.toLowerCase()
-      if (!p.name.toLowerCase().includes(t) && !p.brand.toLowerCase().includes(t)) return false
-    }
-    if (adminFilters.gender !== "TODOS" && p.category !== adminFilters.gender) return false
-    if (adminFilters.family !== "TODOS" && p.olfactiveFamily?.toUpperCase() !== adminFilters.family) return false
-    if (adminFilters.onSale && !(p.originalPrice && p.originalPrice > p.price)) return false
-    const _min = adminFilters.minPrice !== "" ? Number(adminFilters.minPrice) : 0
-    const _max = adminFilters.maxPrice !== "" ? Number(adminFilters.maxPrice) : Infinity
-    if (p.price < _min || p.price > _max) return false
-    return true
-  })
+  const filteredAdminProducts = useMemo(() => {
+    const filtered = products.filter((p) => {
+      if (adminSearch.trim()) {
+        const t = adminSearch.toLowerCase()
+        if (!p.name.toLowerCase().includes(t) && !p.brand.toLowerCase().includes(t)) return false
+      }
+      if (adminFilters.gender !== "TODOS" && p.category !== adminFilters.gender) return false
+      if (adminFilters.family !== "TODOS" && p.olfactiveFamily?.toUpperCase() !== adminFilters.family) return false
+      if (adminFilters.onSale && !(p.originalPrice && p.originalPrice > p.price)) return false
+      const _min = adminFilters.minPrice !== "" ? Number(adminFilters.minPrice) : 0
+      const _max = adminFilters.maxPrice !== "" ? Number(adminFilters.maxPrice) : Infinity
+      if (p.price < _min || p.price > _max) return false
+      return true
+    })
+    const sorted = [...filtered]
+    if (adminSort === 'price_asc') sorted.sort((a, b) => a.price - b.price)
+    if (adminSort === 'price_desc') sorted.sort((a, b) => b.price - a.price)
+    if (adminSort === 'name_asc') sorted.sort((a, b) => a.name.localeCompare(b.name))
+    if (adminSort === 'stock_asc') sorted.sort((a, b) => (a.stockQuantity ?? 0) - (b.stockQuantity ?? 0))
+    return sorted
+  }, [products, adminSearch, adminFilters, adminSort])
 
   const PAGE_SIZE = 10
   const { page, setPage, totalPages, paginated, next, prev, goTo } =
     usePagination(filteredAdminProducts, PAGE_SIZE)
 
   // Reset para página 1 sempre que filtros mudarem
-  useEffect(() => { setPage(1) }, [adminSearch, adminFilters])
+  useEffect(() => { setPage(1) }, [adminSearch, adminFilters, adminSort])
 
   const categoryLabels = { MASCULINO: "Masculino", FEMININO: "Feminino", UNISSEX: "Unissex" }
 
@@ -499,6 +512,8 @@ export function Admin() {
 
         {/* Filtros do admin */}
         <div className="mb-6 flex flex-wrap items-center gap-2">
+
+          {/* Busca */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
@@ -515,6 +530,39 @@ export function Admin() {
             )}
           </div>
 
+          {/* Ordenação */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminSort !== 'default' ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"}`}>
+                <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+                {adminSort === 'default' ? 'Ordenar' :
+                  adminSort === 'price_asc' ? 'Menor preço' :
+                    adminSort === 'price_desc' ? 'Maior preço' :
+                      adminSort === 'name_asc' ? 'Nome A–Z' :
+                        'Menor estoque'}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" align="start">
+              {([
+                { value: 'default', label: 'Padrão' },
+                { value: 'price_asc', label: 'Menor preço' },
+                { value: 'price_desc', label: 'Maior preço' },
+                { value: 'name_asc', label: 'Nome A–Z' },
+                { value: 'stock_asc', label: 'Menor estoque' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setAdminSort(opt.value)}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors flex items-center gap-2 ${adminSort === opt.value ? "bg-foreground text-background" : "hover:bg-muted"}`}
+                >
+                  {adminSort === opt.value && <Check className="h-3.5 w-3.5 shrink-0" />}
+                  {opt.label}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+
+          {/* Gênero */}
           <Popover>
             <PopoverTrigger asChild>
               <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.gender !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"}`}>
@@ -532,6 +580,7 @@ export function Admin() {
             </PopoverContent>
           </Popover>
 
+          {/* Família Olfativa */}
           <Popover>
             <PopoverTrigger asChild>
               <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.family !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"}`}>
@@ -549,6 +598,7 @@ export function Admin() {
             </PopoverContent>
           </Popover>
 
+          {/* Preço */}
           <Popover>
             <PopoverTrigger asChild>
               <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.minPrice !== "" || adminFilters.maxPrice !== "" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"}`}>
@@ -577,6 +627,7 @@ export function Admin() {
             </PopoverContent>
           </Popover>
 
+          {/* Promoções */}
           <button
             onClick={() => setAdminFilters((prev) => ({ ...prev, onSale: !prev.onSale }))}
             className={`rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${adminFilters.onSale ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"}`}
@@ -584,9 +635,14 @@ export function Admin() {
             Promoções
           </button>
 
-          {(adminSearch || adminFilters.gender !== "TODOS" || adminFilters.family !== "TODOS" || adminFilters.onSale || adminFilters.minPrice !== "" || adminFilters.maxPrice !== "") && (
+          {/* Limpar todos os filtros */}
+          {(adminSearch || adminFilters.gender !== "TODOS" || adminFilters.family !== "TODOS" || adminFilters.onSale || adminFilters.minPrice !== "" || adminFilters.maxPrice !== "" || adminSort !== "default") && (
             <button
-              onClick={() => { setAdminSearch(""); setAdminFilters({ gender: "TODOS", family: "TODOS", onSale: false, minPrice: "", maxPrice: "" }) }}
+              onClick={() => {
+                setAdminSearch("")
+                setAdminFilters({ gender: "TODOS", family: "TODOS", onSale: false, minPrice: "", maxPrice: "" })
+                setAdminSort("default")
+              }}
               className="flex items-center gap-1 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-all hover:border-foreground/50 hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" /> Limpar
