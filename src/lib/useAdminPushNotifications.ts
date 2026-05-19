@@ -54,6 +54,9 @@ export function useAdminPushNotifications({
   const mutedRef = useRef(muted)
   useEffect(() => { mutedRef.current = muted }, [muted])
 
+  const onNewOrderRef = useRef(onNewOrder)
+  useEffect(() => { onNewOrderRef.current = onNewOrder }, [onNewOrder])
+
   // Sincroniza permissão quando o usuário volta para a aba
   useEffect(() => {
     const sync = () => {
@@ -117,12 +120,12 @@ export function useAdminPushNotifications({
       if (lastCountRef.current !== null && count > lastCountRef.current) {
         playChime()
         sendPushNotification(count)
-        onNewOrder?.(count)
+        onNewOrderRef.current?.(count)
       }
       lastCountRef.current = count
       setPendingCount(count)
     } catch { /* erro de rede */ }
-  }, [playChime, sendPushNotification, onNewOrder])
+  }, [playChime, sendPushNotification])
 
   // Unlock AudioContext na primeira interação do usuário
   useEffect(() => {

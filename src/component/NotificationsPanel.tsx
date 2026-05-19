@@ -39,9 +39,9 @@ const paymentLabels: Record<string, string> = {
 }
 
 const statusConfig = {
-  PENDING:   { label: "Pendente",  icon: Clock,       className: "text-yellow-600 bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800" },
+  PENDING: { label: "Pendente", icon: Clock, className: "text-yellow-600 bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800" },
   COMPLETED: { label: "Concluído", icon: CheckCircle, className: "text-green-600 bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" },
-  CANCELLED: { label: "Cancelado", icon: XCircle,     className: "text-red-600 bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800" },
+  CANCELLED: { label: "Cancelado", icon: XCircle, className: "text-red-600 bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800" },
 }
 
 const authFetch = (url: string, options: RequestInit = {}) =>
@@ -50,9 +50,10 @@ const authFetch = (url: string, options: RequestInit = {}) =>
 interface NotificationsPanelProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onStatusChange?: () => void
 }
 
-export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelProps) {
+export function NotificationsPanel({ open, onOpenChange, onStatusChange }: NotificationsPanelProps) {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "COMPLETED" | "CANCELLED">("ALL")
@@ -87,12 +88,14 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
       alert("⚠️ " + (data.error || "Estoque insuficiente para concluir o pedido."))
       return
     }
-    fetchOrders()
+    await fetchOrders()
+    onStatusChange?.()
   }
 
   const handleCancel = async (id: string) => {
     await authFetch(`${API_URL}/api/orders/${id}/cancel`, { method: "POST" })
-    fetchOrders()
+    await fetchOrders()
+    onStatusChange?.()
   }
 
   const handleClearHistory = async () => {
@@ -232,7 +235,7 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
                             <Button
                               size="sm"
                               variant="outline"
-                              className="gap-1 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
+                              className="gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-red-800 dark:hover:bg-red-950/30"
                               onClick={() => handleCancel(order.id)}
                             >
                               <X className="h-3.5 w-3.5" />
@@ -240,7 +243,8 @@ export function NotificationsPanel({ open, onOpenChange }: NotificationsPanelPro
                             </Button>
                             <Button
                               size="sm"
-                              className="gap-1 bg-green-600 hover:bg-green-700"
+                              variant={"outline"}
+                              className="gap-1 text-green-600 border-green-200  hover:bg-green-100 hover:text-green-600 dark:border-green-800 dark:hover:bg-green-950/30"
                               onClick={() => handleComplete(order.id)}
                             >
                               <Check className="h-3.5 w-3.5" />

@@ -193,7 +193,6 @@ export function Admin() {
   const [imageUploading, setImageUploading] = useState(false)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  //const [pendingCount, setPendingCount] = useState(0)
   const [salesStats, setSalesStats] = useState({ day: 0, month: 0, year: 0 })
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [adminFilters, setAdminFilters] = useState({
@@ -204,16 +203,15 @@ export function Admin() {
 
   const [adminSearch, setAdminSearch] = useState("")
 
-  const { pendingCount, poll: pollPending } =
-    useAdminPushNotifications({
-      onNewOrder: (count) => {
-        toast("🛎️ Novo pedido recebido!", {
-          description: `Você tem ${count} pedido${count > 1 ? "s" : ""} pendente${count > 1 ? "s" : ""}.`,
-          duration: 8000,
-          action: { label: "Ver pedidos", onClick: () => setNotificationsOpen(true) },
-        })
-      },
-    })
+  const { pendingCount, poll: pollPending } = useAdminPushNotifications({
+    onNewOrder: (count) => {
+      toast("🛎️ Novo pedido recebido!", {
+        description: `Você tem ${count} pedido${count > 1 ? "s" : ""} pendente${count > 1 ? "s" : ""}.`,
+        duration: 8000,
+        action: { label: "Ver pedidos", onClick: () => setNotificationsOpen(true) },
+      })
+    },
+  })
 
   const handleLogout = async () => {
     await authFetch(`${API_URL}/auth/logout`, { method: "POST" })
@@ -890,7 +888,11 @@ export function Admin() {
 
       <NotificationsPanel
         open={notificationsOpen}
-        onOpenChange={(v) => { setNotificationsOpen(v); if (!v) { pollPending(); fetchSalesStats() } }}
+        onOpenChange={(v) => {
+          setNotificationsOpen(v)
+          if (!v) { pollPending(); fetchSalesStats(); }
+        }}
+        onStatusChange={() => pollPending()}
       />
 
       <Dialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
