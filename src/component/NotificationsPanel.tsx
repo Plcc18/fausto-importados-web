@@ -59,6 +59,7 @@ export function NotificationsPanel({ open, onOpenChange, onStatusChange }: Notif
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "COMPLETED" | "CANCELLED">("ALL")
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const [clearing, setClearing] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{ id: string; type: "complete" | "cancel" } | null>(null)
 
   const fetchOrders = async () => {
     setLoading(true)
@@ -236,7 +237,7 @@ export function NotificationsPanel({ open, onOpenChange, onStatusChange }: Notif
                               size="sm"
                               variant="outline"
                               className="gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-red-800 dark:hover:bg-red-950/30"
-                              onClick={() => handleCancel(order.id)}
+                               onClick={() => setConfirmAction({ id: order.id, type: "cancel" })}
                             >
                               <X className="h-3.5 w-3.5" />
                               Cancelar
@@ -245,7 +246,7 @@ export function NotificationsPanel({ open, onOpenChange, onStatusChange }: Notif
                               size="sm"
                               variant={"outline"}
                               className="gap-1 text-green-600 border-green-200  hover:bg-green-100 hover:text-green-600 dark:border-green-800 dark:hover:bg-green-950/30"
-                              onClick={() => handleComplete(order.id)}
+                              onClick={() => setConfirmAction({ id: order.id, type: "complete" })}
                             >
                               <Check className="h-3.5 w-3.5" />
                               Concluir
@@ -287,6 +288,37 @@ export function NotificationsPanel({ open, onOpenChange, onStatusChange }: Notif
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={!!confirmAction} onOpenChange={(v) => { if (!v) setConfirmAction(null) }}>
+  <DialogContent className="max-w-sm">
+    <DialogHeader>
+      <DialogTitle>
+        {confirmAction?.type === "complete" ? "Concluir pedido" : "Cancelar pedido"}
+      </DialogTitle>
+    </DialogHeader>
+    <p className="text-sm text-muted-foreground">
+      {confirmAction?.type === "complete"
+        ? "Tem certeza que deseja concluir este pedido? O estoque será descontado."
+        : "Tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita."}
+    </p>
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setConfirmAction(null)}>
+        Voltar
+      </Button>
+      <Button
+        variant={confirmAction?.type === "complete" ? "default" : "destructive"}
+        className={confirmAction?.type === "complete" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+        onClick={async () => {
+          if (!confirmAction) return
+          if (confirmAction.type === "complete") await handleComplete(confirmAction.id)
+          else await handleCancel(confirmAction.id)
+          setConfirmAction(null)
+        }}
+      >
+        {confirmAction?.type === "complete" ? "Sim, concluir" : "Sim, cancelar"}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
     </>
   )
 }
