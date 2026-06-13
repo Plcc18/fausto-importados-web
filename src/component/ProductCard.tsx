@@ -7,7 +7,7 @@ import { Button } from "@/Shadcn-Components/ui/button"
 import { Badge } from "@/Shadcn-Components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/Shadcn-Components/ui/dialog"
 import { Separator } from "@/Shadcn-Components/ui/separator"
-import { ShoppingBag, Plus, Minus, Heart, Share2, Check, X } from "lucide-react"
+import { ShoppingBag, Plus, Minus, Heart, Share2, Check } from "lucide-react"
 import { toast } from "sonner"
 
 interface ProductCardProps {
