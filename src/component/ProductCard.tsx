@@ -62,8 +62,11 @@ export function ProductCard({
     MASCULINO: "Masculino", FEMININO: "Feminino", UNISSEX: "Unissex",
   }
 
-  const familyShort = product.olfactiveFamily
-    ? product.olfactiveFamily.charAt(0).toUpperCase() + product.olfactiveFamily.slice(1).toLowerCase()
+  const formattedFamilies = product.olfactiveFamily
+    ? product.olfactiveFamily
+        .split(",")
+        .map((f) => f.trim().charAt(0).toUpperCase() + f.trim().slice(1).toLowerCase())
+        .join(", ")
     : ""
 
   const isCopied = copiedId === product.id
@@ -82,7 +85,7 @@ export function ProductCard({
         onClick={() => setIsModalOpen(true)}
       >
         {/* Imagem */}
-        <div className="relative aspect-square overflow-hidden bg-muted">
+        <div className="relative aspect-square overflow-hidden bg-white">
           <img
             src={product.image || "/placeholder.svg"}
             alt={product.name}
@@ -141,7 +144,7 @@ export function ProductCard({
             {product.name}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground truncate leading-none">
-            {product.size}ml · {categoryLabels[product.category]} · {familyShort}
+            {product.size}ml · {categoryLabels[product.category]} · {formattedFamilies}
           </p>
           <div className="mt-2 h-5 flex items-center"><StockBadge /></div>
           <div className="mt-2 h-10 flex flex-col justify-center">
@@ -174,19 +177,12 @@ export function ProductCard({
         <DialogContent className="max-w-3xl p-0 max-h-[95vh] flex flex-col overflow-hidden">
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
 
-          {/* Botão fechar — fixo, sempre visível sobre qualquer conteúdo */}
-          <button
-            onClick={() => setIsModalOpen(false)}
-            className="absolute right-3 top-3 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 shadow-md backdrop-blur-sm transition-colors hover:bg-muted"
-            aria-label="Fechar"
-          >
-            <X className="h-4 w-4" />
-          </button>
+
 
           {/* Conteúdo rolável */}
           <div className="flex flex-col md:flex-row overflow-y-auto">
             {/* Imagem */}
-            <div className="relative bg-muted md:flex-1 flex items-center justify-center min-h-64 shrink-0">
+            <div className="relative bg-white md:flex-1 flex items-center justify-center min-h-64 shrink-0">
               <img
                 src={product.image || "/placeholder.svg"}
                 alt={product.name}
@@ -203,7 +199,11 @@ export function ProductCard({
             <div className="flex flex-col p-6 md:flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline">{categoryLabelsFull[product.category]}</Badge>
-                <Badge variant="secondary">{familyShort}</Badge>
+                {product.olfactiveFamily && product.olfactiveFamily.split(",").map((f) => (
+                  <Badge key={f} variant="secondary">
+                    {f.trim().charAt(0).toUpperCase() + f.trim().slice(1).toLowerCase()}
+                  </Badge>
+                ))}
                 {hasDiscount && <Badge className="bg-accent text-accent-foreground">Oferta</Badge>}
               </div>
 

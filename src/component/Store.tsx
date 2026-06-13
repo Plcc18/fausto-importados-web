@@ -175,7 +175,11 @@ export function Store() {
       )
     }
     if (filters.gender !== 'todos') result = result.filter((p) => p.category.toLowerCase() === filters.gender)
-    if (filters.family !== 'todos') result = result.filter((p) => p.olfactiveFamily.toLowerCase() === filters.family)
+    if (filters.family !== 'todos') {
+      result = result.filter((p) =>
+        p.olfactiveFamily ? p.olfactiveFamily.toLowerCase().split(',').includes(filters.family.toLowerCase()) : false
+      )
+    }
     if (filters.concentration !== 'todos') result = result.filter((p) => p.concentration === filters.concentration)
     const min = filters.minPrice !== '' ? Number(filters.minPrice) : 0
     const max = filters.maxPrice !== '' ? Number(filters.maxPrice) : Infinity

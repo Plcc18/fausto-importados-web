@@ -338,7 +338,12 @@ export function Admin() {
         if (!p.name.toLowerCase().includes(t) && !p.brand.toLowerCase().includes(t)) return false
       }
       if (adminFilters.gender !== "TODOS" && p.category !== adminFilters.gender) return false
-      if (adminFilters.family !== "TODOS" && p.olfactiveFamily?.toUpperCase() !== adminFilters.family) return false
+      if (adminFilters.family !== "TODOS") {
+        const productFamilies = p.olfactiveFamily
+          ? p.olfactiveFamily.toUpperCase().split(",").map((f) => f.trim())
+          : []
+        if (!productFamilies.includes(adminFilters.family)) return false
+      }
       if (adminFilters.onSale && !(p.originalPrice && p.originalPrice > p.price)) return false
       const _min = adminFilters.minPrice !== "" ? Number(adminFilters.minPrice) : 0
       const _max = adminFilters.maxPrice !== "" ? Number(adminFilters.maxPrice) : Infinity
@@ -689,7 +694,7 @@ export function Admin() {
                     paginated.map((product) => (
                       <TableRow key={product.id}>
                         <TableCell>
-                          <div className="relative h-12 w-12 overflow-hidden rounded-md bg-muted flex items-center justify-center">
+                          <div className="relative h-12 w-12 overflow-hidden rounded-md bg-white  flex items-center justify-center">
                             <img src={product.image || "/placeholder.svg"} alt={product.name} className="max-h-full max-w-full object-contain" onError={(e) => { e.currentTarget.src = "/placeholder.svg" }} />
                           </div>
                         </TableCell>
@@ -739,7 +744,7 @@ export function Admin() {
               {paginated.map((product) => (
                 <Card key={product.id}>
                   <CardContent className="flex items-center gap-4 p-4">
-                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted flex items-center justify-center">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-white dark:bg-muted/20 flex items-center justify-center">
                       <img src={product.image || "/placeholder.svg"} alt={product.name} className="max-h-full max-w-full object-contain" onError={(e) => { e.currentTarget.src = "/placeholder.svg" }} />
                     </div>
                     <div className="flex-1">
@@ -818,20 +823,46 @@ export function Admin() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2 mt-4">
-                    <Label>Família Olfativa</Label>
-                    <Select value={formData.olfactiveFamily} onValueChange={(value: string) => setFormData({ ...formData, olfactiveFamily: value })}>
-                      <SelectTrigger><SelectValue placeholder="Selecione a família olfativa" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="FLORAL">Floral</SelectItem>
-                        <SelectItem value="AMADEIRADO">Amadeirado</SelectItem>
-                        <SelectItem value="CITRICO">Cítrico</SelectItem>
-                        <SelectItem value="ORIENTAL">Oriental</SelectItem>
-                        <SelectItem value="AQUATICO">Aquático</SelectItem>
-                        <SelectItem value="FRUTADO">Frutado</SelectItem>
-                        <SelectItem value="GOURMAND">Gourmand</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-2 mt-4 col-span-3">
+                    <Label>Família Olfativa (Selecione uma ou mais)</Label>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 rounded-lg border p-4 bg-muted/20">
+                      {[
+                        { value: "FLORAL", label: "Floral" },
+                        { value: "AMADEIRADO", label: "Amadeirado" },
+                        { value: "CITRICO", label: "Cítrico" },
+                        { value: "ORIENTAL", label: "Oriental" },
+                        { value: "AQUATICO", label: "Aquático" },
+                        { value: "FRUTADO", label: "Frutado" },
+                        { value: "GOURMAND", label: "Gourmand" },
+                      ].map((family) => {
+                        const isChecked = formData.olfactiveFamily
+                          ? formData.olfactiveFamily.split(",").map((f) => f.trim().toUpperCase()).includes(family.value)
+                          : false
+                        return (
+                          <div key={family.value} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`family-${family.value}`}
+                              checked={isChecked}
+                              onCheckedChange={(checked) => {
+                                const currentList = formData.olfactiveFamily
+                                  ? formData.olfactiveFamily.split(",").map((f) => f.trim().toUpperCase()).filter(Boolean)
+                                  : []
+                                let newList: string[]
+                                if (checked) {
+                                  newList = [...currentList, family.value]
+                                } else {
+                                  newList = currentList.filter((f) => f !== family.value)
+                                }
+                                setFormData({ ...formData, olfactiveFamily: newList.join(",") })
+                              }}
+                            />
+                            <Label htmlFor={`family-${family.value}`} className="text-sm font-normal cursor-pointer">
+                              {family.label}
+                            </Label>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
 
