@@ -47,6 +47,27 @@ export function ProductCard({
     }
   }, [highlight])
 
+  // Handle browser back button to close the modal
+  useEffect(() => {
+    if (!isModalOpen) return
+
+    const stateName = `modal-${product.id}`
+    window.history.pushState({ modal: stateName }, "")
+
+    const handlePopState = () => {
+      setIsModalOpen(false)
+    }
+
+    window.addEventListener("popstate", handlePopState)
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState)
+      if (window.history.state?.modal === stateName) {
+        window.history.back()
+      }
+    }
+  }, [isModalOpen, product.id])
+
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) onAddToCart(product)
     setQuantity(1)
