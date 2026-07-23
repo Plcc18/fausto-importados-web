@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import {
   ShoppingBag, Sparkles, Gift, Star, Flower2, TreePine, Citrus, Moon,
   Waves, Cherry, Cake, X, Check, ChevronDown, RotateCcw, Menu, Search,
-  Heart, ArrowUpDown, ChevronLeft, ChevronRight,
+  Heart, ArrowUpDown, ChevronLeft, ChevronRight, Leaf, Wind, Shield, Gem,
 } from 'lucide-react'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
@@ -38,6 +38,7 @@ type GenderFilter = 'todos' | 'feminino' | 'masculino' | 'unissex'
 type OlfativeFamily =
   | 'todos' | 'floral' | 'amadeirado' | 'citrico'
   | 'oriental' | 'aquatico' | 'frutado' | 'gourmand'
+  | 'aromatico' | 'fougere' | 'chipre' | 'couro'
 type Concentration = 'todos' | 'edt' | 'edp' | 'parfum' | 'extrait'
 type SortKey = 'default' | 'price_asc' | 'price_desc' | 'newest' | 'best_sellers'
 
@@ -154,6 +155,10 @@ export function Store() {
     { value: 'aquatico', label: 'Aquático', icon: Waves },
     { value: 'frutado', label: 'Frutado', icon: Cherry },
     { value: 'gourmand', label: 'Gourmand', icon: Cake },
+    { value: 'aromatico', label: 'Aromático', icon: Leaf },
+    { value: 'fougere', label: 'Fougère', icon: Wind },
+    { value: 'chipre', label: 'Chipre', icon: Shield },
+    { value: 'couro', label: 'Couro', icon: Gem },
   ]
 
   const sortOptions: { value: SortKey; label: string }[] = [

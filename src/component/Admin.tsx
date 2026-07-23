@@ -619,7 +619,7 @@ export function Admin() {
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-2" align="start">
-              {["TODOS", "FLORAL", "AMADEIRADO", "CITRICO", "ORIENTAL", "AQUATICO", "FRUTADO", "GOURMAND"].map((opt) => (
+              {["TODOS", "FLORAL", "AMADEIRADO", "CITRICO", "ORIENTAL", "AQUATICO", "FRUTADO", "GOURMAND", "AROMATICO", "FOUGERE", "CHIPRE", "COURO"].map((opt) => (
                 <button key={opt} onClick={() => setAdminFilters((prev) => ({ ...prev, family: opt }))}
                   className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${adminFilters.family === opt ? "bg-foreground text-background" : "hover:bg-muted"}`}>
                   {opt === "TODOS" ? "Todas" : opt.charAt(0) + opt.slice(1).toLowerCase()}
@@ -861,6 +861,10 @@ export function Admin() {
                         { value: "AQUATICO", label: "Aquático" },
                         { value: "FRUTADO", label: "Frutado" },
                         { value: "GOURMAND", label: "Gourmand" },
+                        { value: "AROMATICO", label: "Aromático" },
+                        { value: "FOUGERE", label: "Fougère" },
+                        { value: "CHIPRE", label: "Chipre" },
+                        { value: "COURO", label: "Couro" },
                       ].map((family) => {
                         const isChecked = formData.olfactiveFamily
                           ? formData.olfactiveFamily.split(",").map((f) => f.trim().toUpperCase()).includes(family.value)

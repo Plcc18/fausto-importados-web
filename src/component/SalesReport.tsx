@@ -796,7 +796,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-2" align="start">
-              {["TODOS","FLORAL","AMADEIRADO","CITRICO","ORIENTAL","AQUATICO","FRUTADO","GOURMAND"].map((opt) => (
+              {["TODOS","FLORAL","AMADEIRADO","CITRICO","ORIENTAL","AQUATICO","FRUTADO","GOURMAND","AROMATICO","FOUGERE","CHIPRE","COURO"].map((opt) => (
                 <button key={opt} onClick={() => setFamily(opt)}
                   className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${family === opt ? "bg-foreground text-background" : "hover:bg-muted"}`}>
                   {opt === "TODOS" ? "Todas" : opt.charAt(0) + opt.slice(1).toLowerCase()}
