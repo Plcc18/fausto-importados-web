@@ -276,6 +276,32 @@ export function Admin() {
     })
     setIsDialogOpen(true)
   }
+  const handleCancel = () => {
+    Swal.fire({
+      title: "Confirmar cancelamento",
+      text: "Tem certeza que deseja cancelar? Todas as alterações não salvas serão perdidas.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sim, cancelar",
+      cancelButtonText: "Não, continuar",
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setIsDialogOpen(false)
+        setFormData(emptyForm)
+        setEditingProduct(null)
+      }
+    })
+  }
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      handleCancel()
+    } else {
+      setIsDialogOpen(true)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -294,26 +320,53 @@ export function Admin() {
       image: formData.image,
       stockQuantity: Number(formData.stockQuantity ?? 0),
     }
-    if (editingProduct) {
-      const form = new FormData()
-      form.append("product", JSON.stringify(productData))
-      const res = await authFetch(`${API_URL}/api/product/${editingProduct.id}`, { method: "PUT", body: form })
-      if (res.status === 401 || res.status === 403) {
-        Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
-        navigate("/nexus-24/login"); return
+
+    try {
+      if (editingProduct) {
+        const form = new FormData()
+        form.append("product", JSON.stringify(productData))
+        const res = await authFetch(`${API_URL}/api/product/${editingProduct.id}`, { method: "PUT", body: form })
+        if (res.status === 401 || res.status === 403) {
+          Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
+          navigate("/nexus-24/login"); return
+        }
+        if (!res.ok) {
+          const text = await res.text()
+          let message = text
+          try {
+            const parsed = JSON.parse(text)
+            message = parsed.message || parsed.error || text
+          } catch { /* ignore */ }
+          Swal.fire({ icon: "error", title: "Erro ao atualizar produto", text: message || "Ocorreu um erro ao atualizar o produto." })
+          return
+        }
+      } else {
+        const res = await authFetch(`${API_URL}/api/product`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(productData),
+        })
+        if (res.status === 401 || res.status === 403) {
+          Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
+          navigate("/nexus-24/login"); return
+        }
+        if (!res.ok) {
+          const text = await res.text()
+          let message = text
+          try {
+            const parsed = JSON.parse(text)
+            message = parsed.message || parsed.error || text
+          } catch { /* ignore */ }
+          Swal.fire({ icon: "error", title: "Erro ao cadastrar produto", text: message || "Ocorreu um erro ao cadastrar o produto." })
+          return
+        }
       }
-    } else {
-      const res = await authFetch(`${API_URL}/api/product`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(productData),
-      })
-      if (res.status === 401 || res.status === 403) {
-        Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
-        navigate("/nexus-24/login"); return
-      }
-      if (!res.ok) { const text = await res.text(); console.error("ERRO BACKEND:", text) }
+      setIsDialogOpen(false); setFormData(emptyForm); setEditingProduct(null); refreshProducts()
+      Swal.fire({ icon: "success", title: editingProduct ? "Produto atualizado" : "Produto cadastrado", text: editingProduct ? "O produto foi atualizado com sucesso." : "O produto foi cadastrado com sucesso.", timer: 2000, showConfirmButton: false })
+    } catch (error: any) {
+      console.error(error)
+      Swal.fire({ icon: "error", title: "Erro de conexão", text: error?.message || "Não foi possível se comunicar com o servidor." })
     }
-    setIsDialogOpen(false); setFormData(emptyForm); setEditingProduct(null); refreshProducts()
   }
+
 
   const handleDelete = async (id: string) => {
     const res = await authFetch(`${API_URL}/api/product/${id}`, { method: "DELETE" })
@@ -795,7 +848,7 @@ export function Admin() {
       </main>
 
       {/* Dialog de criação/edição */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-6xl">
           <DialogHeader>
             <DialogTitle>{editingProduct ? "Editar Produto" : "Novo Produto"}</DialogTitle>
@@ -908,7 +961,7 @@ export function Admin() {
               </div>
             </div>
             <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={handleCancel}>Cancelar</Button>
               <Button type="submit" disabled={imageUploading}>
                 {imageUploading ? "Enviando imagem..." : editingProduct ? "Salvar Alterações" : "Criar Produto"}
               </Button>
