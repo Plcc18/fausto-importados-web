@@ -276,32 +276,6 @@ export function Admin() {
     })
     setIsDialogOpen(true)
   }
-  const handleCancel = () => {
-    Swal.fire({
-      title: "Confirmar cancelamento",
-      text: "Tem certeza que deseja cancelar? Todas as alterações não salvas serão perdidas.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sim, cancelar",
-      cancelButtonText: "Não, continuar",
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        setIsDialogOpen(false)
-        setFormData(emptyForm)
-        setEditingProduct(null)
-      }
-    })
-  }
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      handleCancel()
-    } else {
-      setIsDialogOpen(true)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -848,7 +822,7 @@ export function Admin() {
       </main>
 
       {/* Dialog de criação/edição */}
-      <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-6xl">
           <DialogHeader>
             <DialogTitle>{editingProduct ? "Editar Produto" : "Novo Produto"}</DialogTitle>
@@ -961,7 +935,7 @@ export function Admin() {
               </div>
             </div>
             <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={handleCancel}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={imageUploading}>
                 {imageUploading ? "Enviando imagem..." : editingProduct ? "Salvar Alterações" : "Criar Produto"}
               </Button>
