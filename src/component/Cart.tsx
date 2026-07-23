@@ -144,7 +144,7 @@ function CheckoutModal({ open, onOpenChange, items, onCloseCart, onClear }: Chec
             <div className="space-y-4 grid grid-cols-1 sm:grid-cols-2">
               {items.map((item) => (
                 <div key={item.product.id} className="flex gap-4">
-                  <div className="h-20 w-16 rounded-md overflow-hidden bg-muted shrink-0">
+                  <div className="h-20 w-16 rounded-md overflow-hidden bg-white shrink-0">
                     <img src={item.product.image || '/placeholder.svg'} alt={item.product.name} className="h-full w-full object-contain p-2" onError={(e) => { e.currentTarget.src = '/placeholder.svg' }} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -306,7 +306,7 @@ export function Cart({
                       const isOutOfStock = (item.product.stockQuantity ?? 1) <= 0 || !item.product.inStock
                       return (
                         <div key={item.product.id} className={`flex gap-4 rounded-xl p-3 transition-colors ${wasChanged ? 'bg-yellow-50/60 border border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800' : 'bg-muted/30 hover:bg-muted/50'}`}>
-                          <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                          <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-lg bg-white">
                             <img src={item.product.image || '/placeholder.svg'} alt={item.product.name} className="h-full w-full object-contain p-3" onError={(e) => { e.currentTarget.src = '/placeholder.svg' }} />
                             {isOutOfStock && (
                               <div className="absolute inset-0 flex items-center justify-center bg-background/75 text-[10px] font-semibold text-destructive">Esgotado</div>
