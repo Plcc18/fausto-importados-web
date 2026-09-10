@@ -40,12 +40,17 @@ export function ProductCard({
     !product.inStock ||
     (product.stockQuantity !== undefined && product.stockQuantity <= 0)
 
+  // Abre o modal ao receber highlight (ajuste de estado durante a renderização)
+  const [prevHighlight, setPrevHighlight] = useState(highlight)
+  if (highlight !== prevHighlight) {
+    setPrevHighlight(highlight)
+    if (highlight) setIsModalOpen(true)
+  }
+
+  // Notifica o pai para limpar o highlight (efeito colateral em componente externo)
   useEffect(() => {
-    if (highlight) {
-      setIsModalOpen(true)
-      onHighlightAck?.()
-    }
-  }, [highlight])
+    if (highlight) onHighlightAck?.()
+  }, [highlight, onHighlightAck])
 
 
   // Handle browser back button to close the modal
@@ -94,12 +99,13 @@ export function ProductCard({
 
   const isCopied = copiedId === product.id
 
-  const StockBadge = () => {
-    if (isOutOfStock || product.stockQuantity == null) return null
-    if (product.stockQuantity <= 3)
-      return <Badge variant="destructive" className="text-xs">Últimas {product.stockQuantity} un.</Badge>
-    return <Badge variant="secondary" className="text-xs">{product.stockQuantity} em estoque</Badge>
-  }
+  const stockBadge =
+    isOutOfStock || product.stockQuantity == null ? null :
+    product.stockQuantity <= 3 ? (
+      <Badge variant="destructive" className="text-xs">Últimas {product.stockQuantity} un.</Badge>
+    ) : (
+      <Badge variant="secondary" className="text-xs">{product.stockQuantity} em estoque</Badge>
+    )
 
   return (
     <>
@@ -169,7 +175,7 @@ export function ProductCard({
           <p className="mt-1 text-xs text-muted-foreground truncate leading-none">
             {product.size}ml · {categoryLabels[product.category]} · {formattedFamilies}
           </p>
-          <div className="mt-2 h-5 flex items-center"><StockBadge /></div>
+          <div className="mt-2 h-5 flex items-center">{stockBadge}</div>
           <div className="mt-2 h-10 flex flex-col justify-center">
             <span className="text-base sm:text-lg font-semibold text-foreground leading-tight">
               R$ {product.price.toFixed(2).replace(".", ",")}

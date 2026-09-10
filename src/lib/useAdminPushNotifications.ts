@@ -142,10 +142,11 @@ export function useAdminPushNotifications({
 
   // Polling com pausa quando aba em segundo plano
   useEffect(() => {
-    poll()
-    const id = setInterval(poll, intervalMs)
+    const runPoll = async () => { await poll() }
+    runPoll()
+    const id = setInterval(runPoll, intervalMs)
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") poll()
+      if (document.visibilityState === "visible") runPoll()
     }
     document.addEventListener("visibilitychange", handleVisibility)
     return () => {

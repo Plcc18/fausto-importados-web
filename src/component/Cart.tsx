@@ -242,7 +242,7 @@ export function Cart({
 
   useEffect(() => {
     if (!isOpen && stockChangedIds.length > 0) onStockChangedAck?.()
-  }, [isOpen])
+  }, [isOpen, stockChangedIds.length, onStockChangedAck])
 
   const formatPrice = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(value)

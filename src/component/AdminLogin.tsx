@@ -52,8 +52,9 @@ export function AdminLogin() {
       })
 
       navigate("/nexus-24")
-    } catch (err: any) {
-      toast.error(err.message || "Email ou senha incorretos. Tente novamente!", {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : undefined
+      toast.error(message || "Email ou senha incorretos. Tente novamente!", {
         style: { backgroundColor: "#FF6347", color: "#ffffff" },
       })
     } finally {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/Shadcn-Components/ui/button"
 import { Badge } from "@/Shadcn-Components/ui/badge"
 import { Separator } from "@/Shadcn-Components/ui/separator"
@@ -61,7 +61,7 @@ export function NotificationsPanel({ open, onOpenChange, onStatusChange }: Notif
   const [clearing, setClearing] = useState(false)
   const [confirmAction, setConfirmAction] = useState<{ id: string; type: "complete" | "cancel" } | null>(null)
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     setLoading(true)
     try {
       const url = filter === "ALL"
@@ -76,11 +76,11 @@ export function NotificationsPanel({ open, onOpenChange, onStatusChange }: Notif
     } finally {
       setLoading(false)
     }
-  }
+  }, [filter])
 
   useEffect(() => {
     if (open) fetchOrders()
-  }, [open, filter])
+  }, [open, fetchOrders])
 
   const handleComplete = async (id: string) => {
     const res = await authFetch(`${API_URL}/api/orders/${id}/complete`, { method: "POST" })

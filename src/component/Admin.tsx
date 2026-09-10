@@ -89,7 +89,7 @@ function SmartImageUploader({
 
   useEffect(() => {
     if (value && value !== preview) setPreview(value)
-  }, [value])
+  }, [value, preview])
 
   const uploadFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -335,9 +335,10 @@ export function Admin() {
       }
       setIsDialogOpen(false); setFormData(emptyForm); setEditingProduct(null); refreshProducts()
       Swal.fire({ icon: "success", title: editingProduct ? "Produto atualizado" : "Produto cadastrado", text: editingProduct ? "O produto foi atualizado com sucesso." : "O produto foi cadastrado com sucesso.", timer: 2000, showConfirmButton: false })
-    } catch (error: any) {
+    } catch (error) {
       console.error(error)
-      Swal.fire({ icon: "error", title: "Erro de conexão", text: error?.message || "Não foi possível se comunicar com o servidor." })
+      const message = error instanceof Error ? error.message : undefined
+      Swal.fire({ icon: "error", title: "Erro de conexão", text: message || "Não foi possível se comunicar com o servidor." })
     }
   }
 
@@ -390,7 +391,7 @@ export function Admin() {
     usePagination(filteredAdminProducts, PAGE_SIZE)
 
   // Reset para página 1 sempre que filtros mudarem
-  useEffect(() => { setPage(1) }, [adminSearch, adminFilters, adminSort])
+  useEffect(() => { setPage(1) }, [adminSearch, adminFilters, adminSort, setPage])
 
   const categoryLabels = { MASCULINO: "Masculino", FEMININO: "Feminino", UNISSEX: "Unissex" }
 

@@ -81,9 +81,10 @@ function buildShareUrl(productId: string): string {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function Store() {
   const [products, setProducts] = useState<Product[]>([])
-  const [cart, setCart] = useState<CartItem[]>([])
+  const [cart, setCart] = useState<CartItem[]>(getCart)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [stockChangedIds, setStockChangedIds] = useState<string[]>([])
+  const ackStockChanged = useCallback(() => setStockChangedIds([]), [])
 
   useCartReconciliation(cart, setCart, isCartOpen, setStockChangedIds)
 
@@ -108,6 +109,7 @@ export function Store() {
     if (typeof window === 'undefined') return null
     return new URLSearchParams(window.location.search).get('produto')
   })
+  const ackHighlight = useCallback(() => setHighlightProductId(null), [])
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -118,7 +120,6 @@ export function Store() {
       } catch (error) { console.error('Erro ao buscar produtos:', error) }
     }
     fetchProducts()
-    setCart(getCart())
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') fetchProducts()
     }
@@ -126,7 +127,18 @@ export function Store() {
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [])
 
-  useEffect(() => { setCurrentPage(1) }, [debouncedSearch, filters, sortKey, showWishlist])
+  // Volta para a página 1 sempre que um filtro mudar (ajuste de estado durante a
+  // renderização, evitando um efeito só para sincronizar estado interno)
+  const [prevPageFilters, setPrevPageFilters] = useState({ debouncedSearch, filters, sortKey, showWishlist })
+  if (
+    prevPageFilters.debouncedSearch !== debouncedSearch ||
+    prevPageFilters.filters !== filters ||
+    prevPageFilters.sortKey !== sortKey ||
+    prevPageFilters.showWishlist !== showWishlist
+  ) {
+    setPrevPageFilters({ debouncedSearch, filters, sortKey, showWishlist })
+    setCurrentPage(1)
+  }
 
   // ── Quick filters ────────────────────────────────────────────────────────────
   const quickFilters: QuickFilter[] = useMemo(() => [
@@ -639,7 +651,7 @@ export function Store() {
                     onShare={handleShare}
                     copiedId={copiedId}
                     highlight={highlightProductId === product.id}
-                    onHighlightAck={() => setHighlightProductId(null)}
+                    onHighlightAck={ackHighlight}
                   />
                 ))}
               </div>
@@ -734,7 +746,7 @@ export function Store() {
         onRemove={handleRemoveFromCart}
         onClear={handleClearCart}
         stockChangedIds={stockChangedIds}
-        onStockChangedAck={() => setStockChangedIds([])}
+        onStockChangedAck={ackStockChanged}
       />
     </div>
   )
