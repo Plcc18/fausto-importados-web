@@ -60,7 +60,7 @@ import {
   PopoverTrigger,
 } from "@/Shadcn-Components/ui/popover"
 import { emptyForm, type ProductFormData, type SmartImageUploaderProps } from "@/types"
-import { NotificationsPanel } from "@/component/NotificationsPanel"
+import { NotificationsPanel } from "@/admin/NotificationsPanel"
 import { ThemeToggle } from "@/component/ThemeToggle"
 import { Pagination } from "@/component/Pagination"
 import { usePagination } from "@/lib/usePagination"
@@ -68,7 +68,9 @@ import Swal from "sweetalert2"
 import { API_URL } from "@/lib/api"
 import { authFetch, authClient } from "@/lib/auth"
 import { toast } from "sonner"
-import { useAdminPushNotifications } from "@/lib/useAdminPushNotifications"
+import { useAdminPushNotifications } from "@/admin/useAdminPushNotifications"
+import { sensitiveFetch, SENSITIVE_NOT_DONE } from "@/admin/sensitive"
+import { ROUTES } from "@/routes"
 
 // ============================================================================
 // SmartImageUploader
@@ -213,7 +215,7 @@ export function Admin() {
 
   const handleLogout = async () => {
     await authClient.logout() // revoga a sessão no servidor, limpa o cookie e avisa as outras abas
-    navigate("/nexus-24/login")
+    navigate(ROUTES.login)
     setTimeout(() => {
       Swal.fire({ icon: "success", title: "Até logo!", text: "Você saiu da sua conta.", timer: 2000, showConfirmButton: false })
     }, 100)
@@ -227,7 +229,7 @@ export function Admin() {
       toast.error("Não foi possível sair de todos os dispositivos. Tente novamente.")
       return
     }
-    navigate("/nexus-24/login")
+    navigate(ROUTES.login)
     setTimeout(() => {
       Swal.fire({ icon: "success", title: "Sessões encerradas", text: "Você saiu de todos os dispositivos.", timer: 2500, showConfirmButton: false })
     }, 100)
@@ -262,9 +264,14 @@ export function Admin() {
   }
 
   const handleResetSales = async () => {
-    await authFetch(`${API_URL}/api/orders/reset-sales`, { method: "DELETE" })
-    setSalesStats({ day: 0, month: 0, year: 0 })
+    // Zerar as vendas é uma operação sensível: a API pode pedir um código 2FA recente.
+    const res = await sensitiveFetch(`${API_URL}/api/orders/reset-sales`, { method: "DELETE" })
     setResetConfirmOpen(false)
+    if (!res.ok) {
+      Swal.fire({ icon: "info", title: "Não foi possível zerar", text: SENSITIVE_NOT_DONE })
+      return
+    }
+    setSalesStats({ day: 0, month: 0, year: 0 })
   }
 
   const openCreateDialog = () => { setEditingProduct(null); setFormData(emptyForm); setIsDialogOpen(true) }
@@ -314,7 +321,7 @@ export function Admin() {
         const res = await authFetch(`${API_URL}/api/product/${editingProduct.id}`, { method: "PUT", body: form })
         if (res.status === 401 || res.status === 403) {
           Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
-          navigate("/nexus-24/login"); return
+          navigate(ROUTES.login); return
         }
         if (!res.ok) {
           const text = await res.text()
@@ -332,7 +339,7 @@ export function Admin() {
         })
         if (res.status === 401 || res.status === 403) {
           Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
-          navigate("/nexus-24/login"); return
+          navigate(ROUTES.login); return
         }
         if (!res.ok) {
           const text = await res.text()
@@ -359,7 +366,7 @@ export function Admin() {
     const res = await authFetch(`${API_URL}/api/product/${id}`, { method: "DELETE" })
     if (res.status === 401 || res.status === 403) {
       Swal.fire({ icon: "error", title: "Ação negada", text: "Você não está autorizado!" })
-      navigate("/nexus-24/login"); return
+      navigate(ROUTES.login); return
     }
     setDeleteConfirm(null); refreshProducts()
   }
@@ -433,7 +440,7 @@ export function Admin() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => navigate("/nexus-24/relatorio")}
+              onClick={() => navigate(ROUTES.adminReport)}
               title="Relatório de Vendas"
             >
               <FileText className="h-4 w-4" />

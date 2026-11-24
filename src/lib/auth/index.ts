@@ -1,9 +1,23 @@
 import { useSyncExternalStore } from "react"
 import { AUTH_URL } from "@/lib/api"
-import { AuthClient, DEFAULT_IDLE_TIMEOUT_MS, type AuthStatus } from "./authClient"
+import { AuthClient, DEFAULT_IDLE_TIMEOUT_MS, type AuthStatus, type Profile } from "./authClient"
 
 export { AuthClient } from "./authClient"
-export type { AuthStatus, RefreshOutcome } from "./authClient"
+export type {
+  AuthStatus,
+  LoginResult,
+  MfaConfirmResult,
+  MfaSetupInfo,
+  MfaSetupResult,
+  MfaVerifyResult,
+  Profile,
+  ReauthPromptReason,
+  ReauthResult,
+  RefreshOutcome,
+  RestoreResult,
+  Role,
+} from "./authClient"
+export { hasSessionHint } from "./sessionHint"
 
 /**
  * Instância única da aplicação. Não abre canal nem listeners até alguém usá-la
@@ -22,4 +36,9 @@ export const authFetch = (url: string, options: RequestInit = {}) => authClient.
 /** Estado da sessão ("unknown" | "authenticated" | "anonymous"), reativo — inclusive a logout em outra aba. */
 export function useAuthStatus(): AuthStatus {
   return useSyncExternalStore(authClient.subscribe, authClient.getStatus, authClient.getStatus)
+}
+
+/** Quem está logado (`null` até ser conhecido, ou sem sessão), reativo. */
+export function useAuthProfile(): Profile | null {
+  return useSyncExternalStore(authClient.subscribe, authClient.getProfile, authClient.getProfile)
 }

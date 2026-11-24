@@ -29,6 +29,7 @@ import {
   CommandList, CommandSeparator,
 } from '@/Shadcn-Components/ui/command'
 import { ThemeToggle } from "@/component/ThemeToggle"
+import { AuthMenu } from "@/component/AuthMenu"
 import { useCartReconciliation } from "@/lib/useCartReconciliation"
 import { useDebounce } from "@/lib/useDebounce"
 import { useProducts } from "@/lib/useProducts"
@@ -399,6 +400,7 @@ export function Store() {
             {/* Right Actions */}
             <div className="flex items-center gap-2">
               <ThemeToggle />
+              <AuthMenu />
               <button onClick={() => { setShowWishlist((v) => !v); scrollToCollection() }}
                 className={cn('relative flex items-center gap-1.5 rounded-full border px-3 py-2 text-sm font-medium transition-all duration-200', showWishlist ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-foreground hover:border-primary/50 hover:bg-muted')}
                 title="Minha lista de favoritos">

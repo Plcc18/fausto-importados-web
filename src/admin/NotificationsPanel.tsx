@@ -13,6 +13,8 @@ import {
 import { Check, X, Clock, CheckCircle, XCircle, RefreshCw, Bell, Trash2 } from "lucide-react"
 import { API_URL } from "@/lib/api"
 import { authFetch } from "@/lib/auth"
+import { sensitiveFetch, SENSITIVE_NOT_DONE } from "@/admin/sensitive"
+import { toast } from "sonner"
 
 interface OrderItem {
   id: string
@@ -100,7 +102,13 @@ export function NotificationsPanel({ open, onOpenChange, onStatusChange }: Notif
   const handleClearHistory = async () => {
     setClearing(true)
     try {
-      await authFetch(`${API_URL}/api/orders/clear-history`, { method: "DELETE" })
+      // Limpar o histórico é uma operação sensível: a API pode pedir um código 2FA recente.
+      const res = await sensitiveFetch(`${API_URL}/api/orders/clear-history`, { method: "DELETE" })
+      if (!res.ok) {
+        toast.error(SENSITIVE_NOT_DONE)
+        setClearConfirmOpen(false)
+        return
+      }
       // Remove apenas COMPLETED e CANCELLED localmente.
       // Os valores de venda (sales-stats) são calculados pelo backend
       // independentemente — limpar o histórico visual não afeta esses números.

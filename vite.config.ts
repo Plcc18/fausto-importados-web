@@ -30,6 +30,10 @@ function notFoundShell(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), notFoundShell()],
+  build: {
+    // Sem source maps em produção: o código-fonte original (inclusive o do painel) não fica servido ao público.
+    sourcemap: false,
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

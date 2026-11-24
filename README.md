@@ -17,9 +17,10 @@ O back-end fica em outro repositório: `fausto-importados-api` (Spring Boot).
 ## Funcionalidades
 
 - **Loja** (`/`): catálogo de produtos com busca, filtros, paginação, carrinho e envio do pedido por WhatsApp.
-- **Painel admin** (`/nexus-24`): cadastro, edição e exclusão de produtos, upload de imagens, gestão de pedidos (pendentes, concluídos, cancelados) e notificações de novos pedidos.
-- **Relatório de vendas** (`/nexus-24/relatorio`): estatísticas e histórico de vendas.
-- **Login admin** (`/nexus-24/login`): access token de curta duração (só em memória) + refresh token em cookie `HttpOnly`, com sessão deslizante. As rotas do painel são protegidas: ao abrir/recarregar, o app recupera a sessão pelo refresh e consulta `/auth/me`. Veja [Autenticação](#autenticação).
+- **Painel admin** (`/admin`): cadastro, edição e exclusão de produtos, upload de imagens, gestão de pedidos (pendentes, concluídos, cancelados) e notificações de novos pedidos.
+- **Relatório de vendas** (`/admin/relatorio`): estatísticas e histórico de vendas.
+- **Entrar** (`/entrar`): login único. Administradores seguem para o código do autenticador (2FA) e, no primeiro acesso, cadastram o autenticador (QR code) e recebem códigos de recuperação. Access token de curta duração (só em memória) + refresh token em cookie `HttpOnly`, com sessão deslizante. Veja [Autenticação](#autenticação).
+- **Cabeçalho da loja**: "Entrar" para visitantes; menu da conta com "Sair" para quem está logado; "Painel" também para administradores.
 - Tema claro/escuro e páginas de Termos, Privacidade e Cookies.
 
 ## Pré-requisitos
@@ -67,9 +68,10 @@ Como o Vite embute as variáveis no build, em produção (Vercel) elas devem ser
 
 ```
 src/
-├── App.tsx              # Rotas e proteção das rotas admin
+├── App.tsx              # Rotas e guarda de administrador (RequireAdmin)
 ├── main.tsx
-├── component/           # Telas e componentes (Store, Admin, Cart, SalesReport...)
+├── admin/               # Painel (Admin, SalesReport, notificações) — carregado sob demanda, só para administradores
+├── component/           # Telas públicas e componentes (Store, Login, AuthMenu, Cart...)
 ├── Shadcn-Components/   # Componentes de UI (shadcn)
 └── lib/                 # API, hooks, tipos e utilitários
 ```
@@ -90,6 +92,15 @@ Access token + refresh token com sessão deslizante (a API está em `fausto-impo
 - **Inatividade**: sem interação por `VITE_IDLE_TIMEOUT_MS` (padrão 7 dias) o token deixa de ser renovado, inclusive pelos polls automáticos do painel.
 - **Abas**: `BroadcastChannel` propaga token, atividade e logout; `navigator.locks` evita dois refreshes simultâneos entre abas.
 - **Logout**: revoga a sessão no servidor e em todas as abas. O diálogo de sair também oferece "Sair de todos os dispositivos".
+
+### Administradores: 2FA, reautenticação e acesso ao painel
+
+- **2FA (TOTP) obrigatório** para administradores. Login em passos: senha → código do aplicativo autenticador → sessão. No primeiro acesso a tela mostra o QR code (desenhado no navegador com a biblioteca `qrcode`; o segredo nunca vai a serviço externo) e a chave manual, pede a senha nova (contas criadas por outro admin começam com senha temporária) e exibe 10 **códigos de recuperação** uma única vez.
+- **Reautenticação**: operações sensíveis (zerar vendas/relatório, limpar histórico) pedem um código 2FA recente. O app abre um diálogo, a API devolve uma prova de 5 minutos presa à sessão, e a operação é refeita com ela.
+- **Quem vê o quê**: o papel (`ADMIN`/`USER`) vem de `/auth/me`. Usuário comum em `/admin` recebe a página 403; sem sessão vai para `/entrar?next=...`. O botão "Painel" só aparece para administradores.
+- **Código do painel sob demanda**: `Admin` e `SalesReport` são chunks separados (`React.lazy`) e só são baixados **depois** de a API confirmar o administrador; visitantes e clientes nunca recebem esse código. O build não gera source maps. (`src/build.test.ts` confere isso num build real.)
+- **A proteção real está na API.** A rota `/admin` é convencional e não é secreta: esconder o botão ou o chunk é só interface; cada endpoint valida autenticação, papel, 2FA e reautenticação no servidor, e registra tudo na auditoria. Não há `robots.txt` nem sitemap.
+- Headers de segurança (`vercel.json`): `X-Frame-Options: DENY` / `frame-ancestors 'none'`, `X-Content-Type-Options`, `Referrer-Policy`.
 
 ### Por que as rotas `/auth/*` passam pelo proxy da Vercel
 

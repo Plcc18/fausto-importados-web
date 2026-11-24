@@ -36,6 +36,9 @@ import {
 import { ArrowLeft, Download, Search, Trash2, TrendingUp, Package, X, RefreshCw, ChevronDown, BarChart2, CalendarDays } from "lucide-react"
 import { API_URL } from "@/lib/api"
 import { authFetch } from "@/lib/auth"
+import { sensitiveFetch, SENSITIVE_NOT_DONE } from "@/admin/sensitive"
+import { ROUTES } from "@/routes"
+import { toast } from "sonner"
 import { ThemeToggle } from "@/component/ThemeToggle"
 
 interface OrderItem {
@@ -463,7 +466,13 @@ export function SalesReport() {
   const handleReset = async () => {
     setResetting(true)
     try {
-      await authFetch(`${API_URL}/api/orders/reset-report`, { method: "DELETE" })
+      // Zerar o relatório é uma operação sensível: a API pode pedir um código 2FA recente.
+      const res = await sensitiveFetch(`${API_URL}/api/orders/reset-report`, { method: "DELETE" })
+      if (!res.ok) {
+        toast.error(SENSITIVE_NOT_DONE)
+        setResetConfirmOpen(false)
+        return
+      }
       setOrders([])
       setResetConfirmOpen(false)
     } catch (err) {
@@ -604,7 +613,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/nexus-24")}>
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate(ROUTES.admin)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>

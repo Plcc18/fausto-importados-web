@@ -1,83 +1,84 @@
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Store } from '@/component/Store'
-import { Admin } from '@/component/Admin'
-import { SalesReport } from '@/component/SalesReport'
-import { AdminLogin } from '@/component/AdminLogin'
 import { Toaster } from 'sonner'
 import { Termos } from "./component/Termos"
 import { Privacidade } from "./component/Privacidade"
 import { Cookies } from "./component/Cookies"
-import { useEffect, useState } from 'react'
-import { AUTH_URL } from "@/lib/api"
-import { authClient, authFetch, useAuthStatus } from "@/lib/auth"
+import { authClient, useAuthStatus } from "@/lib/auth"
 import { HttpError, errorCodeFromError, type ErrorCode } from "@/lib/httpErrors"
 import { ROUTES, ERROR_ROUTE_PATTERN } from "@/routes"
 import { AppErrorBoundary } from "@/component/errors/AppErrorBoundary"
 import { ErrorView, ErrorRoutePage, NotFoundPage } from "@/component/errors/ErrorView"
 
-// Verifica com o backend se a sessão ainda é válida.
-// "loading" enquanto aguarda · "ok" autenticado · "denied" não autenticado (→ login)
-// "forbidden" autenticado sem permissão (403) · ErrorCode = falha ao falar com o servidor.
-type RouteStatus = "loading" | "ok" | "denied" | "forbidden" | { error: ErrorCode }
+// O painel administrativo (e a tela de login, que traz o QR code do 2FA) ficam em chunks próprios: o código só é
+// baixado quando alguém realmente chega lá — e, no caso do painel, só depois de a API confirmar que é um administrador.
+const Admin = lazy(() => import('@/admin/Admin').then((m) => ({ default: m.Admin })))
+const SalesReport = lazy(() => import('@/admin/SalesReport').then((m) => ({ default: m.SalesReport })))
+const Login = lazy(() => import('@/component/Login').then((m) => ({ default: m.Login })))
 
-function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState<RouteStatus>("loading")
+// Resultado da verificação com o backend:
+// "loading" aguardando · "ok" administrador · "login" sem sessão (→ entrar)
+// "forbidden" autenticado, mas sem permissão (usuário comum, ou 403) · ErrorCode = falha ao falar com o servidor.
+type GuardState = "loading" | "ok" | "login" | "forbidden" | { error: ErrorCode }
+
+/**
+ * Só deixa passar quem a API confirma como ADMIN (papel vindo de /auth/me). O filho — e portanto o chunk do painel —
+ * só é montado depois disso. Isto é conveniência de interface: cada rota da API valida o papel por conta própria.
+ */
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<GuardState>("loading")
   const [attempt, setAttempt] = useState(0)
   // Reage à sessão em tempo real: logout em outra aba, sessão revogada ou inatividade → volta ao login
   const session = useAuthStatus()
+  const { pathname, search } = useLocation()
 
   useEffect(() => {
-    const controller = new AbortController()
+    let cancelled = false
 
-    const verify = async () => {
-      // O access token vive só em memória e some ao recarregar a página:
-      // recupera a sessão pelo cookie de refresh antes de consultar /auth/me.
-      if (!authClient.hasSession()) {
-        const boot = await authClient.bootstrap()
-        if (controller.signal.aborted) return
-        if (boot.kind === "denied" || boot.kind === "idle") return setStatus("denied")
-        if (boot.kind === "error") {
+    // O access token vive só em memória e some ao recarregar a página: recupera a sessão pelo cookie de
+    // refresh e descobre o papel em /auth/me.
+    void authClient.restoreSession().then((result) => {
+      if (cancelled) return
+      switch (result.kind) {
+        case "ok":
+          return setState(result.profile.role === "ADMIN" ? "ok" : "forbidden")
+        case "anonymous":
+          return setState("login")
+        case "forbidden":
+          return setState("forbidden")
+        default:
           // Falha de rede/5xx não significa "sem sessão": não manda o admin para o login à toa
-          const code = boot.httpStatus && boot.httpStatus >= 500
-            ? errorCodeFromError(new HttpError(boot.httpStatus))
-            : "connection"
-          return setStatus({ error: code })
-        }
+          return setState({
+            error: result.httpStatus && result.httpStatus >= 500
+              ? errorCodeFromError(new HttpError(result.httpStatus))
+              : "connection",
+          })
       }
+    })
 
-      try {
-        const res = await authFetch(`${AUTH_URL}/auth/me`, { signal: controller.signal })
-        if (controller.signal.aborted) return
-        if (res.ok) return setStatus("ok")
-        if (res.status === 403) return setStatus("forbidden")
-        if (res.status >= 500) return setStatus({ error: errorCodeFromError(new HttpError(res.status)) })
-        setStatus("denied") // 401 (já tentou renovar) e demais 4xx: sessão inválida → login
-      } catch {
-        if (!controller.signal.aborted) setStatus({ error: "connection" })
-      }
+    return () => {
+      cancelled = true
     }
-
-    void verify()
-    return () => controller.abort()
   }, [attempt])
 
-  if (status === "loading") return null // ou um spinner se preferir
-  if (status === "denied" || (status === "ok" && session === "anonymous")) {
-    return <Navigate to={ROUTES.adminLogin} replace />
+  if (state === "loading") return null // ou um spinner se preferir
+  if (state === "login" || (state === "ok" && session === "anonymous")) {
+    return <Navigate to={`${ROUTES.login}?next=${encodeURIComponent(pathname + search)}`} replace />
   }
-  if (status === "forbidden") return <ErrorView code="403" />
-  if (typeof status === "object") {
+  if (state === "forbidden") return <ErrorView code="403" />
+  if (typeof state === "object") {
     return (
       <ErrorView
-        code={status.error}
+        code={state.error}
         onRetry={() => {
-          setStatus("loading")
+          setState("loading")
           setAttempt((n) => n + 1)
         }}
       />
     )
   }
-  return <>{children}</>
+  return <Suspense fallback={null}>{children}</Suspense>
 }
 
 export function App() {
@@ -97,20 +98,27 @@ export function App() {
       <Routes>
         <Route path={ROUTES.home} element={<Store />} />
         <Route
-          path={ROUTES.admin}
+          path={ROUTES.login}
           element={
-            <PrivateRoute>
-              <Admin />
-            </PrivateRoute>
+            <Suspense fallback={null}>
+              <Login />
+            </Suspense>
           }
         />
-        <Route path={ROUTES.adminLogin} element={<AdminLogin />} />
+        <Route
+          path={ROUTES.admin}
+          element={
+            <RequireAdmin>
+              <Admin />
+            </RequireAdmin>
+          }
+        />
         <Route
           path={ROUTES.adminReport}
           element={
-            <PrivateRoute>
+            <RequireAdmin>
               <SalesReport />
-            </PrivateRoute>
+            </RequireAdmin>
           }
         />
         <Route path={ROUTES.terms} element={<Termos />} />

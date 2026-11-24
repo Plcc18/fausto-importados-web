@@ -8,14 +8,22 @@ import { AppErrorBoundary } from "./AppErrorBoundary"
 import { ErrorView } from "./ErrorView"
 import { RETRY_DELAYS_MS } from "@/lib/useProducts"
 
+vi.mock("@/admin/Admin", () => ({ Admin: () => <div data-testid="admin-panel">painel</div> }))
+vi.mock("@/admin/SalesReport", () => ({ SalesReport: () => <div data-testid="sales-report">relatório</div> }))
+
 const json = (body: unknown, status = 200) =>
   ({ ok: status >= 200 && status < 300, status, json: async () => body }) as Response
 
 let fetchMock: ReturnType<typeof vi.fn>
 
 function LocationProbe() {
-  const { pathname } = useLocation()
-  return <div data-testid="path">{pathname}</div>
+  const { pathname, search } = useLocation()
+  return (
+    <>
+      <div data-testid="path">{pathname}</div>
+      <div data-testid="search">{search}</div>
+    </>
+  )
 }
 
 function renderApp(path: string) {
@@ -59,7 +67,7 @@ describe("404", () => {
   })
 
   it("subrota inexistente de uma rota válida também cai no 404", () => {
-    renderApp("/nexus-24/nao-existe")
+    renderApp("/admin/nao-existe")
     expect(screen.getByRole("heading", { name: "Esta fragrância não está por aqui." })).toBeTruthy()
   })
 
@@ -117,65 +125,88 @@ describe("/erro/:codigo (acesso direto / atualização da página)", () => {
   })
 })
 
-describe("área restrita (refresh da sessão + /auth/me)", () => {
-  // O access token vive só em memória: ao abrir /nexus-24 o app primeiro troca o cookie de refresh por um
-  // token (/auth/refresh) e só então consulta /auth/me. O mock responde por URL.
+describe("área restrita (refresh da sessão + /auth/me + papel)", () => {
+  // O access token vive só em memória: ao abrir /admin o app primeiro troca o cookie de refresh por um
+  // token (/auth/refresh), consulta /auth/me e só então (se for ADMIN) carrega o painel. O mock responde por URL.
   const accessToken = () => json({ accessToken: "access-1", expiresIn: 900 })
+  const me = (role: "ADMIN" | "USER" = "ADMIN") => json({ email: "pessoa@x.com", role })
   const route = (handlers: { refresh: () => Response | Promise<Response>; me?: () => Response | Promise<Response> }) =>
     fetchMock.mockImplementation((url: string) => {
       if (url.endsWith("/auth/refresh")) return Promise.resolve(handlers.refresh())
-      if (url.endsWith("/auth/me")) return Promise.resolve(handlers.me?.() ?? json({}, 200))
+      if (url.endsWith("/auth/me")) return Promise.resolve(handlers.me?.() ?? me())
       if (url.endsWith("/auth/logout")) return Promise.resolve(json({}))
-      return new Promise(() => {}) // qualquer outra chamada (ex.: polling do painel) fica pendente
+      return new Promise(() => {}) // qualquer outra chamada fica pendente
     })
+
+  it("administrador autenticado vê o painel", async () => {
+    route({ refresh: accessToken })
+    renderApp("/admin")
+    expect(await screen.findByTestId("admin-panel")).toBeTruthy()
+    expect(screen.getByTestId("path").textContent).toBe("/admin")
+  })
+
+  it("usuário comum (role USER) → 'Esta área é reservada.' e o painel NUNCA é montado", async () => {
+    route({ refresh: accessToken, me: () => me("USER") })
+    renderApp("/admin")
+    expect(await screen.findByRole("heading", { name: "Esta área é reservada." })).toBeTruthy()
+    expect(screen.queryByTestId("admin-panel")).toBeNull()
+    expect(screen.getByTestId("path").textContent).toBe("/admin") // não vai para o login: está logado, só não pode
+  })
 
   it("403 em /auth/me → página 'Esta área é reservada.'", async () => {
     route({ refresh: accessToken, me: () => json({}, 403) })
-    renderApp("/nexus-24")
+    renderApp("/admin")
     expect(await screen.findByRole("heading", { name: "Esta área é reservada." })).toBeTruthy()
   })
 
-  it("sem sessão (refresh 401) → redireciona para o login", async () => {
+  it("sem sessão (refresh 401) → entrar, lembrando para onde voltar; /auth/me nem é consultado", async () => {
     route({ refresh: () => json({}, 401) })
-    renderApp("/nexus-24")
-    await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/nexus-24/login"))
-    // não chegou a consultar /auth/me nem a pedir dados do painel
+    renderApp("/admin/relatorio")
+    await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/entrar"))
+    expect(screen.getByTestId("search").textContent).toBe("?next=%2Fadmin%2Frelatorio")
     expect(fetchMock.mock.calls.map(([u]) => u as string).filter((u) => u.endsWith("/auth/me"))).toHaveLength(0)
+    expect(screen.queryByTestId("sales-report")).toBeNull()
   })
 
-  it("401 em /auth/me mesmo após renovar → login", async () => {
+  it("401 em /auth/me mesmo após renovar → entrar", async () => {
     route({ refresh: accessToken, me: () => json({}, 401) })
-    renderApp("/nexus-24")
-    await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/nexus-24/login"))
+    renderApp("/admin")
+    await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/entrar"))
   })
 
   it("5xx → tela de erro com 'Tentar novamente' que repete a verificação", async () => {
     route({ refresh: () => json({}, 502) })
-    renderApp("/nexus-24")
+    renderApp("/admin")
     expect(await screen.findByRole("heading", { name: "Estamos reorganizando nossa conexão." })).toBeTruthy()
-    expect(screen.getByTestId("path").textContent).toBe("/nexus-24") // 5xx não é "sem sessão"
+    expect(screen.getByTestId("path").textContent).toBe("/admin") // 5xx não é "sem sessão"
 
     route({ refresh: () => json({}, 401) })
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }))
-    await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/nexus-24/login"))
+    await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/entrar"))
   })
 
   it("falha de rede → tela de conexão (e não o login)", async () => {
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"))
-    renderApp("/nexus-24")
+    renderApp("/admin")
     expect(await screen.findByRole("heading", { name: "Não conseguimos acessar nossas fragrâncias." })).toBeTruthy()
-    expect(screen.getByTestId("path").textContent).toBe("/nexus-24")
+    expect(screen.getByTestId("path").textContent).toBe("/admin")
   })
 
-  it("sessão encerrada enquanto o painel está aberto → volta para o login", async () => {
+  it("sessão encerrada enquanto o painel está aberto → volta para entrar", async () => {
     route({ refresh: accessToken })
-    renderApp("/nexus-24")
-    await vi.waitFor(() => expect(authClient.getStatus()).toBe("authenticated"))
-    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([u]) => (u as string).endsWith("/auth/me"))).toBe(true))
+    renderApp("/admin")
+    await screen.findByTestId("admin-panel")
 
     await act(async () => { await authClient.logout() })
 
-    await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/nexus-24/login"))
+    await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/entrar"))
+    expect(screen.queryByTestId("admin-panel")).toBeNull()
+  })
+
+  it("o endereço antigo do painel não existe mais (404)", () => {
+    renderApp("/nexus-24")
+    expect(screen.getByRole("heading", { name: "Esta fragrância não está por aqui." })).toBeTruthy()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 
