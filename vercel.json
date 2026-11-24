@@ -1,5 +1,11 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/termos", "destination": "/index.html" },
+    { "source": "/privacidade", "destination": "/index.html" },
+    { "source": "/cookies", "destination": "/index.html" },
+    { "source": "/nexus-24", "destination": "/index.html" },
+    { "source": "/nexus-24/login", "destination": "/index.html" },
+    { "source": "/nexus-24/relatorio", "destination": "/index.html" },
+    { "source": "/erro/:codigo(403|500|502|503|504|conexao)", "destination": "/index.html" }
   ]
 }

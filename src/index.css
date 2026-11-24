@@ -114,6 +114,55 @@
   --sidebar-ring: oklch(0.553 0.013 58.071);
 }
 
+/* Dourado da marca: só como detalhe (derivado do acabamento da logo) */
+@theme {
+  --color-gold-100: #f1e2b8;
+  --color-gold-300: #d9bc78;
+  --color-gold-500: #c19a4b;
+  --color-gold-700: #8a6a2c;
+}
+
+/* Animações das páginas de erro: suaves, só transform/opacity (baratas para o navegador) */
+@keyframes error-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes error-mist {
+  0% { opacity: 0; transform: translateY(0) scale(0.6); }
+  25% { opacity: 0.7; }
+  100% { opacity: 0; transform: translateY(-46px) scale(1.15); }
+}
+@keyframes error-breathe {
+  0%, 100% { opacity: 0.45; transform: scale(0.96); }
+  50% { opacity: 0.9; transform: scale(1.04); }
+}
+@keyframes error-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes error-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(260%); }
+}
+@keyframes error-ripple {
+  0% { opacity: 0.7; transform: scale(0.4); }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+@keyframes error-dash {
+  to { stroke-dashoffset: -24; }
+}
+.error-rise { opacity: 0; animation: error-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.error-mist { transform-box: fill-box; transform-origin: center; opacity: 0; animation: error-mist 5s ease-out infinite; }
+.error-breathe { transform-box: fill-box; transform-origin: center; animation: error-breathe 5s ease-in-out infinite; }
+.error-spin { transform-box: fill-box; transform-origin: center; animation: error-spin 3s linear infinite; }
+.error-slide { animation: error-slide 2.8s ease-in-out infinite; }
+.error-ripple { transform-box: fill-box; transform-origin: center; opacity: 0; animation: error-ripple 3.6s ease-out infinite; }
+.error-dash { animation: error-dash 2s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .error-rise { animation: none; opacity: 1; }
+  .error-mist, .error-breathe, .error-spin, .error-slide, .error-ripple, .error-dash { animation: none; }
+  .error-mist, .error-ripple { opacity: 0.35; }
+}
+
 /* Skeleton com shimmer sutil (usa só os tokens de tema, funciona no claro e no escuro) */
 .skeleton-shimmer {
   --skeleton-base: color-mix(in oklch, var(--foreground) 7%, var(--background));

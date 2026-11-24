@@ -1,0 +1,194 @@
+import { useId } from "react"
+
+/**
+ * Elementos gráficos das páginas de erro. SVG inline (sem requisições extras).
+ *
+ * Seguem o padrão da loja: traços neutros que herdam as cores do tema
+ * (foreground/muted) e o dourado da logo apenas como detalhe. Animam somente
+ * transform/opacity.
+ */
+
+const MIST = [
+  { cx: 95, cy: 4, r: 2.6, delay: "0s" },
+  { cx: 80, cy: -6, r: 1.8, delay: "1.4s" },
+  { cx: 111, cy: -4, r: 2.1, delay: "2.6s" },
+  { cx: 94, cy: -20, r: 1.4, delay: "3.6s" },
+]
+
+/** Um "4" em estilo didone: haste grossa, diagonal e travessa finas, serifa na base. */
+function Four({ x, fill }: { x: number; fill: string }) {
+  return (
+    <g transform={`translate(${x} 70)`} stroke={`url(#${fill})`} fill="none">
+      <path d="M140 4V300" strokeWidth="30" />
+      <path d="M137 4L10 214" strokeWidth="9" strokeLinecap="round" />
+      <path d="M2 214H200" strokeWidth="9" strokeLinecap="round" />
+      <path d="M106 300H174" strokeWidth="8" strokeLinecap="round" />
+    </g>
+  )
+}
+
+/** 404: "4" + frasco de perfume no lugar do "0" + "4". Números no tom do tema; ouro só nos detalhes do frasco. */
+export function PerfumeBottle404({ className }: { className?: string }) {
+  const uid = useId().replace(/:/g, "")
+  const num = `num-${uid}`
+  const gold = `gold-${uid}`
+  const floor = `floor-${uid}`
+
+  return (
+    <svg
+      viewBox="0 0 700 392"
+      className={className}
+      role="img"
+      aria-label="404"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        {/* Números: do foreground do tema a um tom mais suave embaixo */}
+        <linearGradient id={num} gradientUnits="userSpaceOnUse" x1="0" y1="70" x2="0" y2="372">
+          <stop offset="0" style={{ stopColor: "var(--foreground)" }} />
+          <stop offset="1" style={{ stopColor: "color-mix(in oklch, var(--foreground) 60%, var(--background))" }} />
+        </linearGradient>
+        {/* Ouro da logo */}
+        <linearGradient id={gold} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="300">
+          <stop offset="0" stopColor="#e0c585" />
+          <stop offset="0.55" stopColor="#c19a4b" />
+          <stop offset="1" stopColor="#8a6a2c" />
+        </linearGradient>
+        <linearGradient id={floor} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" style={{ stopColor: "var(--foreground)", stopOpacity: 0 }} />
+          <stop offset="0.5" style={{ stopColor: "var(--foreground)", stopOpacity: 0.28 }} />
+          <stop offset="1" style={{ stopColor: "var(--foreground)", stopOpacity: 0 }} />
+        </linearGradient>
+      </defs>
+
+      <Four x={0} fill={num} />
+
+      {/* Frasco (o "0") */}
+      <g transform="translate(255 70)">
+        <g fill="#c19a4b">
+          {MIST.map((m, i) => (
+            <circle key={i} cx={m.cx} cy={m.cy} r={m.r} className="error-mist" style={{ animationDelay: m.delay }} />
+          ))}
+        </g>
+        {/* tampa e pescoço */}
+        <rect x="64" y="0" width="62" height="46" rx="9" className="fill-foreground" />
+        <path d="M76 12V34M88 12V34M100 12V34M112 12V34" className="stroke-background" strokeOpacity="0.28" strokeWidth="1.5" />
+        <rect x="72" y="46" width="46" height="9" rx="3" className="fill-background" stroke={`url(#${gold})`} strokeWidth="2.5" />
+        <rect x="78" y="55" width="34" height="26" className="fill-foreground" />
+        {/* corpo */}
+        <rect x="4" y="82" width="182" height="218" rx="38" className="fill-muted stroke-foreground" strokeWidth="3.5" />
+        {/* contraforma do "0": o rótulo oval do frasco, em ouro */}
+        <ellipse cx="95" cy="194" rx="50" ry="76" fill="#c19a4b" fillOpacity="0.07" stroke={`url(#${gold})`} strokeWidth="5" />
+        <path d="M27 120V262" className="stroke-background" strokeOpacity="0.9" strokeWidth="3" strokeLinecap="round" />
+        <path d="M160 238V266" className="stroke-background" strokeOpacity="0.7" strokeWidth="3" strokeLinecap="round" />
+      </g>
+
+      <Four x={490} fill={num} />
+
+      <rect x="0" y="378" width="700" height="1.5" fill={`url(#${floor})`} />
+    </svg>
+  )
+}
+
+const svgBase = {
+  viewBox: "0 0 96 96",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2.2,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+  xmlns: "http://www.w3.org/2000/svg",
+}
+
+/** 403: selo com fechadura — "área reservada". */
+export function SealVisual({ className }: { className?: string }) {
+  return (
+    <svg {...svgBase} className={className}>
+      <circle cx="48" cy="48" r="40" />
+      <circle cx="48" cy="48" r="33" strokeDasharray="1 5" opacity="0.6" />
+      <g className="text-gold-500">
+        <circle cx="48" cy="42" r="7" />
+        <path d="M45.5 48.5L43.5 66H52.5L50.5 48.5" fill="currentColor" fillOpacity="0.25" />
+      </g>
+    </svg>
+  )
+}
+
+/** 500: gota de essência com ondulações. */
+export function DropVisual({ className }: { className?: string }) {
+  return (
+    <svg {...svgBase} viewBox="0 0 96 110" className={className}>
+      <path
+        d="M48 12C48 12 25 42 25 58a23 23 0 0 0 46 0C71 42 48 12 48 12Z"
+        className="text-gold-500"
+        fill="currentColor"
+        fillOpacity="0.22"
+      />
+      <path d="M48 12C48 12 25 42 25 58a23 23 0 0 0 46 0C71 42 48 12 48 12Z" />
+      <path d="M38 60a10 10 0 0 0 8 10" opacity="0.7" />
+      {[0, 1.2, 2.4].map((d) => (
+        <ellipse key={d} cx="48" cy="94" rx="24" ry="5" className="error-ripple" style={{ animationDelay: `${d}s` }} />
+      ))}
+    </svg>
+  )
+}
+
+function Vial({ x }: { x: number }) {
+  return (
+    <g transform={`translate(${x} 0)`}>
+      <rect x="6" y="22" width="12" height="9" rx="2" />
+      <rect x="9" y="31" width="6" height="6" />
+      <rect x="0" y="37" width="24" height="38" rx="7" />
+      <rect x="4" y="58" width="16" height="13" rx="4" className="text-gold-500" fill="currentColor" fillOpacity="0.4" stroke="none" />
+    </g>
+  )
+}
+
+/** 502: dois frascos ligados por um fio que se refaz. */
+export function LinkedVialsVisual({ className }: { className?: string }) {
+  return (
+    <svg {...svgBase} className={className}>
+      <Vial x={6} />
+      <Vial x={66} />
+      <path d="M34 58H62" strokeDasharray="4 8" className="error-dash text-gold-500" />
+    </svg>
+  )
+}
+
+/** 504: anel com um trecho dourado em rotação — tempo de espera. */
+export function TimeRingVisual({ className }: { className?: string }) {
+  return (
+    <svg {...svgBase} className={className}>
+      <circle cx="48" cy="48" r="38" opacity="0.3" />
+      {/* Círculo completo (caixa = relógio) com só um trecho visível: gira em torno do centro certo */}
+      <circle cx="48" cy="48" r="38" strokeWidth="3" strokeDasharray="60 179" className="error-spin text-gold-500" />
+      <path d="M48 48V28M48 48L62 56" />
+      <circle cx="48" cy="48" r="2.5" fill="currentColor" />
+    </svg>
+  )
+}
+
+/** Falha de comunicação: frasco fechado, com uma órbita tracejada à procura de conexão. */
+export function OrbitBottleVisual({ className }: { className?: string }) {
+  return (
+    <svg {...svgBase} className={className}>
+      <circle cx="48" cy="48" r="40" strokeDasharray="2 7" className="error-spin text-gold-500" />
+      <rect x="42" y="25" width="12" height="9" rx="2" />
+      <rect x="45" y="34" width="6" height="6" />
+      <rect x="35" y="40" width="26" height="32" rx="8" />
+      <ellipse cx="48" cy="57" rx="6" ry="11" className="text-gold-500" />
+    </svg>
+  )
+}
+
+/** 503: discreto — um fio de luz que desliza, como a loja se preparando. */
+export function QuietVisual({ className }: { className?: string }) {
+  return (
+    <div className={className} aria-hidden="true">
+      <div className="relative mx-auto h-px w-40 overflow-hidden bg-border">
+        <div className="error-slide absolute inset-y-0 left-0 w-1/3 bg-linear-to-r from-transparent via-gold-500 to-transparent" />
+      </div>
+    </div>
+  )
+}

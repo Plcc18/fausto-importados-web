@@ -1,7 +1,7 @@
 'use client'
 
 import React from "react"
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import type { Product, CartItem } from '@/lib/types'
 import { Input } from "@/Shadcn-Components/ui/input"
 import {
@@ -81,7 +81,7 @@ function buildShareUrl(productId: string): string {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function Store() {
-  const { products, status: productsStatus, isFromCache, refreshFailed, retry: retryProducts } = useProducts()
+  const { products, status: productsStatus, isFromCache, refreshFailed, errorCode, retry: retryProducts } = useProducts()
   const [cart, setCart] = useState<CartItem[]>(getCart)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [stockChangedIds, setStockChangedIds] = useState<string[]>([])
@@ -111,6 +111,17 @@ export function Store() {
     return new URLSearchParams(window.location.search).get('produto')
   })
   const ackHighlight = useCallback(() => setHighlightProductId(null), [])
+
+  // Destino de "Explorar fragrâncias" (página 404): /#colecao rola até a vitrine
+  useEffect(() => {
+    if (window.location.hash !== '#colecao') return
+    const scrollToCollection = () => collectionRef.current?.scrollIntoView()
+    scrollToCollection()
+    // As imagens do hero ainda empurram o layout: repete quando tudo terminar de carregar
+    if (document.readyState === 'complete') return
+    window.addEventListener('load', scrollToCollection, { once: true })
+    return () => window.removeEventListener('load', scrollToCollection)
+  }, [])
 
   // Volta para a página 1 sempre que um filtro mudar (ajuste de estado durante a
   // renderização, evitando um efeito só para sincronizar estado interno)
@@ -476,7 +487,7 @@ export function Store() {
       </section>
 
       {/* ── Products Section ── */}
-      <section ref={collectionRef} className="px-4 py-16 md:py-24">
+      <section id="colecao" ref={collectionRef} className="px-4 py-16 md:py-24">
         <div className="mx-auto max-w-7xl">
           <div className="mb-12 flex flex-col gap-8">
             <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
@@ -636,7 +647,7 @@ export function Store() {
           {showCatalogSkeleton ? (
             <CatalogSkeleton count={PRODUCTS_PER_PAGE} />
           ) : showCatalogError ? (
-            <CatalogError onRetry={retryProducts} />
+            <CatalogError code={errorCode ?? 'connection'} onRetry={retryProducts} />
           ) : paginatedProducts.length > 0 ? (
             <>
               {isFromCache && <CatalogCacheNotice refreshFailed={refreshFailed} onRetry={retryProducts} />}

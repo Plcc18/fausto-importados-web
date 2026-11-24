@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { Product } from "@/lib/types"
 import { API_URL } from "@/lib/api"
+import { HttpError, RequestTimeoutError, errorCodeFromError, type ErrorCode } from "@/lib/httpErrors"
 
 // ─── Configuração ─────────────────────────────────────────────────────────────
 
@@ -34,6 +35,8 @@ export interface ProductsState {
   isFromCache: boolean
   /** Estava exibindo cache e a atualização falhou (dados podem estar desatualizados). */
   refreshFailed: boolean
+  /** Tela de erro correspondente à última falha (só preenchido em `status: "error"` ou `refreshFailed`). */
+  errorCode: ErrorCode | null
 }
 
 // ─── Cache (localStorage) ─────────────────────────────────────────────────────
@@ -79,15 +82,6 @@ export function writeProductsCache(products: Product[], now = Date.now()): void 
 
 // ─── Requisição com retentativas ──────────────────────────────────────────────
 
-export class HttpError extends Error {
-  status: number
-  constructor(status: number) {
-    super(`HTTP ${status}`)
-    this.name = "HttpError"
-    this.status = status
-  }
-}
-
 /** Falhas temporárias valem retentativa; erros 4xx do cliente (exceto 408/429) não. */
 export function isRetryableError(error: unknown): boolean {
   if (error instanceof HttpError) {
@@ -116,15 +110,23 @@ async function fetchProductsOnce(signal: AbortSignal, timeoutMs: number): Promis
   // Controller próprio por tentativa: o timeout aborta só esta tentativa,
   // enquanto `signal` (do chamador) aborta tudo.
   const attempt = new AbortController()
+  let timedOut = false
   const onParentAbort = () => attempt.abort()
   signal.addEventListener("abort", onParentAbort, { once: true })
-  const timer = setTimeout(() => attempt.abort(), timeoutMs)
+  const timer = setTimeout(() => {
+    timedOut = true
+    attempt.abort()
+  }, timeoutMs)
   try {
     const response = await fetch(`${API_URL}/api/product`, { signal: attempt.signal })
     if (!response.ok) throw new HttpError(response.status)
     const data = (await response.json()) as { content?: unknown }
     if (!data || !Array.isArray(data.content)) throw new Error("Resposta inesperada da API")
     return data.content as Product[]
+  } catch (error) {
+    // Timeout real (o servidor não respondeu a tempo) ≠ falha de conexão
+    if (timedOut && !signal.aborted) throw new RequestTimeoutError()
+    throw error
   } finally {
     clearTimeout(timer)
     signal.removeEventListener("abort", onParentAbort)
@@ -161,8 +163,8 @@ export async function fetchProductsWithRetry(
 function getInitialState(): ProductsState {
   const cached = readProductsCache()
   return cached
-    ? { status: "success", products: cached.products, isFromCache: true, refreshFailed: false }
-    : { status: "loading", products: [], isFromCache: false, refreshFailed: false }
+    ? { status: "success", products: cached.products, isFromCache: true, refreshFailed: false, errorCode: null }
+    : { status: "loading", products: [], isFromCache: false, refreshFailed: false, errorCode: null }
 }
 
 /**
@@ -192,15 +194,22 @@ export function useProducts() {
       if (controller.signal.aborted) return
       writeProductsCache(products)
       hasDataRef.current = true
-      setState({ status: "success", products, isFromCache: false, refreshFailed: false })
+      setState({ status: "success", products, isFromCache: false, refreshFailed: false, errorCode: null })
     } catch (error) {
       if (controller.signal.aborted) return
       console.error("Erro ao buscar produtos:", error)
       if (hasDataRef.current) {
         // Já há dados na tela: não derruba o catálogo. Só sinaliza se eram do cache.
-        setState((prev) => ({ ...prev, refreshFailed: prev.isFromCache }))
+        setState((prev) => ({
+          ...prev,
+          refreshFailed: prev.isFromCache,
+          errorCode: prev.isFromCache ? errorCodeFromError(error) : null,
+        }))
       } else {
-        setState({ status: "error", products: [], isFromCache: false, refreshFailed: false })
+        setState({
+          status: "error", products: [], isFromCache: false, refreshFailed: false,
+          errorCode: errorCodeFromError(error),
+        })
       }
     } finally {
       if (abortRef.current === controller) {
@@ -236,8 +245,8 @@ export function useProducts() {
     if (inFlightRef.current) return
     setState((prev) =>
       prev.status === "error"
-        ? { ...prev, status: "loading" }
-        : { ...prev, refreshFailed: false }
+        ? { ...prev, status: "loading", errorCode: null }
+        : { ...prev, refreshFailed: false, errorCode: null }
     )
     void load()
   }, [load])

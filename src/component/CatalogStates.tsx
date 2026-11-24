@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { CloudOff, RotateCcw } from "lucide-react"
 import { Card, CardContent } from "@/Shadcn-Components/ui/card"
-import { Button } from "@/Shadcn-Components/ui/button"
 import { Skeleton } from "@/Shadcn-Components/ui/skeleton"
+import { ErrorView } from "@/component/errors/ErrorView"
+import type { ErrorCode } from "@/lib/httpErrors"
 
 /** Depois deste tempo sem resposta, explica que o servidor pode estar iniciando. */
 const SLOW_HINT_DELAY_MS = 8_000
@@ -65,23 +65,9 @@ export function CatalogSkeleton({ count }: { count: number }) {
   )
 }
 
-/** Mesmo layout do estado vazio do catálogo, para manter a identidade visual. */
-export function CatalogError({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div role="alert" className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-muted/50">
-        <CloudOff className="h-8 w-8 text-muted-foreground" />
-      </div>
-      <h3 className="text-xl font-medium">Não foi possível carregar as fragrâncias</h3>
-      <p className="mt-2 max-w-sm text-muted-foreground">
-        Estamos com dificuldades para acessar nosso catálogo. Tente novamente em instantes.
-      </p>
-      <Button variant="outline" className="mt-8 rounded-full bg-transparent px-6" onClick={onRetry}>
-        <RotateCcw className="mr-2 h-4 w-4" />
-        Tentar novamente
-      </Button>
-    </div>
-  )
+/** Falha ao carregar o catálogo: tela de erro da marca (500/502/503/504/conexão) embutida na vitrine. */
+export function CatalogError({ code, onRetry }: { code: ErrorCode; onRetry: () => void }) {
+  return <ErrorView code={code} layout="embedded" onRetry={onRetry} />
 }
 
 /**
