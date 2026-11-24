@@ -634,6 +634,46 @@ describe("perfil (quem está logado) e recuperação da sessão", () => {
   })
 })
 
+describe("sair x sessão derrubada", () => {
+  it("'Sair' (e 'sair de todos') marcam que foi a pessoa; um novo login limpa a marca", async () => {
+    const client = newClient()
+    await client.login("admin@x.com", "secret")
+    expect(client.wasSignedOutByUser()).toBe(false)
+
+    await client.logout()
+    expect(client.wasSignedOutByUser()).toBe(true)
+
+    await client.login("admin@x.com", "secret")
+    expect(client.wasSignedOutByUser()).toBe(false)
+    expect(await client.logoutAll()).toBe(true)
+    expect(client.wasSignedOutByUser()).toBe(true)
+  })
+
+  it("sessão derrubada pelo servidor (refresh recusado) NÃO conta como 'Sair'", async () => {
+    const client = newClient()
+    await client.login("admin@x.com", "secret")
+    server.valid.clear()
+    server.sessionAlive = false
+
+    await dataRequest(client)
+
+    expect(client.getStatus()).toBe("anonymous")
+    expect(client.wasSignedOutByUser()).toBe(false)
+  })
+
+  it("sair em OUTRA aba também conta como 'Sair' nesta", async () => {
+    const [a, b] = twoTabs()
+    await a.login("admin@x.com", "secret")
+    await flush()
+
+    await a.logout()
+    await flush()
+
+    expect(b.getStatus()).toBe("anonymous")
+    expect(b.wasSignedOutByUser()).toBe(true)
+  })
+})
+
 describe("dica de sessão (só para a interface)", () => {
   it("existe depois do login, some no logout e quando o servidor derruba a sessão", async () => {
     const client = newClient()

@@ -66,7 +66,11 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 
   if (state === "loading") return null // ou um spinner se preferir
   if (state === "login" || (state === "ok" && session === "anonymous")) {
-    return <Navigate to={`${ROUTES.login}?next=${encodeURIComponent(pathname + search)}`} replace />
+    // Sessão expirada/derrubada: volta para onde estava depois de entrar. Se a pessoa clicou em "Sair", login limpo.
+    const target = authClient.wasSignedOutByUser()
+      ? ROUTES.login
+      : `${ROUTES.login}?next=${encodeURIComponent(pathname + search)}`
+    return <Navigate to={target} replace />
   }
   if (state === "forbidden") return <ErrorView code="403" />
   if (typeof state === "object") {

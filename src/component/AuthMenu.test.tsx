@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { MemoryRouter } from "react-router-dom"
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom"
 import { AuthMenu } from "./AuthMenu"
 import { authClient } from "@/lib/auth"
 
@@ -21,6 +21,11 @@ function api(options: { refresh?: () => Response; role?: "ADMIN" | "USER"; hold?
     if (url.endsWith("/auth/logout")) return json({})
     throw new Error(`rota inesperada: ${url}`)
   })
+}
+
+function Where() {
+  const { pathname } = useLocation()
+  return <div data-testid="where">{pathname}</div>
 }
 
 const renderMenu = () =>
@@ -127,6 +132,29 @@ describe("AuthMenu — conta recuperada pela sessão anterior", () => {
     expect(screen.queryByRole("link", { name: /entrar/i })).toBeNull()
     expect(calledAuthRoutes().some((u) => u.endsWith("/auth/logout"))).toBe(true)
     expect(authClient.getProfile()).toBeNull()
+  })
+})
+
+describe("AuthMenu — sair da conta", () => {
+  it("'Sair' encerra a sessão e leva para a tela de login", async () => {
+    localStorage.setItem("fausto:session-hint", "1")
+    api()
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AuthMenu />
+        <Routes>
+          <Route path="*" element={<Where />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(screen.getByTestId("where").textContent).toBe("/")
+    fireEvent.click(await screen.findByRole("button", { name: "Minha conta" }))
+
+    fireEvent.click(screen.getByRole("button", { name: "Sair" }))
+
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("/entrar"))
+    expect(calledAuthRoutes().some((u) => u.endsWith("/auth/logout"))).toBe(true)
+    expect(authClient.hasSession()).toBe(false)
   })
 })
 

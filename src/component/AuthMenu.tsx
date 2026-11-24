@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { LayoutDashboard, LogOut, User } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/Shadcn-Components/ui/popover"
 import { authClient, hasSessionHint, useAuthProfile, useAuthStatus } from "@/lib/auth"
@@ -21,6 +21,7 @@ const pill =
  * continua sendo quem de fato decide (esconder o botão não é segurança).
  */
 export function AuthMenu() {
+  const navigate = useNavigate()
   const status = useAuthStatus()
   const profile = useAuthProfile()
   const [restoring, setRestoring] = useState(() => hasSessionHint() && authClient.getProfile() === null)
@@ -80,7 +81,8 @@ export function AuthMenu() {
             type="button"
             onClick={() => {
               setOpen(false)
-              void authClient.logout()
+              // sai no servidor (revoga a sessão) e leva para a tela de login
+              void authClient.logout().then(() => navigate(ROUTES.login))
             }}
             className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
           >

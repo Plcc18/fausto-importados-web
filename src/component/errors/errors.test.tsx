@@ -200,7 +200,20 @@ describe("área restrita (refresh da sessão + /auth/me + papel)", () => {
     await act(async () => { await authClient.logout() })
 
     await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/entrar"))
+    expect(screen.getByTestId("search").textContent).toBe("") // saiu de propósito: login limpo, sem "voltar para /admin"
     expect(screen.queryByTestId("admin-panel")).toBeNull()
+  })
+
+  it("sessão derrubada pelo servidor com o painel aberto → entrar, e depois do login volta para a tela em que estava", async () => {
+    route({ refresh: accessToken })
+    renderApp("/admin")
+    await screen.findByTestId("admin-panel")
+
+    route({ refresh: () => json({}, 401) }) // o servidor revogou a sessão
+    await act(async () => { await authClient.refresh() })
+
+    await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/entrar"))
+    expect(screen.getByTestId("search").textContent).toBe("?next=%2Fadmin")
   })
 
   it("o endereço antigo do painel não existe mais (404)", () => {

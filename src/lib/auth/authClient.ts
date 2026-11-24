@@ -156,6 +156,7 @@ export class AuthClient {
   private expiresAt = 0
   private status: AuthStatus = "unknown"
   private profile: Profile | null = null
+  private signedOutByUser = false
   private profileInflight: Promise<ProfileResult> | null = null
   private reauthProof: { token: string; expiresAt: number } | null = null
   private inflight: Promise<RefreshOutcome> | null = null
@@ -178,6 +179,12 @@ export class AuthClient {
   // ─── estado observável (useSyncExternalStore) ───────────────────────────────
 
   getStatus = (): AuthStatus => this.status
+
+  /**
+   * A última sessão acabou porque a PESSOA clicou em "Sair" (nesta aba ou em outra)? Diferente de uma sessão que
+   * expirou ou foi derrubada pelo servidor. A interface usa isso para ir ao login "limpo", sem lembrar a tela anterior.
+   */
+  wasSignedOutByUser = (): boolean => this.signedOutByUser
 
   /** Quem está logado (depois de `loadProfile`/`restoreSession`), ou `null`. Referência estável entre mudanças. */
   getProfile = (): Profile | null => this.profile
@@ -332,13 +339,17 @@ export class AuthClient {
     } catch {
       /* sem rede: o logout local acontece mesmo assim */
     }
+    this.signedOutByUser = true
     this.endSession(true)
   }
 
   /** "Sair de todos os dispositivos". */
   async logoutAll(): Promise<boolean> {
     const res = await this.fetch(`${this.authUrl}/auth/logout-all`, { method: "POST", credentials: "include" })
-    if (res.ok || res.status === 401) this.endSession(true)
+    if (res.ok || res.status === 401) {
+      this.signedOutByUser = true
+      this.endSession(true)
+    }
     return res.ok
   }
 
@@ -445,6 +456,7 @@ export class AuthClient {
     this.expiresAt = 0
     this.status = "unknown"
     this.profile = null
+    this.signedOutByUser = false
     this.profileInflight = null
     this.reauthProof = null
     this.inflight = null
@@ -547,6 +559,7 @@ export class AuthClient {
     this.token = token
     this.expiresAt = this.now() + expiresInSeconds * 1000
     this.status = "authenticated"
+    this.signedOutByUser = false
     setSessionHint()
     this.schedule()
     if (broadcast) this.channel?.postMessage({ type: "token", token, expiresAt: this.expiresAt })
@@ -624,6 +637,7 @@ export class AuthClient {
         if (this.status === "authenticated" && this.timer === null) this.schedule()
         break
       case "logout":
+        this.signedOutByUser = true // a pessoa saiu em outra aba
         this.endSession(false)
         break
     }
