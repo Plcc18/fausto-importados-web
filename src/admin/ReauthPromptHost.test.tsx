@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { ReauthPromptHost } from "./ReauthPromptHost"
 import { askReauthCode } from "./reauthBridge"
@@ -92,8 +92,28 @@ describe("pedido de código 2FA (diálogo do site)", () => {
     expect(await second).toBe("654321")
   })
 
-  it("sem diálogo montado não há como perguntar: devolve null na hora (não trava a operação)", async () => {
+  it("sem diálogo montado não há como perguntar: devolve null na hora (não trava a operação) e avisa no console", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
     expect(await askReauthCode(undefined)).toBeNull()
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Nenhum diálogo de confirmação"))
+    warn.mockRestore()
+  })
+
+  it("duas cópias do módulo (hot-reload do Vite) compartilham o mesmo diálogo: o pedido NÃO se perde", async () => {
+    const copyA = await import("./reauthBridge")
+    vi.resetModules() // uma segunda avaliação do mesmo arquivo, como acontece no hot-reload
+    const copyB = await import("./reauthBridge")
+    expect(copyA).not.toBe(copyB) // são mesmo cópias distintas...
+
+    const unsubscribe = copyB.subscribe(() => {}) // ...o diálogo está ligado à B
+    const answer = copyA.askReauthCode(undefined) // ...e o pedido sai da A
+
+    expect(copyB.currentRequest()).not.toBeNull() // a B enxerga o pedido da A
+    copyB.settle("123456")
+    expect(await answer).toBe("123456")
+    unsubscribe()
   })
 
   it("se a tela some com o pedido aberto, ele é cancelado (ninguém fica esperando para sempre)", async () => {
