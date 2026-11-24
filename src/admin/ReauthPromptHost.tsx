@@ -83,7 +83,7 @@ export function ReauthPromptHost() {
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) settle(null) }}>
-      <DialogContent>
+      <DialogContent className="max-w-sm">
         <Prompt key={request.id} request={request} />
       </DialogContent>
     </Dialog>

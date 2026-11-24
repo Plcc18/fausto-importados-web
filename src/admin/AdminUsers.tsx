@@ -354,7 +354,7 @@ export function AdminUsers() {
 
       {/* Confirmação de ação (substitui o popup do SweetAlert2: diálogo do próprio site) */}
       <Dialog open={confirmation !== null} onOpenChange={(open) => { if (!open) answerConfirmation(false) }}>
-        <DialogContent>
+        <DialogContent className="max-w-sm">
           {confirmation && (
             <>
               <DialogHeader>
@@ -374,14 +374,11 @@ export function AdminUsers() {
 
       {/* Novo administrador */}
       <Dialog open={createOpen} onOpenChange={(open) => !creating && setCreateOpen(open)}>
-        <DialogContent>
-          <form onSubmit={create} className="space-y-4">
+        <DialogContent className="max-w-sm">
+          <form onSubmit={create} className="space-y-3">
             <DialogHeader>
               <DialogTitle>Novo administrador</DialogTitle>
-              <DialogDescription>
-                Informe só o e-mail. O sistema gera uma senha temporária (mostrada uma vez) que a pessoa troca ao cadastrar o
-                próprio autenticador, em até 24 horas.
-              </DialogDescription>
+              <DialogDescription>Só o e-mail. A senha temporária é gerada e mostrada uma vez.</DialogDescription>
             </DialogHeader>
             {formError && (
               <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -389,8 +386,8 @@ export function AdminUsers() {
               </p>
             )}
             <div className="space-y-2">
-              <Label htmlFor="new-admin-email">E-mail</Label>
-              <Input id="new-admin-email" type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+              <Label htmlFor="new-admin-email" className="sr-only">E-mail</Label>
+              <Input id="new-admin-email" type="email" placeholder="E-mail da pessoa" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" disabled={creating} onClick={() => setCreateOpen(false)}>Cancelar</Button>
@@ -402,7 +399,7 @@ export function AdminUsers() {
 
       {/* Senha temporária: aparece uma única vez e é descartada ao fechar */}
       <Dialog open={credentials !== null} onOpenChange={(open) => { if (!open) { setCredentials(null); setCopied(false) } }}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           {credentials && (
             <>
               <DialogHeader>
