@@ -38,8 +38,16 @@ export function useTheme() {
     const onChange = () => {
       if (!getStoredTheme()) setTheme(media.matches ? "dark" : "light")
     }
+    // Outra aba mudou a escolha do usuário: acompanha para não ficar dessincronizado
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY || event.key === null) setTheme(getStoredTheme() ?? getSystemTheme())
+    }
     media.addEventListener("change", onChange)
-    return () => media.removeEventListener("change", onChange)
+    window.addEventListener("storage", onStorage)
+    return () => {
+      media.removeEventListener("change", onChange)
+      window.removeEventListener("storage", onStorage)
+    }
   }, [])
 
   const toggle = () =>
