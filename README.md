@@ -1,73 +1,91 @@
-# React + TypeScript + Vite
+# Fausto Importados — Front-end
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Loja virtual de perfumes importados com painel administrativo. O cliente navega pelo catálogo, monta o carrinho e finaliza o pedido via WhatsApp; o administrador gerencia produtos, pedidos e relatórios de vendas.
 
-Currently, two official plugins are available:
+O back-end fica em outro repositório: `fausto-importados-api` (Spring Boot).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Tecnologias
 
-## React Compiler
+- React 19 + TypeScript
+- Vite 7
+- Tailwind CSS 4 + shadcn/ui (Radix UI)
+- React Router 7
+- Sonner (toasts) e SweetAlert2 (confirmações)
+- Vercel Analytics e Speed Insights
+- pnpm como gerenciador de pacotes
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Funcionalidades
 
-## Expanding the ESLint configuration
+- **Loja** (`/`): catálogo de produtos com busca, filtros, paginação, carrinho e envio do pedido por WhatsApp.
+- **Painel admin** (`/nexus-24`): cadastro, edição e exclusão de produtos, upload de imagens, gestão de pedidos (pendentes, concluídos, cancelados) e notificações de novos pedidos.
+- **Relatório de vendas** (`/nexus-24/relatorio`): estatísticas e histórico de vendas.
+- **Login admin** (`/nexus-24/login`): autenticação por cookie. As rotas do painel são protegidas e consultam `/auth/me` na API.
+- Tema claro/escuro e páginas de Termos, Privacidade e Cookies.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Pré-requisitos
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 20 ou superior
+- [pnpm](https://pnpm.io/)
+- API rodando (por padrão em `http://localhost:8080`)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Como rodar
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# 1. Instalar dependências
+pnpm install
+
+# 2. Configurar variáveis de ambiente
+cp .env.example .env.development
+
+# 3. Subir o servidor de desenvolvimento
+pnpm dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+A aplicação fica disponível em `http://localhost:5173`. Essa é a origem liberada no CORS da API em desenvolvimento.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Variáveis de ambiente
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Variável | Descrição | Padrão |
+|---|---|---|
+| `VITE_API_URL` | URL base da API | `http://localhost:8080` |
+| `VITE_WHATSAPP_NUMBER` | Número do WhatsApp que recebe os pedidos (DDI + DDD + número, só dígitos) | definido em `Cart.tsx` |
+
+O modelo está em [.env.example](.env.example). Os arquivos `.env.development`, `.env.production` e `.env.local` estão no `.gitignore` e não devem ser commitados.
+
+Como o Vite embute as variáveis no build, em produção (Vercel) elas devem ser configuradas em **Settings → Environment Variables** do projeto.
+
+## Scripts
+
+| Comando | O que faz |
+|---|---|
+| `pnpm dev` | Servidor de desenvolvimento com HMR |
+| `pnpm build` | Checagem de tipos (`tsc -b`) e build de produção em `dist/` |
+| `pnpm preview` | Serve o build localmente |
+| `pnpm lint` | Executa o ESLint |
+
+## Estrutura
+
 ```
+src/
+├── App.tsx              # Rotas e proteção das rotas admin
+├── main.tsx
+├── component/           # Telas e componentes (Store, Admin, Cart, SalesReport...)
+├── Shadcn-Components/   # Componentes de UI (shadcn)
+└── lib/                 # API, hooks, tipos e utilitários
+```
+
+## Integração com a API
+
+As requisições usam `API_URL` definido em [src/lib/api.ts](src/lib/api.ts). As chamadas autenticadas usam `credentials: 'include'` para enviar o cookie de sessão, então a API precisa:
+
+- liberar a origem do front no CORS com credenciais;
+- em produção, usar cookies com `Secure` e `SameSite=None` (front e API em domínios diferentes).
+
+Principais endpoints consumidos: `/auth/me`, `/api/product`, `/api/orders`, `/api/orders/report`, `/api/orders/sales-stats` e `/api/upload`.
+
+## Deploy
+
+O projeto é publicado na Vercel. O [vercel.json](vercel.json) redireciona todas as rotas para `index.html` (SPA).
+
+- Branch `main`: produção.
+- Branch `dev` e demais branches: geram apenas URLs de preview. Faça as alterações na `dev` e abra um PR para a `main` quando estiver pronto.
