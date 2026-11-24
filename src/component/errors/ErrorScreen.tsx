@@ -104,18 +104,29 @@ export function ErrorScreen({
             </div>
           )}
           {code && (
-            <p
-              className={cn(
-                "error-rise font-light lining-nums",
-                variant === "quiet"
-                  ? "mb-5 text-xs uppercase tracking-[0.45em] text-accent-foreground/80"
-                  : cn("text-gold-metal tracking-[0.18em]", isPage ? "mb-4 text-6xl sm:text-7xl" : "mb-3 text-4xl sm:text-5xl")
+            <div className={cn("error-rise relative", isPage ? "mb-4" : "mb-3")} style={step(2)}>
+              {/* 503: halo dourado que "respira" atrás do número — calmo, como a loja se preparando */}
+              {variant === "quiet" && (
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "error-breathe absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/25 blur-2xl",
+                    isPage ? "h-24 w-72" : "h-16 w-48"
+                  )}
+                />
               )}
-              style={step(2)}
-            >
-              <span className="sr-only">Erro </span>
-              {code}
-            </p>
+              <p
+                className={cn(
+                  "text-gold-metal font-light lining-nums tracking-[0.18em]",
+                  isPage ? "text-6xl sm:text-7xl" : "text-4xl sm:text-5xl",
+                  // brilho que desliza lentamente pelos dígitos
+                  variant === "quiet" && "error-sheen"
+                )}
+              >
+                <span className="sr-only">Erro </span>
+                {code}
+              </p>
+            </div>
           )}
         </>
       )}
