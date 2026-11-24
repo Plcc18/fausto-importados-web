@@ -12,7 +12,7 @@ export interface ErrorAction {
 }
 
 export interface ErrorScreenProps {
-  /** Código exibido (ex.: "403"). Vazio = sem número. Em `showcase` o número faz parte do `visual`. */
+  /** Código exibido (ex.: "403"). Vazio = sem número. */
   code: string
   title: string
   description: string
@@ -21,11 +21,10 @@ export interface ErrorScreenProps {
   primaryAction: ErrorAction
   secondaryAction?: ErrorAction
   /**
-   * - showcase: composição de destaque (404) — o número é parte do visual
    * - standard: símbolo + número em dourado + texto
    * - quiet: minimalista e acolhedor (503) — logo maior, número discreto
    */
-  variant?: "showcase" | "standard" | "quiet"
+  variant?: "standard" | "quiet"
   /** `page` ocupa a tela toda; `embedded` vive dentro de outra página (ex.: vitrine). */
   layout?: "page" | "embedded"
 }
@@ -91,44 +90,36 @@ export function ErrorScreen({
   const Heading = isPage ? "h1" : "h3"
 
   const body = (
-    <div className={cn("flex w-full flex-col items-center", variant === "showcase" ? "max-w-3xl" : "max-w-xl")}>
-      {variant === "showcase" ? (
-        <div className={cn("error-rise w-full", isPage ? "mb-8 max-w-[44rem] px-3 sm:px-0" : "mb-6 max-w-md")} style={step(1)}>
+    <div className="flex w-full max-w-xl flex-col items-center">
+      {variant === "standard" && visual && (
+        <div className={cn("error-rise text-primary", isPage ? "mb-8 h-24 w-24" : "mb-5 h-16 w-16")} style={step(1)}>
           {visual}
         </div>
-      ) : (
-        <>
-          {variant === "standard" && visual && (
-            <div className={cn("error-rise text-primary", isPage ? "mb-8 h-24 w-24" : "mb-5 h-16 w-16")} style={step(1)}>
-              {visual}
-            </div>
-          )}
-          {code && (
-            <div className={cn("error-rise relative", isPage ? "mb-4" : "mb-3")} style={step(2)}>
-              {/* 503: halo dourado que "respira" atrás do número — calmo, como a loja se preparando */}
-              {variant === "quiet" && (
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "error-breathe absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/25 blur-2xl",
-                    isPage ? "h-24 w-72" : "h-16 w-48"
-                  )}
-                />
+      )}
+      {code && (
+        <div className={cn("error-rise relative", isPage ? "mb-4" : "mb-3")} style={step(2)}>
+          {/* 503: halo dourado que "respira" atrás do número — calmo, como a loja se preparando */}
+          {variant === "quiet" && (
+            <span
+              aria-hidden="true"
+              className={cn(
+                "error-breathe absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/25 blur-2xl",
+                isPage ? "h-24 w-72" : "h-16 w-48"
               )}
-              <p
-                className={cn(
-                  "text-gold-metal font-light lining-nums tracking-[0.18em]",
-                  isPage ? "text-6xl sm:text-7xl" : "text-4xl sm:text-5xl",
-                  // brilho que desliza lentamente pelos dígitos
-                  variant === "quiet" && "error-sheen"
-                )}
-              >
-                <span className="sr-only">Erro </span>
-                {code}
-              </p>
-            </div>
+            />
           )}
-        </>
+          <p
+            className={cn(
+              "text-gold-metal font-light lining-nums tracking-[0.18em]",
+              isPage ? "text-6xl sm:text-7xl" : "text-4xl sm:text-5xl",
+              // brilho que desliza lentamente pelos dígitos
+              variant === "quiet" && "error-sheen"
+            )}
+          >
+            <span className="sr-only">Erro </span>
+            {code}
+          </p>
+        </div>
       )}
 
       <Heading

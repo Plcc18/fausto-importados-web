@@ -4,12 +4,12 @@ import type { ErrorCode } from "@/lib/httpErrors"
 import { COLLECTION_HASH_ROUTE, ROUTES } from "@/routes"
 import { ErrorScreen, type ErrorAction, type ErrorScreenProps } from "./ErrorScreen"
 import {
-  DropVisual, LinkedVialsVisual, OrbitBottleVisual, PerfumeBottle404,
+  BottleVisual, DropVisual, LinkedVialsVisual, OrbitBottleVisual,
   QuietVisual, SealVisual, TimeRingVisual,
 } from "./ErrorVisuals"
 
 interface ErrorDefinition {
-  /** Número exibido (o 404 usa o número desenhado; "" = sem número, p.ex. falha que não é resposta HTTP). */
+  /** Número exibido ("" = sem número, p.ex. falha que não é resposta HTTP). */
   code: string
   title: string
   description: string
@@ -25,8 +25,8 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDefinition> = {
     code: "404",
     title: "Esta fragrância não está por aqui.",
     description: "Parece que o caminho que você procurava não existe ou foi descontinuado.",
-    visual: <PerfumeBottle404 className="h-auto w-full" />,
-    variant: "showcase",
+    visual: <BottleVisual className="h-full w-full" />,
+    variant: "standard",
     primary: "home",
     secondary: "explore",
   },

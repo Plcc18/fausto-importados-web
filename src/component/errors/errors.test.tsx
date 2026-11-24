@@ -50,7 +50,7 @@ describe("404", () => {
     renderApp("/essa-rota-nao-existe")
     expect(screen.getByRole("heading", { name: "Esta fragrância não está por aqui." })).toBeTruthy()
     expect(screen.getByText("Parece que o caminho que você procurava não existe ou foi descontinuado.")).toBeTruthy()
-    expect(screen.getByRole("img", { name: "404" })).toBeTruthy()
+    expect(screen.getByText("404")).toBeTruthy() // número no mesmo padrão das demais telas
     expect(screen.getByRole("link", { name: "Voltar à loja" }).getAttribute("href")).toBe("/")
     expect(screen.getByRole("link", { name: "Explorar fragrâncias" }).getAttribute("href")).toBe("/#colecao")
     expect(fetchMock).not.toHaveBeenCalled() // não consulta a API em uma rota inexistente
