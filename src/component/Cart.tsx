@@ -16,7 +16,7 @@ import {
 import { Input } from '@/Shadcn-Components/ui/input'
 import { Label } from '@/Shadcn-Components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/Shadcn-Components/ui/radio-group'
-import Swal from 'sweetalert2'
+import { notify } from '@/lib/notice'
 import { API_URL } from "@/lib/api"
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -383,7 +383,7 @@ export function Cart({
                           <Button variant="outline" onClick={() => setClearConfirmOpen(false)}>Cancelar</Button>
                           <Button variant="destructive" onClick={() => {
                             onClear(); setClearConfirmOpen(false); onClose()
-                            Swal.fire({ icon: 'success', title: 'Carrinho limpo', text: 'Todos os itens foram removidos do seu carrinho.', timer: 2000, showConfirmButton: false })
+                            notify({ icon: 'success', title: 'Carrinho limpo', text: 'Todos os itens foram removidos do seu carrinho.', timer: 2000 })
                           }}>Limpar</Button>
                         </DialogFooter>
                       </DialogContent>

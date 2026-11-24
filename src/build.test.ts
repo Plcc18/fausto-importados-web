@@ -93,6 +93,12 @@ describe("build de produção", () => {
     expect(files.filter((f) => f.endsWith(".js")).some((f) => read(f).includes("Chave manual"))).toBe(true)
   })
 
+  it("não leva o SweetAlert2: os avisos são diálogos do próprio site", () => {
+    for (const js of files.filter((f) => f.endsWith(".js"))) {
+      expect(read(js), `${path.basename(js)} contém o SweetAlert2`).not.toContain("swal2")
+    }
+  })
+
   it("não publica source maps", () => {
     expect(files.filter((f) => f.endsWith(".map"))).toEqual([])
     for (const js of files.filter((f) => f.endsWith(".js"))) {

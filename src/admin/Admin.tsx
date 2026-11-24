@@ -65,7 +65,7 @@ import { NotificationsPanel } from "@/admin/NotificationsPanel"
 import { ThemeToggle } from "@/component/ThemeToggle"
 import { Pagination } from "@/component/Pagination"
 import { usePagination } from "@/lib/usePagination"
-import Swal from "sweetalert2"
+import { notify } from "@/lib/notice"
 import { API_URL } from "@/lib/api"
 import { authFetch, authClient } from "@/lib/auth"
 import { toast } from "sonner"
@@ -218,7 +218,7 @@ export function Admin() {
     await authClient.logout() // revoga a sessão no servidor, limpa o cookie e avisa as outras abas
     navigate(ROUTES.login)
     setTimeout(() => {
-      Swal.fire({ icon: "success", title: "Até logo!", text: "Você saiu da sua conta.", timer: 2000, showConfirmButton: false })
+      notify({ icon: "success", title: "Até logo!", text: "Você saiu da sua conta.", timer: 2000 })
     }, 100)
   }
 
@@ -232,7 +232,7 @@ export function Admin() {
     }
     navigate(ROUTES.login)
     setTimeout(() => {
-      Swal.fire({ icon: "success", title: "Sessões encerradas", text: "Você saiu de todos os dispositivos.", timer: 2500, showConfirmButton: false })
+      notify({ icon: "success", title: "Sessões encerradas", text: "Você saiu de todos os dispositivos.", timer: 2500 })
     }, 100)
   }
 
@@ -269,7 +269,7 @@ export function Admin() {
     const res = await sensitiveFetch(`${API_URL}/api/orders/reset-sales`, { method: "DELETE" })
     setResetConfirmOpen(false)
     if (!res.ok) {
-      Swal.fire({ icon: "info", title: "Não foi possível zerar", text: SENSITIVE_NOT_DONE })
+      notify({ icon: "info", title: "Não foi possível zerar", text: SENSITIVE_NOT_DONE })
       return
     }
     setSalesStats({ day: 0, month: 0, year: 0 })
@@ -300,7 +300,7 @@ export function Admin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.image) {
-      Swal.fire({ icon: "warning", title: "Imagem obrigatória", text: "Aguarde o upload da imagem ou selecione uma imagem antes de salvar." })
+      notify({ icon: "warning", title: "Imagem obrigatória", text: "Aguarde o upload da imagem ou selecione uma imagem antes de salvar." })
       return
     }
     const productData = {
@@ -321,7 +321,7 @@ export function Admin() {
         form.append("product", JSON.stringify(productData))
         const res = await authFetch(`${API_URL}/api/product/${editingProduct.id}`, { method: "PUT", body: form })
         if (res.status === 401 || res.status === 403) {
-          Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
+          notify({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
           navigate(ROUTES.login); return
         }
         if (!res.ok) {
@@ -331,7 +331,7 @@ export function Admin() {
             const parsed = JSON.parse(text)
             message = parsed.message || parsed.error || text
           } catch { /* ignore */ }
-          Swal.fire({ icon: "error", title: "Erro ao atualizar produto", text: message || "Ocorreu um erro ao atualizar o produto." })
+          notify({ icon: "error", title: "Erro ao atualizar produto", text: message || "Ocorreu um erro ao atualizar o produto." })
           return
         }
       } else {
@@ -339,7 +339,7 @@ export function Admin() {
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(productData),
         })
         if (res.status === 401 || res.status === 403) {
-          Swal.fire({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
+          notify({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
           navigate(ROUTES.login); return
         }
         if (!res.ok) {
@@ -349,16 +349,16 @@ export function Admin() {
             const parsed = JSON.parse(text)
             message = parsed.message || parsed.error || text
           } catch { /* ignore */ }
-          Swal.fire({ icon: "error", title: "Erro ao cadastrar produto", text: message || "Ocorreu um erro ao cadastrar o produto." })
+          notify({ icon: "error", title: "Erro ao cadastrar produto", text: message || "Ocorreu um erro ao cadastrar o produto." })
           return
         }
       }
       setIsDialogOpen(false); setFormData(emptyForm); setEditingProduct(null); refreshProducts()
-      Swal.fire({ icon: "success", title: editingProduct ? "Produto atualizado" : "Produto cadastrado", text: editingProduct ? "O produto foi atualizado com sucesso." : "O produto foi cadastrado com sucesso.", timer: 2000, showConfirmButton: false })
+      notify({ icon: "success", title: editingProduct ? "Produto atualizado" : "Produto cadastrado", text: editingProduct ? "O produto foi atualizado com sucesso." : "O produto foi cadastrado com sucesso.", timer: 2000 })
     } catch (error) {
       console.error(error)
       const message = error instanceof Error ? error.message : undefined
-      Swal.fire({ icon: "error", title: "Erro de conexão", text: message || "Não foi possível se comunicar com o servidor." })
+      notify({ icon: "error", title: "Erro de conexão", text: message || "Não foi possível se comunicar com o servidor." })
     }
   }
 
@@ -366,7 +366,7 @@ export function Admin() {
   const handleDelete = async (id: string) => {
     const res = await authFetch(`${API_URL}/api/product/${id}`, { method: "DELETE" })
     if (res.status === 401 || res.status === 403) {
-      Swal.fire({ icon: "error", title: "Ação negada", text: "Você não está autorizado!" })
+      notify({ icon: "error", title: "Ação negada", text: "Você não está autorizado!" })
       navigate(ROUTES.login); return
     }
     setDeleteConfirm(null); refreshProducts()

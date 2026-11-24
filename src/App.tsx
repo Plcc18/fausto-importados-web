@@ -8,6 +8,7 @@ import { Cookies } from "./component/Cookies"
 import { authClient, useAuthStatus } from "@/lib/auth"
 import { HttpError, errorCodeFromError, type ErrorCode } from "@/lib/httpErrors"
 import { ROUTES, ERROR_ROUTE_PATTERN } from "@/routes"
+import { NoticeHost } from "@/component/NoticeHost"
 import { AppErrorBoundary } from "@/component/errors/AppErrorBoundary"
 import { ErrorView, ErrorRoutePage, NotFoundPage } from "@/component/errors/ErrorView"
 
@@ -105,6 +106,7 @@ export function App() {
           } as React.CSSProperties
         }
       />
+      <NoticeHost />
       <AppErrorBoundary resetKey={pathname}>
       <Routes>
         <Route path={ROUTES.home} element={<Store />} />
