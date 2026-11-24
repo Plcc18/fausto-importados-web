@@ -48,6 +48,7 @@ import {
   RotateCcw,
   TrendingUp,
   FileText,
+  Users,
   ChevronDown,
   Search,
   LogOut,
@@ -444,6 +445,17 @@ export function Admin() {
               title="Relatório de Vendas"
             >
               <FileText className="h-4 w-4" />
+            </Button>
+
+            {/* Administradores */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate(ROUTES.adminUsers)}
+              title="Administradores"
+              aria-label="Administradores"
+            >
+              <Users className="h-4 w-4" />
             </Button>
 
             {/* Pedidos pendentes */}

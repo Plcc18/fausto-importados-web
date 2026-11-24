@@ -17,6 +17,7 @@ export const ROUTES = {
   login: "/entrar",
   admin: "/admin",
   adminReport: "/admin/relatorio",
+  adminUsers: "/admin/administradores",
 } as const
 
 /** Lê o segmento `:codigo` de `/erro/:codigo` (pré-visualização / link direto das telas de erro). */

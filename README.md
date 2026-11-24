@@ -19,6 +19,7 @@ O back-end fica em outro repositório: `fausto-importados-api` (Spring Boot).
 - **Loja** (`/`): catálogo de produtos com busca, filtros, paginação, carrinho e envio do pedido por WhatsApp.
 - **Painel admin** (`/admin`): cadastro, edição e exclusão de produtos, upload de imagens, gestão de pedidos (pendentes, concluídos, cancelados) e notificações de novos pedidos.
 - **Relatório de vendas** (`/admin/relatorio`): estatísticas e histórico de vendas.
+- **Administradores** (`/admin/administradores`): cada pessoa tem a própria conta e o próprio autenticador. Criar (senha temporária mostrada uma vez), desativar/reativar, redefinir credenciais e excluir, sempre com confirmação por código 2FA.
 - **Entrar** (`/entrar`): login único. Administradores seguem para o código do autenticador (2FA) e, no primeiro acesso, cadastram o autenticador (QR code) e recebem códigos de recuperação. Access token de curta duração (só em memória) + refresh token em cookie `HttpOnly`, com sessão deslizante. Veja [Autenticação](#autenticação).
 - **Cabeçalho da loja**: visitantes não veem botão de conta (não há cadastro de clientes; quem administra acessa `/entrar` direto). Quem está logado vê o menu da conta com "Sair", e administradores também veem "Painel".
 - Tema claro/escuro e páginas de Termos, Privacidade e Cookies.

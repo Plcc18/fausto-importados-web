@@ -21,6 +21,7 @@ const ADMIN_ONLY_MARKERS = [
   "/api/orders/reset-report",
   "/api/orders/clear-history",
   "/api/orders/sales-stats",
+  "/reset-credentials", // gestão de administradores
 ]
 
 const walk = (dir: string): string[] =>

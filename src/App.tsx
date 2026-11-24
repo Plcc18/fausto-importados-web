@@ -15,6 +15,7 @@ import { ErrorView, ErrorRoutePage, NotFoundPage } from "@/component/errors/Erro
 // baixado quando alguém realmente chega lá — e, no caso do painel, só depois de a API confirmar que é um administrador.
 const Admin = lazy(() => import('@/admin/Admin').then((m) => ({ default: m.Admin })))
 const SalesReport = lazy(() => import('@/admin/SalesReport').then((m) => ({ default: m.SalesReport })))
+const AdminUsers = lazy(() => import('@/admin/AdminUsers').then((m) => ({ default: m.AdminUsers })))
 const Login = lazy(() => import('@/component/Login').then((m) => ({ default: m.Login })))
 
 // Resultado da verificação com o backend:
@@ -118,6 +119,14 @@ export function App() {
           element={
             <RequireAdmin>
               <SalesReport />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path={ROUTES.adminUsers}
+          element={
+            <RequireAdmin>
+              <AdminUsers />
             </RequireAdmin>
           }
         />
