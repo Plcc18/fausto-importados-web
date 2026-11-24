@@ -66,11 +66,9 @@ import { Pagination } from "@/component/Pagination"
 import { usePagination } from "@/lib/usePagination"
 import Swal from "sweetalert2"
 import { API_URL } from "@/lib/api"
+import { authFetch, authClient } from "@/lib/auth"
 import { toast } from "sonner"
 import { useAdminPushNotifications } from "@/lib/useAdminPushNotifications"
-
-const authFetch = (url: string, options: RequestInit = {}) =>
-  fetch(url, { ...options, credentials: "include" })
 
 // ============================================================================
 // SmartImageUploader
@@ -214,10 +212,24 @@ export function Admin() {
   })
 
   const handleLogout = async () => {
-    await authFetch(`${API_URL}/auth/logout`, { method: "POST" })
+    await authClient.logout() // revoga a sessão no servidor, limpa o cookie e avisa as outras abas
     navigate("/nexus-24/login")
     setTimeout(() => {
       Swal.fire({ icon: "success", title: "Até logo!", text: "Você saiu da sua conta.", timer: 2000, showConfirmButton: false })
+    }, 100)
+  }
+
+  const handleLogoutAll = async () => {
+    try {
+      const ok = await authClient.logoutAll()
+      if (!ok) throw new Error("logout-all failed")
+    } catch {
+      toast.error("Não foi possível sair de todos os dispositivos. Tente novamente.")
+      return
+    }
+    navigate("/nexus-24/login")
+    setTimeout(() => {
+      Swal.fire({ icon: "success", title: "Sessões encerradas", text: "Você saiu de todos os dispositivos.", timer: 2500, showConfirmButton: false })
     }, 100)
   }
 
@@ -973,8 +985,9 @@ export function Admin() {
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Sair da conta</DialogTitle></DialogHeader>
           <p className="text-muted-foreground">Tem certeza que deseja sair da sua conta?</p>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:flex-wrap">
             <Button variant="outline" onClick={() => setLogoutConfirmOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={handleLogoutAll}>Sair de todos os dispositivos</Button>
             <Button variant="destructive" onClick={handleLogout}>Sim, sair</Button>
           </DialogFooter>
         </DialogContent>

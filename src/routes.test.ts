@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest"
 import vercelConfig from "../vercel.json"
 import { ERROR_ROUTE_CODES, ROUTES } from "./routes"
 
-const { rewrites } = vercelConfig as { rewrites: { source: string; destination: string }[] }
+const { rewrites: allRewrites } = vercelConfig as { rewrites: { source: string; destination: string }[] }
+
+// Rewrites com destino externo são proxies da API (ex.: /auth/*); os demais são rotas do SPA.
+const isProxy = (r: { destination: string }) => /^https?:\/\//.test(r.destination)
+const rewrites = allRewrites.filter((r) => !isProxy(r))
+const proxies = allRewrites.filter(isProxy)
 
 /** Mini-matcher dos `source` usados em vercel.json: literais e `:param(a|b|c)`. */
 function matchesRewrite(source: string, pathname: string): boolean {
@@ -10,6 +15,17 @@ function matchesRewrite(source: string, pathname: string): boolean {
   return new RegExp(`^${pattern}/?$`).test(pathname)
 }
 const rewritten = (pathname: string) => rewrites.some((r) => matchesRewrite(r.source, pathname))
+
+describe("vercel.json × proxy de /auth", () => {
+  it("só /auth/* é repassado para a API (login, refresh e logout ficam na mesma origem do front)", () => {
+    expect(proxies).toHaveLength(1)
+    const [proxy] = proxies
+    expect(proxy.source).toBe("/auth/:path*")
+    expect(proxy.destination).toMatch(/^https:\/\/.+\/auth\/:path\*$/) // HTTPS, e mantém o caminho
+    // o proxy não vaza para o resto do site: o 404 real das demais URLs continua valendo
+    expect(rewritten("/auth/refresh")).toBe(false)
+  })
+})
 
 describe("vercel.json × rotas do app", () => {
   it("não há fallback catch-all (URLs inexistentes precisam de 404 real)", () => {

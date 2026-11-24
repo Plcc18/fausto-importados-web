@@ -19,7 +19,7 @@ O back-end fica em outro repositório: `fausto-importados-api` (Spring Boot).
 - **Loja** (`/`): catálogo de produtos com busca, filtros, paginação, carrinho e envio do pedido por WhatsApp.
 - **Painel admin** (`/nexus-24`): cadastro, edição e exclusão de produtos, upload de imagens, gestão de pedidos (pendentes, concluídos, cancelados) e notificações de novos pedidos.
 - **Relatório de vendas** (`/nexus-24/relatorio`): estatísticas e histórico de vendas.
-- **Login admin** (`/nexus-24/login`): autenticação por cookie. As rotas do painel são protegidas e consultam `/auth/me` na API.
+- **Login admin** (`/nexus-24/login`): access token de curta duração (só em memória) + refresh token em cookie `HttpOnly`, com sessão deslizante. As rotas do painel são protegidas: ao abrir/recarregar, o app recupera a sessão pelo refresh e consulta `/auth/me`. Veja [Autenticação](#autenticação).
 - Tema claro/escuro e páginas de Termos, Privacidade e Cookies.
 
 ## Pré-requisitos
@@ -76,16 +76,37 @@ src/
 
 ## Integração com a API
 
-As requisições usam `API_URL` definido em [src/lib/api.ts](src/lib/api.ts). As chamadas autenticadas usam `credentials: 'include'` para enviar o cookie de sessão, então a API precisa:
+As requisições usam `API_URL` definido em [src/lib/api.ts](src/lib/api.ts). As chamadas autenticadas passam por `authFetch` ([src/lib/auth](src/lib/auth)), que envia `Authorization: Bearer`. A API precisa liberar a origem do front no CORS com credenciais (`FRONTEND_URL`).
 
-- liberar a origem do front no CORS com credenciais;
-- em produção, usar cookies com `Secure` e `SameSite=None` (front e API em domínios diferentes).
+Principais endpoints consumidos: `/auth/*`, `/api/product`, `/api/orders`, `/api/orders/report`, `/api/orders/sales-stats` e `/api/upload`.
 
-Principais endpoints consumidos: `/auth/me`, `/api/product`, `/api/orders`, `/api/orders/report`, `/api/orders/sales-stats` e `/api/upload`.
+## Autenticação
+
+Access token + refresh token com sessão deslizante (a API está em `fausto-importados-api`).
+
+- **Access token** (JWT, ~15 min): guardado **só em memória** (nunca em `localStorage`/`sessionStorage`). Ao recarregar a página ele some e o app o recupera pelo cookie de refresh.
+- **Refresh token**: cookie `HttpOnly` gerido pelo browser; o JS nunca o vê.
+- **Renovação**: proativa ~1 min antes de expirar e também ao receber 401. É *single-flight*: se várias requisições tomam 401 juntas, só **uma** chamada de refresh acontece; as outras esperam e são refeitas.
+- **Inatividade**: sem interação por `VITE_IDLE_TIMEOUT_MS` (padrão 7 dias) o token deixa de ser renovado, inclusive pelos polls automáticos do painel.
+- **Abas**: `BroadcastChannel` propaga token, atividade e logout; `navigator.locks` evita dois refreshes simultâneos entre abas.
+- **Logout**: revoga a sessão no servidor e em todas as abas. O diálogo de sair também oferece "Sair de todos os dispositivos".
+
+### Por que as rotas `/auth/*` passam pelo proxy da Vercel
+
+O cookie de refresh é `SameSite=Strict`, e o front (`*.vercel.app`) e a API (`*.onrender.com`) são **sites diferentes**: o browser não enviaria o cookie. A solução sem domínio próprio é o `rewrite` `/auth/:path*` do [vercel.json](vercel.json): o browser fala com `/auth/*` na própria origem do front e a Vercel repassa para o Render, e o cookie fica no domínio do front. As demais rotas (`/api/*`) vão direto ao Render, autenticadas por Bearer.
+
+Para configurar a produção:
+
+1. No [vercel.json](vercel.json), troque `https://SUA-API.onrender.com` pela URL real da API no Render.
+2. Na Vercel, defina `VITE_AUTH_SAME_ORIGIN=true` (além de `VITE_API_URL`).
+3. No Render, defina `FRONTEND_URL` com a URL do front na Vercel (ex.: `https://seu-app.vercel.app`). Aceita várias origens separadas por vírgula; as URLs de preview da Vercel só conseguem renovar a sessão se estiverem na lista.
+4. Remova `JWT_EXPIRATION` do Render (não é mais usado).
+
+Em desenvolvimento nada disso é necessário: `localhost:5173` e `localhost:8080` são o mesmo *site*.
 
 ## Deploy
 
-O projeto é publicado na Vercel. O [vercel.json](vercel.json) redireciona todas as rotas para `index.html` (SPA).
+O projeto é publicado na Vercel. O [vercel.json](vercel.json) redireciona as rotas do app para `index.html` (SPA) e faz o proxy de `/auth/*` para a API.
 
 - Branch `main`: produção.
 - Branch `dev` e demais branches: geram apenas URLs de preview. Faça as alterações na `dev` e abra um PR para a `main` quando estiver pronto.

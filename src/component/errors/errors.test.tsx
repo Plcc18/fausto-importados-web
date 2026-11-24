@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { MemoryRouter, useLocation } from "react-router-dom"
 import { App } from "@/App"
+import { authClient } from "@/lib/auth"
 import { AppErrorBoundary } from "./AppErrorBoundary"
 import { ErrorView } from "./ErrorView"
 import { RETRY_DELAYS_MS } from "@/lib/useProducts"
@@ -40,6 +41,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  authClient.dispose() // o cliente de auth é um singleton: zera sessão/timers entre os testes
   vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -115,36 +117,65 @@ describe("/erro/:codigo (acesso direto / atualização da página)", () => {
   })
 })
 
-describe("área restrita (/auth/me)", () => {
-  it("403 → página 'Esta área é reservada.'", async () => {
-    fetchMock.mockResolvedValue(json({}, 403))
+describe("área restrita (refresh da sessão + /auth/me)", () => {
+  // O access token vive só em memória: ao abrir /nexus-24 o app primeiro troca o cookie de refresh por um
+  // token (/auth/refresh) e só então consulta /auth/me. O mock responde por URL.
+  const accessToken = () => json({ accessToken: "access-1", expiresIn: 900 })
+  const route = (handlers: { refresh: () => Response | Promise<Response>; me?: () => Response | Promise<Response> }) =>
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith("/auth/refresh")) return Promise.resolve(handlers.refresh())
+      if (url.endsWith("/auth/me")) return Promise.resolve(handlers.me?.() ?? json({}, 200))
+      if (url.endsWith("/auth/logout")) return Promise.resolve(json({}))
+      return new Promise(() => {}) // qualquer outra chamada (ex.: polling do painel) fica pendente
+    })
+
+  it("403 em /auth/me → página 'Esta área é reservada.'", async () => {
+    route({ refresh: accessToken, me: () => json({}, 403) })
     renderApp("/nexus-24")
     expect(await screen.findByRole("heading", { name: "Esta área é reservada." })).toBeTruthy()
   })
 
-  it("401 → continua redirecionando para o login", async () => {
-    fetchMock.mockResolvedValue(json({}, 401))
+  it("sem sessão (refresh 401) → redireciona para o login", async () => {
+    route({ refresh: () => json({}, 401) })
     renderApp("/nexus-24")
-    await screen.findByTestId("path")
+    await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/nexus-24/login"))
+    // não chegou a consultar /auth/me nem a pedir dados do painel
+    expect(fetchMock.mock.calls.map(([u]) => u as string).filter((u) => u.endsWith("/auth/me"))).toHaveLength(0)
+  })
+
+  it("401 em /auth/me mesmo após renovar → login", async () => {
+    route({ refresh: accessToken, me: () => json({}, 401) })
+    renderApp("/nexus-24")
     await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/nexus-24/login"))
   })
 
   it("5xx → tela de erro com 'Tentar novamente' que repete a verificação", async () => {
-    fetchMock.mockResolvedValueOnce(json({}, 502))
+    route({ refresh: () => json({}, 502) })
     renderApp("/nexus-24")
     expect(await screen.findByRole("heading", { name: "Estamos reorganizando nossa conexão." })).toBeTruthy()
+    expect(screen.getByTestId("path").textContent).toBe("/nexus-24") // 5xx não é "sem sessão"
 
-    fetchMock.mockResolvedValueOnce(json({}, 401))
+    route({ refresh: () => json({}, 401) })
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }))
     await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/nexus-24/login"))
-    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it("falha de rede → tela de conexão (e não o login)", async () => {
-    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"))
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"))
     renderApp("/nexus-24")
     expect(await screen.findByRole("heading", { name: "Não conseguimos acessar nossas fragrâncias." })).toBeTruthy()
     expect(screen.getByTestId("path").textContent).toBe("/nexus-24")
+  })
+
+  it("sessão encerrada enquanto o painel está aberto → volta para o login", async () => {
+    route({ refresh: accessToken })
+    renderApp("/nexus-24")
+    await vi.waitFor(() => expect(authClient.getStatus()).toBe("authenticated"))
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([u]) => (u as string).endsWith("/auth/me"))).toBe(true))
+
+    await act(async () => { await authClient.logout() })
+
+    await vi.waitFor(() => expect(screen.getByTestId("path").textContent).toBe("/nexus-24/login"))
   })
 })
 

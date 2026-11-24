@@ -35,10 +35,8 @@ import {
 } from "@/Shadcn-Components/ui/select"
 import { ArrowLeft, Download, Search, Trash2, TrendingUp, Package, X, RefreshCw, ChevronDown, BarChart2, CalendarDays } from "lucide-react"
 import { API_URL } from "@/lib/api"
+import { authFetch } from "@/lib/auth"
 import { ThemeToggle } from "@/component/ThemeToggle"
-
-const authFetch = (url: string, options: RequestInit = {}) =>
-  fetch(url, { ...options, credentials: "include" })
 
 interface OrderItem {
   id: string

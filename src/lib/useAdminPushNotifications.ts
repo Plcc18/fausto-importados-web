@@ -1,8 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react"
 import { API_URL } from "@/lib/api"
-
-const authFetch = (url: string, options: RequestInit = {}) =>
-  fetch(url, { ...options, credentials: "include" })
+import { authFetch } from "@/lib/auth"
 
 const MUTED_KEY = "admin_notifications_muted"
 

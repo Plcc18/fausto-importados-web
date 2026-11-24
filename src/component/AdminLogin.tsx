@@ -6,7 +6,7 @@ import { Label } from "@/Shadcn-Components/ui/label"
 import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react"
 import Swal from "sweetalert2"
-import { API_URL } from "@/lib/api"
+import { authClient } from "@/lib/auth"
 import { ThemeToggle } from "@/component/ThemeToggle"
 
 export function AdminLogin() {
@@ -21,15 +21,11 @@ export function AdminLogin() {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // credentials: "include" para o browser salvar o cookie
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      })
+      // O access token fica só em memória (authClient); o refresh token vai num cookie HttpOnly.
+      // A mensagem de erro é sempre a mesma: não revela se foi o e-mail ou a senha que errou.
+      const authenticated = await authClient.login(email, password)
 
-      if (!response.ok) {
+      if (!authenticated) {
         Swal.fire({
           icon: "error",
           title: "Negado",
@@ -39,9 +35,6 @@ export function AdminLogin() {
         })
         return
       }
-
-      // O token agora vem como cookie HttpOnly — não há body para ler.
-      // O browser salva o cookie automaticamente e o envia em toda requisição.
 
       Swal.fire({
         icon: "success",

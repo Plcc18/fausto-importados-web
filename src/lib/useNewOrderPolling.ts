@@ -1,8 +1,6 @@
 import { useEffect, useRef, useCallback } from "react"
 import { API_URL } from "@/lib/api"
-
-const authFetch = (url: string, options: RequestInit = {}) =>
-  fetch(url, { ...options, credentials: "include" })
+import { authFetch } from "@/lib/auth"
 
 /**
  * Polls /api/orders/filter?status=PENDING every `intervalMs` ms.

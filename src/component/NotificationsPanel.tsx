@@ -12,6 +12,7 @@ import {
 } from "@/Shadcn-Components/ui/dialog"
 import { Check, X, Clock, CheckCircle, XCircle, RefreshCw, Bell, Trash2 } from "lucide-react"
 import { API_URL } from "@/lib/api"
+import { authFetch } from "@/lib/auth"
 
 interface OrderItem {
   id: string
@@ -43,9 +44,6 @@ const statusConfig = {
   COMPLETED: { label: "Concluído", icon: CheckCircle, className: "text-green-600 bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" },
   CANCELLED: { label: "Cancelado", icon: XCircle, className: "text-red-600 bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800" },
 }
-
-const authFetch = (url: string, options: RequestInit = {}) =>
-  fetch(url, { ...options, credentials: "include" })
 
 interface NotificationsPanelProps {
   open: boolean
