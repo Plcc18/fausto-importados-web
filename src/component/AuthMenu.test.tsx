@@ -47,11 +47,11 @@ afterEach(() => {
 })
 
 describe("AuthMenu — sem sessão", () => {
-  it("visitante que nunca entrou vê 'Entrar' na hora e NENHUMA requisição é feita", () => {
-    renderMenu()
+  it("visitante que nunca entrou não vê NADA de conta (sem botão 'Entrar') e nenhuma requisição é feita", () => {
+    const { container } = renderMenu()
 
-    const link = screen.getByRole("link", { name: /entrar/i })
-    expect(link.getAttribute("href")).toBe("/entrar")
+    expect(container.innerHTML).toBe("")
+    expect(screen.queryByRole("link", { name: /entrar/i })).toBeNull()
     expect(screen.queryByLabelText("Carregando conta")).toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -73,7 +73,6 @@ describe("AuthMenu — conta recuperada pela sessão anterior", () => {
     renderMenu()
 
     expect(screen.getByLabelText("Carregando conta")).toBeTruthy()
-    expect(screen.queryByRole("link", { name: /entrar/i })).toBeNull() // não pisca "Entrar"
     release()
     expect(await screen.findByRole("button", { name: "Minha conta" })).toBeTruthy()
     expect(screen.queryByLabelText("Carregando conta")).toBeNull()
@@ -104,18 +103,19 @@ describe("AuthMenu — conta recuperada pela sessão anterior", () => {
     expect(screen.queryByRole("link", { name: "Painel" })).toBeNull()
   })
 
-  it("a sessão antiga já não vale (refresh recusado) → vira 'Entrar' e a dica é apagada", async () => {
+  it("a sessão antiga já não vale (refresh recusado) → o esqueleto some, não aparece botão e a dica é apagada", async () => {
     localStorage.setItem("fausto:session-hint", "1")
     api({ refresh: () => json({}, 401) })
 
-    renderMenu()
+    const { container } = renderMenu()
 
-    expect(await screen.findByRole("link", { name: /entrar/i })).toBeTruthy()
+    await waitFor(() => expect(container.innerHTML).toBe(""))
+    expect(screen.queryByRole("link", { name: /entrar/i })).toBeNull()
     expect(localStorage.getItem("fausto:session-hint")).toBeNull()
     expect(calledAuthRoutes().some((u) => u.endsWith("/auth/me"))).toBe(false) // sem token, nem consulta quem é
   })
 
-  it("'Sair' encerra a sessão no servidor e o cabeçalho volta a 'Entrar'", async () => {
+  it("'Sair' encerra a sessão no servidor e o menu de conta some do cabeçalho", async () => {
     localStorage.setItem("fausto:session-hint", "1")
     api()
     renderMenu()
@@ -123,7 +123,8 @@ describe("AuthMenu — conta recuperada pela sessão anterior", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Sair" }))
 
-    expect(await screen.findByRole("link", { name: /entrar/i })).toBeTruthy()
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Minha conta" })).toBeNull())
+    expect(screen.queryByRole("link", { name: /entrar/i })).toBeNull()
     expect(calledAuthRoutes().some((u) => u.endsWith("/auth/logout"))).toBe(true)
     expect(authClient.getProfile()).toBeNull()
   })
@@ -152,6 +153,7 @@ describe("AuthMenu — acabou de entrar nesta aba", () => {
     // simula a outra aba avisando pelo BroadcastChannel
     authClient["onRemoteMessage"]({ type: "logout" })
 
-    await waitFor(() => expect(screen.getByRole("link", { name: /entrar/i })).toBeTruthy())
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Minha conta" })).toBeNull())
+    expect(screen.queryByRole("link", { name: /entrar/i })).toBeNull()
   })
 })

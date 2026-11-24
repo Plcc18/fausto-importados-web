@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { LayoutDashboard, LogIn, LogOut, User } from "lucide-react"
+import { LayoutDashboard, LogOut, User } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/Shadcn-Components/ui/popover"
 import { authClient, hasSessionHint, useAuthProfile, useAuthStatus } from "@/lib/auth"
 import { ROUTES } from "@/routes"
@@ -10,13 +10,14 @@ const pill =
   "flex h-9 items-center gap-1.5 rounded-full border border-border px-3 text-sm font-medium text-foreground transition-all duration-200 hover:border-primary/50 hover:bg-muted"
 
 /**
- * Botões de conta no cabeçalho da loja, conforme o estado de login:
- *  - sem sessão: "Entrar" (nenhuma requisição é feita para quem nunca entrou neste navegador);
+ * Menu de conta no cabeçalho da loja, só para quem TEM sessão:
+ *  - sem sessão: nada é mostrado (não há cadastro de clientes, então não há botão "Entrar" para o público;
+ *    quem administra entra direto em /entrar) e nenhuma requisição é feita para quem nunca entrou neste navegador;
  *  - cliente: menu da conta com "Sair";
  *  - administrador: o mesmo menu + "Painel".
  *
- * Quem já entrou antes vê um esqueleto de largura fixa enquanto a sessão é recuperada, em vez de piscar "Entrar"
- * e trocar depois. O botão "Painel" só existe depois de a API confirmar que a pessoa é administradora — e a API
+ * Quem já entrou antes vê um esqueleto de largura fixa enquanto a sessão é recuperada, em vez de o menu surgir
+ * de repente e deslocar o cabeçalho. O botão "Painel" só existe depois de a API confirmar que a pessoa é administradora — e a API
  * continua sendo quem de fato decide (esconder o botão não é segurança).
  */
 export function AuthMenu() {
@@ -96,11 +97,5 @@ export function AuthMenu() {
     return <span aria-busy="true" aria-label="Carregando conta" className="h-9 w-9 animate-pulse rounded-full bg-muted sm:w-24" />
   }
 
-  return (
-    <Link to={ROUTES.login} className={pill}>
-      <LogIn className="h-4 w-4" />
-      <span className="hidden sm:block">Entrar</span>
-      <span className="sr-only sm:hidden">Entrar</span>
-    </Link>
-  )
+  return null // sem sessão: o cabeçalho não mostra nada de conta
 }
