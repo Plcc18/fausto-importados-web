@@ -110,7 +110,7 @@ export function ProductCard({
   return (
     <>
       <Card
-        className="group cursor-pointer overflow-hidden border-0 bg-card shadow-sm transition-all duration-300 hover:shadow-lg"
+        className="group cursor-pointer gap-0 overflow-hidden border border-border bg-card py-0 shadow-sm transition-all duration-300 hover:border-primary/40 hover:shadow-lg"
         onClick={() => setIsModalOpen(true)}
       >
         {/* Imagem */}

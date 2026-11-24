@@ -1,6 +1,5 @@
 import type { ReactNode } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, RotateCcw, ShoppingBag, Sparkles } from "lucide-react"
 import type { ErrorCode } from "@/lib/httpErrors"
 import { COLLECTION_HASH_ROUTE, ROUTES } from "@/routes"
 import { ErrorScreen, type ErrorAction, type ErrorScreenProps } from "./ErrorScreen"
@@ -13,8 +12,6 @@ interface ErrorDefinition {
   /** Número exibido (o 404 usa o número desenhado; "" = sem número, p.ex. falha que não é resposta HTTP). */
   code: string
   title: string
-  /** Palavra do título em destaque (serif itálico, como no hero da loja). */
-  accent: string
   description: string
   visual: ReactNode
   variant: NonNullable<ErrorScreenProps["variant"]>
@@ -27,7 +24,6 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDefinition> = {
   "404": {
     code: "404",
     title: "Esta fragrância não está por aqui.",
-    accent: "fragrância",
     description: "Parece que o caminho que você procurava não existe ou foi descontinuado.",
     visual: <PerfumeBottle404 className="h-auto w-full" />,
     variant: "showcase",
@@ -37,7 +33,6 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDefinition> = {
   "403": {
     code: "403",
     title: "Esta área é reservada.",
-    accent: "reservada",
     description: "Você não tem permissão para acessar este conteúdo.",
     visual: <SealVisual className="h-full w-full" />,
     variant: "standard",
@@ -46,7 +41,6 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDefinition> = {
   "500": {
     code: "500",
     title: "Algo não saiu como esperado.",
-    accent: "esperado",
     description: "Estamos trabalhando para restabelecer tudo. Tente novamente em instantes.",
     visual: <DropVisual className="h-full w-full" />,
     variant: "standard",
@@ -56,7 +50,6 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDefinition> = {
   "502": {
     code: "502",
     title: "Estamos reorganizando nossa conexão.",
-    accent: "conexão",
     description: "Nosso serviço encontrou uma dificuldade temporária ao se comunicar com outro servidor.",
     visual: <LinkedVialsVisual className="h-full w-full" />,
     variant: "standard",
@@ -66,7 +59,6 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDefinition> = {
   "503": {
     code: "503",
     title: "Estamos preparando tudo para você.",
-    accent: "preparando",
     description: "Nosso catálogo está temporariamente indisponível. Aguarde alguns instantes e tente novamente.",
     visual: <QuietVisual />,
     variant: "quiet",
@@ -76,7 +68,6 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDefinition> = {
   "504": {
     code: "504",
     title: "Essa conexão está demorando mais que o esperado.",
-    accent: "demorando",
     description: "Não conseguimos concluir sua solicitação a tempo. Por favor, tente novamente.",
     visual: <TimeRingVisual className="h-full w-full" />,
     variant: "standard",
@@ -87,7 +78,6 @@ const ERROR_DEFINITIONS: Record<ErrorCode, ErrorDefinition> = {
     // Estado de comunicação do frontend: não é uma resposta HTTP, então não há número
     code: "",
     title: "Não conseguimos acessar nossas fragrâncias.",
-    accent: "fragrâncias",
     description: "Estamos com dificuldades para estabelecer uma conexão com nosso catálogo.",
     visual: <OrbitBottleVisual className="h-full w-full" />,
     variant: "standard",
@@ -112,22 +102,21 @@ export function ErrorView({ code, layout = "page", onRetry }: ErrorViewProps) {
   const retry = onRetry ?? (() => navigate(ROUTES.home))
   const primaryAction: ErrorAction =
     def.primary === "home"
-      ? { label: "Voltar à loja", to: ROUTES.home, icon: ShoppingBag }
-      : { label: "Tentar novamente", onClick: retry, icon: RotateCcw, spinIconOnHover: true }
+      ? { label: "Voltar à loja", to: ROUTES.home }
+      : { label: "Tentar novamente", onClick: retry }
 
   // Em modo embutido já estamos na loja: sem link secundário
   const secondaryAction: ErrorAction | undefined =
     def.secondary === "explore"
-      ? { label: "Explorar fragrâncias", to: COLLECTION_HASH_ROUTE, icon: Sparkles }
+      ? { label: "Explorar fragrâncias", to: COLLECTION_HASH_ROUTE }
       : def.secondary === "home" && isPage
-        ? { label: "Voltar à loja", to: ROUTES.home, icon: ArrowLeft }
+        ? { label: "Voltar à loja", to: ROUTES.home }
         : undefined
 
   return (
     <ErrorScreen
       code={def.code}
       title={def.title}
-      accent={def.accent}
       description={def.description}
       visual={def.visual}
       variant={def.variant}

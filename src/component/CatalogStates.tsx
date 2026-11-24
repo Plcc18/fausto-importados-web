@@ -15,7 +15,7 @@ const SLOW_HINT_DELAY_MS = 8_000
  */
 function ProductCardSkeleton() {
   return (
-    <Card className="overflow-hidden border-0 bg-card shadow-sm" aria-hidden="true">
+    <Card className="gap-0 overflow-hidden border border-border bg-card py-0 shadow-sm" aria-hidden="true">
       <Skeleton className="aspect-square w-full rounded-none" />
       <CardContent className="flex flex-col p-3 sm:p-4">
         <Skeleton className="h-3 w-1/3" />

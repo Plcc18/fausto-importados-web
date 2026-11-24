@@ -552,7 +552,7 @@ export function Admin() {
               placeholder="Buscar por nome ou marca..."
               value={adminSearch}
               onChange={(e) => setAdminSearch(e.target.value)}
-              className="rounded-full border border-border bg-transparent pl-9 pr-4 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-ring hover:border-foreground/50"
+              className="rounded-full border border-border bg-transparent pl-9 pr-4 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-ring hover:border-primary/50"
             />
             {adminSearch && (
               <button onClick={() => setAdminSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -564,7 +564,7 @@ export function Admin() {
           {/* Ordenação */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminSort !== 'default' ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"}`}>
+              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminSort !== 'default' ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-foreground hover:border-primary/50"}`}>
                 <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
                 {adminSort === 'default' ? 'Ordenar' :
                   adminSort === 'price_asc' ? 'Menor preço' :
@@ -584,7 +584,7 @@ export function Admin() {
                 <button
                   key={opt.value}
                   onClick={() => setAdminSort(opt.value)}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors flex items-center gap-2 ${adminSort === opt.value ? "bg-foreground text-background" : "hover:bg-muted"}`}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors flex items-center gap-2 ${adminSort === opt.value ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
                 >
                   {adminSort === opt.value && <Check className="h-3.5 w-3.5 shrink-0" />}
                   {opt.label}
@@ -596,7 +596,7 @@ export function Admin() {
           {/* Gênero */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.gender !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"}`}>
+              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.gender !== "TODOS" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-foreground hover:border-primary/50"}`}>
                 {adminFilters.gender === "TODOS" ? "Gênero" : adminFilters.gender.charAt(0) + adminFilters.gender.slice(1).toLowerCase()}
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
               </button>
@@ -604,7 +604,7 @@ export function Admin() {
             <PopoverContent className="w-44 p-2" align="start">
               {["TODOS", "FEMININO", "MASCULINO", "UNISSEX"].map((opt) => (
                 <button key={opt} onClick={() => setAdminFilters((prev) => ({ ...prev, gender: opt }))}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${adminFilters.gender === opt ? "bg-foreground text-background" : "hover:bg-muted"}`}>
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${adminFilters.gender === opt ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
                   {opt === "TODOS" ? "Todos" : opt.charAt(0) + opt.slice(1).toLowerCase()}
                 </button>
               ))}
@@ -614,7 +614,7 @@ export function Admin() {
           {/* Família Olfativa */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.family !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"}`}>
+              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.family !== "TODOS" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-foreground hover:border-primary/50"}`}>
                 {adminFilters.family === "TODOS" ? "Família Olfativa" : adminFilters.family.charAt(0) + adminFilters.family.slice(1).toLowerCase()}
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
               </button>
@@ -622,7 +622,7 @@ export function Admin() {
             <PopoverContent className="w-48 p-2" align="start">
               {["TODOS", "FLORAL", "AMADEIRADO", "CITRICO", "ORIENTAL", "AQUATICO", "FRUTADO", "GOURMAND", "AROMATICO", "FOUGERE", "CHIPRE", "COURO"].map((opt) => (
                 <button key={opt} onClick={() => setAdminFilters((prev) => ({ ...prev, family: opt }))}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${adminFilters.family === opt ? "bg-foreground text-background" : "hover:bg-muted"}`}>
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${adminFilters.family === opt ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
                   {opt === "TODOS" ? "Todas" : opt.charAt(0) + opt.slice(1).toLowerCase()}
                 </button>
               ))}
@@ -632,7 +632,7 @@ export function Admin() {
           {/* Preço */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.minPrice !== "" || adminFilters.maxPrice !== "" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"}`}>
+              <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${adminFilters.minPrice !== "" || adminFilters.maxPrice !== "" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-foreground hover:border-primary/50"}`}>
                 {adminFilters.minPrice === "" && adminFilters.maxPrice === "" ? "Preço" : `R$ ${adminFilters.minPrice || "0"} — R$ ${adminFilters.maxPrice || "∞"}`}
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
               </button>
@@ -661,7 +661,7 @@ export function Admin() {
           {/* Promoções */}
           <button
             onClick={() => setAdminFilters((prev) => ({ ...prev, onSale: !prev.onSale }))}
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${adminFilters.onSale ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"}`}
+            className={`rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${adminFilters.onSale ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-foreground hover:border-primary/50"}`}
           >
             Promoções
           </button>
@@ -674,7 +674,7 @@ export function Admin() {
                 setAdminFilters({ gender: "TODOS", family: "TODOS", onSale: false, minPrice: "", maxPrice: "" })
                 setAdminSort("default")
               }}
-              className="flex items-center gap-1 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-all hover:border-foreground/50 hover:text-foreground"
+              className="flex items-center gap-1 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-all hover:border-primary/50 hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" /> Limpar
             </button>

@@ -60,7 +60,15 @@ export function App() {
   const { pathname } = useLocation()
   return (
     <>
-      <Toaster />
+      <Toaster
+        style={
+          {
+            "--normal-bg": "var(--popover)",
+            "--normal-text": "var(--popover-foreground)",
+            "--normal-border": "var(--border)",
+          } as React.CSSProperties
+        }
+      />
       <AppErrorBoundary resetKey={pathname}>
       <Routes>
         <Route path={ROUTES.home} element={<Store />} />

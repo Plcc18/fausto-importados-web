@@ -7,7 +7,8 @@ export function useTheme() {
     if (typeof window === "undefined") return "light"
     const stored = localStorage.getItem("theme") as Theme | null
     if (stored === "dark" || stored === "light") return stored
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+    // A identidade da loja é o tema escuro (grafite + ouro): é o padrão, independente do sistema
+    return "dark"
   })
 
   useEffect(() => {

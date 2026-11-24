@@ -257,7 +257,7 @@ export function Cart({
                 <ShoppingBag className="h-5 w-5" />
                 Seu Carrinho
                 {items.length > 0 && (
-                  <span className="rounded-full bg-foreground px-2 py-0.5 text-xs text-background">
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
                     {items.reduce((sum, item) => sum + item.quantity, 0)}
                   </span>
                 )}

@@ -148,7 +148,7 @@ function BarChart({
                 onClick={() => onLimitChange(n)}
                 className={`px-2.5 py-1 text-xs font-medium transition-colors ${
                   limit === n
-                    ? "bg-foreground text-background"
+                    ? "bg-primary text-primary-foreground"
                     : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
@@ -249,8 +249,8 @@ function CustomDatePicker({
               onClick={() => onChange({ ...value, mode: m })}
               className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
                 value.mode === m
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border text-foreground hover:border-foreground/50"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border text-foreground hover:border-primary/50"
               }`}
             >
               {m === "day" ? "Dia" : m === "month" ? "Mês" : "Ano"}
@@ -642,8 +642,8 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
               onClick={() => setPeriod(p)}
               className={`rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
                 period === p && period !== "custom"
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-transparent text-foreground hover:border-foreground/50"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-transparent text-foreground hover:border-primary/50"
               }`}
             >
               {periodLabel[p]}
@@ -657,8 +657,8 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
                 onClick={() => setPeriod("custom")}
                 className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
                   period === "custom"
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-transparent text-foreground hover:border-foreground/50"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-transparent text-foreground hover:border-primary/50"
                 }`}
               >
                 <CalendarDays className="h-3.5 w-3.5" />
@@ -729,7 +729,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
               onClick={() => setActiveView("chart")}
               className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
                 activeView === "chart"
-                  ? "bg-foreground text-background"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-transparent text-foreground hover:bg-muted"
               }`}
             >
@@ -740,7 +740,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
               onClick={() => setActiveView("table")}
               className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
                 activeView === "table"
-                  ? "bg-foreground text-background"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-transparent text-foreground hover:bg-muted"
               }`}
             >
@@ -756,7 +756,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
               placeholder="Buscar perfume..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="rounded-full border border-border bg-transparent pl-9 pr-4 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-ring hover:border-foreground/50"
+              className="rounded-full border border-border bg-transparent pl-9 pr-4 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-ring hover:border-primary/50"
             />
             {search && (
               <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -769,7 +769,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
           <Popover>
             <PopoverTrigger asChild>
               <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
-                category !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
+                category !== "TODOS" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-foreground hover:border-primary/50"
               }`}>
                 {category === "TODOS" ? "Gênero" : category.charAt(0) + category.slice(1).toLowerCase()}
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
@@ -778,7 +778,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
             <PopoverContent className="w-44 p-2" align="start">
               {["TODOS", "FEMININO", "MASCULINO", "UNISSEX"].map((opt) => (
                 <button key={opt} onClick={() => setCategory(opt)}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${category === opt ? "bg-foreground text-background" : "hover:bg-muted"}`}>
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${category === opt ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
                   {opt === "TODOS" ? "Todos" : opt.charAt(0) + opt.slice(1).toLowerCase()}
                 </button>
               ))}
@@ -789,7 +789,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
           <Popover>
             <PopoverTrigger asChild>
               <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
-                family !== "TODOS" ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
+                family !== "TODOS" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-foreground hover:border-primary/50"
               }`}>
                 {family === "TODOS" ? "Família Olfativa" : family.charAt(0) + family.slice(1).toLowerCase()}
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
@@ -798,7 +798,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
             <PopoverContent className="w-48 p-2" align="start">
               {["TODOS","FLORAL","AMADEIRADO","CITRICO","ORIENTAL","AQUATICO","FRUTADO","GOURMAND","AROMATICO","FOUGERE","CHIPRE","COURO"].map((opt) => (
                 <button key={opt} onClick={() => setFamily(opt)}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${family === opt ? "bg-foreground text-background" : "hover:bg-muted"}`}>
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${family === opt ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
                   {opt === "TODOS" ? "Todas" : opt.charAt(0) + opt.slice(1).toLowerCase()}
                 </button>
               ))}
@@ -809,7 +809,7 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
           <Popover>
             <PopoverTrigger asChild>
               <button className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
-                minPrice || maxPrice ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
+                minPrice || maxPrice ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-foreground hover:border-primary/50"
               }`}>
                 {!minPrice && !maxPrice ? "Preço" : `R$ ${minPrice || "0"} — R$ ${maxPrice || "∞"}`}
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
@@ -839,14 +839,14 @@ tfoot td{padding:14px;font-weight:700;font-size:14px}
           <button
             onClick={() => setOnSale((v) => !v)}
             className={`rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
-              onSale ? "border-foreground bg-foreground text-background" : "border-border bg-transparent text-foreground hover:border-foreground/50"
+              onSale ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-foreground hover:border-primary/50"
             }`}
           >
             Promoções
           </button>
 
           {hasFilters && (
-            <button onClick={clearFilters} className="flex items-center gap-1 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-all hover:border-foreground/50 hover:text-foreground">
+            <button onClick={clearFilters} className="flex items-center gap-1 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-all hover:border-primary/50 hover:text-foreground">
               <X className="h-3.5 w-3.5" /> Limpar
             </button>
           )}

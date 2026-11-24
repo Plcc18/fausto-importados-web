@@ -331,7 +331,7 @@ export function Store() {
     <div className="min-h-screen bg-background">
       {/* ── Header ── */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
-        <div className="hidden border-b border-border/30 bg-foreground text-background md:block">
+        <div className="hidden border-b border-border bg-card text-accent-foreground md:block">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-2 text-xs tracking-wide">
             <span className="opacity-80">Fragrâncias 100% Originais</span>
             <span className="opacity-80">Parcele em até 12x</span>
@@ -357,16 +357,16 @@ export function Store() {
                   <nav className="flex flex-col p-4">
                     {(['feminino', 'masculino', 'unissex'] as GenderFilter[]).map((g) => (
                       <button key={g} onClick={() => { setFilters((prev) => ({ ...prev, gender: g })); setActiveQuickFilter(null); scrollToCollection(); setIsMobileMenuOpen(false) }}
-                        className={cn('rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors capitalize', filters.gender === g ? 'bg-foreground text-background' : 'hover:bg-muted')}>
+                        className={cn('rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors capitalize', filters.gender === g ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
                         {g}
                       </button>
                     ))}
                     <button onClick={() => { setFilters((prev) => ({ ...prev, onSale: !prev.onSale })); setActiveQuickFilter(null); scrollToCollection(); setIsMobileMenuOpen(false) }}
-                      className={cn('rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors', filters.onSale ? 'bg-foreground text-background' : 'hover:bg-muted')}>
+                      className={cn('rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors', filters.onSale ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
                       Promoções
                     </button>
                     <button onClick={() => { setShowWishlist((v) => !v); scrollToCollection(); setIsMobileMenuOpen(false) }}
-                      className={cn('flex items-center gap-2 rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors', showWishlist ? 'bg-foreground text-background' : 'hover:bg-muted')}>
+                      className={cn('flex items-center gap-2 rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors', showWishlist ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
                       <Heart className="h-4 w-4" />
                       Favoritos
                       {favorites.length > 0 && <span className="ml-auto text-xs opacity-70">{favorites.length}</span>}
@@ -385,12 +385,12 @@ export function Store() {
               <nav className="hidden items-center gap-1 lg:flex">
                 {(['feminino', 'masculino', 'unissex'] as GenderFilter[]).map((g) => (
                   <button key={g} onClick={() => { setFilters((prev) => ({ ...prev, gender: g })); setActiveQuickFilter(null); scrollToCollection() }}
-                    className={cn('rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 capitalize', filters.gender === g ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
+                    className={cn('rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 capitalize', filters.gender === g ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
                     {g}
                   </button>
                 ))}
                 <button onClick={() => { setFilters((prev) => ({ ...prev, onSale: !prev.onSale })); setActiveQuickFilter(null); scrollToCollection() }}
-                  className={cn('rounded-full px-4 py-2 text-sm font-medium transition-all duration-200', filters.onSale ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
+                  className={cn('rounded-full px-4 py-2 text-sm font-medium transition-all duration-200', filters.onSale ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
                   Promoções
                 </button>
               </nav>
@@ -400,13 +400,13 @@ export function Store() {
             <div className="flex items-center gap-2">
               <ThemeToggle />
               <button onClick={() => { setShowWishlist((v) => !v); scrollToCollection() }}
-                className={cn('relative flex items-center gap-1.5 rounded-full border px-3 py-2 text-sm font-medium transition-all duration-200', showWishlist ? 'border-foreground bg-foreground text-background' : 'border-border text-foreground hover:border-foreground/50 hover:bg-muted')}
+                className={cn('relative flex items-center gap-1.5 rounded-full border px-3 py-2 text-sm font-medium transition-all duration-200', showWishlist ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-foreground hover:border-primary/50 hover:bg-muted')}
                 title="Minha lista de favoritos">
                 <Heart className={cn('h-4 w-4', showWishlist && 'fill-current')} />
                 {favorites.length > 0 && <span className="text-xs">{favorites.length}</span>}
               </button>
               <button onClick={() => setIsCartOpen(true)}
-                className={cn('group relative flex items-center gap-2 rounded-full border px-3 py-2 transition-all duration-300', cartCount > 0 ? 'border-foreground bg-foreground text-background shadow-lg hover:shadow-xl hover:scale-[1.02]' : 'border-border bg-transparent text-foreground hover:border-foreground/50 hover:bg-muted')}>
+                className={cn('group relative flex items-center gap-2 rounded-full border px-3 py-2 transition-all duration-300', cartCount > 0 ? 'border-primary bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-[1.02]' : 'border-border bg-transparent text-foreground hover:border-primary/50 hover:bg-muted')}>
                 <div className="relative">
                   <ShoppingBag className={cn('h-4.5 w-4.5 transition-transform duration-300', cartCount > 0 ? 'group-hover:scale-110' : '')} />
                   {cartCount > 0 && (
@@ -455,7 +455,7 @@ export function Store() {
           </div>
           <h1 className="text-4xl font-light leading-[1.1] tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl text-balance">
             A arte da
-            <span className="relative mx-3 inline-block font-serif italic">
+            <span className="text-gold-metal relative mx-3 inline-block font-serif italic">
               perfumaria
               <svg className="absolute -bottom-2 left-0 h-3 w-full text-primary/30" viewBox="0 0 100 12" preserveAspectRatio="none">
                 <path d="M0 9 Q 25 0, 50 9 T 100 9" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
@@ -470,8 +470,8 @@ export function Store() {
               const isActive = activeQuickFilter === filter.id
               return (
                 <button key={filter.id} onClick={() => { handleQuickFilter(filter); scrollToCollection() }}
-                  className={cn('group relative flex items-center gap-2.5 overflow-hidden rounded-full border px-6 py-3 text-sm font-medium transition-all duration-300', isActive ? 'border-foreground bg-foreground text-background shadow-lg' : 'border-border/60 bg-background/80 text-foreground shadow-sm backdrop-blur-sm hover:border-foreground/40 hover:bg-background hover:shadow-md')}>
-                  <Icon className={cn('h-4 w-4 transition-all duration-300 group-hover:scale-110', isActive ? 'text-background' : 'text-muted-foreground group-hover:text-foreground')} />
+                  className={cn('group relative flex items-center gap-2.5 overflow-hidden rounded-full border px-6 py-3 text-sm font-medium transition-all duration-300', isActive ? 'border-primary bg-primary text-primary-foreground shadow-lg' : 'border-border/60 bg-background/80 text-foreground shadow-sm backdrop-blur-sm hover:border-primary/40 hover:bg-background hover:shadow-md')}>
+                  <Icon className={cn('h-4 w-4 transition-all duration-300 group-hover:scale-110', isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground')} />
                   {filter.label}
                   <span className="text-xs opacity-60">{filter.description}</span>
                 </button>
@@ -525,7 +525,7 @@ export function Store() {
               </div>
 
               <button onClick={() => setShowWishlist((v) => !v)}
-                className={cn('flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200', showWishlist ? 'border-foreground bg-foreground text-background' : 'border-border bg-transparent text-foreground hover:border-foreground/50')}>
+                className={cn('flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200', showWishlist ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-transparent text-foreground hover:border-primary/50')}>
                 <Heart className={cn('h-3.5 w-3.5', showWishlist && 'fill-current')} />
                 Favoritos
                 {favorites.length > 0 && <span className="text-xs opacity-70">({favorites.length})</span>}
@@ -533,7 +533,7 @@ export function Store() {
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className={cn('flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all', sortKey !== 'default' ? 'border-foreground bg-foreground text-background' : 'border-border bg-transparent text-foreground hover:border-foreground/50')}>
+                  <button className={cn('flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all', sortKey !== 'default' ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-transparent text-foreground hover:border-primary/50')}>
                     <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
                     {sortOptions.find((s) => s.value === sortKey)?.label ?? 'Ordenar'}
                   </button>
@@ -541,7 +541,7 @@ export function Store() {
                 <PopoverContent className="w-44 p-1.5" align="start">
                   {sortOptions.map((opt) => (
                     <button key={opt.value} onClick={() => setSortKey(opt.value)}
-                      className={cn('w-full rounded-lg px-3 py-2 text-left text-sm transition-colors flex items-center gap-2', sortKey === opt.value ? 'bg-foreground text-background' : 'hover:bg-muted')}>
+                      className={cn('w-full rounded-lg px-3 py-2 text-left text-sm transition-colors flex items-center gap-2', sortKey === opt.value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
                       {sortKey === opt.value && <Check className="h-3.5 w-3.5 shrink-0" />}
                       {opt.label}
                     </button>
@@ -551,7 +551,7 @@ export function Store() {
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className={cn('flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all', filters.gender !== 'todos' ? 'border-foreground bg-foreground text-background' : 'border-border bg-transparent text-foreground hover:border-foreground/50')}>
+                  <button className={cn('flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all', filters.gender !== 'todos' ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-transparent text-foreground hover:border-primary/50')}>
                     {filters.gender === 'todos' ? 'Gênero' : filters.gender.charAt(0).toUpperCase() + filters.gender.slice(1)}
                     <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                   </button>
@@ -570,7 +570,7 @@ export function Store() {
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className={cn('flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all', filters.family !== 'todos' ? 'border-foreground bg-foreground text-background' : 'border-border bg-transparent text-foreground hover:border-foreground/50')}>
+                  <button className={cn('flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all', filters.family !== 'todos' ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-transparent text-foreground hover:border-primary/50')}>
                     {filters.family === 'todos' ? 'Família Olfativa' : familyFilters.find((f) => f.value === filters.family)?.label}
                     <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                   </button>
@@ -604,7 +604,7 @@ export function Store() {
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className={cn('flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all', filters.minPrice !== '' || filters.maxPrice !== '' ? 'border-foreground bg-foreground text-background' : 'border-border bg-transparent text-foreground hover:border-foreground/50')}>
+                  <button className={cn('flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all', filters.minPrice !== '' || filters.maxPrice !== '' ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-transparent text-foreground hover:border-primary/50')}>
                     {filters.minPrice === '' && filters.maxPrice === '' ? 'Preço' : `R$ ${filters.minPrice || '0'} — R$ ${filters.maxPrice || '∞'}`}
                     <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                   </button>
