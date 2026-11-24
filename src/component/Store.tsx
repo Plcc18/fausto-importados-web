@@ -1,7 +1,7 @@
 'use client'
 
 import React from "react"
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import type { Product, CartItem } from '@/lib/types'
 import { Input } from "@/Shadcn-Components/ui/input"
 import {
@@ -28,10 +28,11 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
   CommandList, CommandSeparator,
 } from '@/Shadcn-Components/ui/command'
-import { API_URL } from "@/lib/api"
 import { ThemeToggle } from "@/component/ThemeToggle"
 import { useCartReconciliation } from "@/lib/useCartReconciliation"
 import { useDebounce } from "@/lib/useDebounce"
+import { useProducts } from "@/lib/useProducts"
+import { CatalogSkeleton, CatalogError, CatalogCacheNotice } from "./CatalogStates"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type GenderFilter = 'todos' | 'feminino' | 'masculino' | 'unissex'
@@ -80,7 +81,7 @@ function buildShareUrl(productId: string): string {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function Store() {
-  const [products, setProducts] = useState<Product[]>([])
+  const { products, status: productsStatus, isFromCache, refreshFailed, retry: retryProducts } = useProducts()
   const [cart, setCart] = useState<CartItem[]>(getCart)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [stockChangedIds, setStockChangedIds] = useState<string[]>([])
@@ -110,22 +111,6 @@ export function Store() {
     return new URLSearchParams(window.location.search).get('produto')
   })
   const ackHighlight = useCallback(() => setHighlightProductId(null), [])
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/product`)
-        const data = await response.json()
-        setProducts(data.content)
-      } catch (error) { console.error('Erro ao buscar produtos:', error) }
-    }
-    fetchProducts()
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') fetchProducts()
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [])
 
   // Volta para a página 1 sempre que um filtro mudar (ajuste de estado durante a
   // renderização, evitando um efeito só para sincronizar estado interno)
@@ -320,6 +305,14 @@ export function Store() {
     return pages
   }, [totalPages, safePage])
 
+  // Skeleton enquanto não há dados. Com cache ainda não confirmado pela API, um
+  // resultado vazio pode ser só dado velho: nunca vira "Nenhuma fragrância
+  // encontrada" (essa mensagem só vale após a API responder) — fica carregando,
+  // ou em erro se a atualização falhou.
+  const emptyFromUnconfirmedCache = productsStatus === 'success' && isFromCache && filteredProducts.length === 0
+  const showCatalogSkeleton = productsStatus === 'loading' || (emptyFromUnconfirmedCache && !refreshFailed)
+  const showCatalogError = productsStatus === 'error' || (emptyFromUnconfirmedCache && refreshFailed)
+
   const from = (safePage - 1) * PRODUCTS_PER_PAGE + 1
   const to = Math.min(safePage * PRODUCTS_PER_PAGE, filteredProducts.length)
 
@@ -491,10 +484,12 @@ export function Store() {
                 <h2 className="text-3xl font-light tracking-tight text-foreground md:text-4xl">
                   {showWishlist ? 'Meus Favoritos' : 'Nossa Coleção'}
                 </h2>
-                <p className="mt-2 text-muted-foreground">
-                  {filteredProducts.length} fragrância{filteredProducts.length !== 1 ? 's' : ''}{' '}
-                  {showWishlist ? 'salva' : 'selecionada'}{filteredProducts.length !== 1 ? 's' : ''}
-                  {totalPages > 1 && ` · página ${safePage} de ${totalPages}`}
+                <p className="mt-2 min-h-6 text-muted-foreground">
+                  {productsStatus === 'success' && (<>
+                    {filteredProducts.length} fragrância{filteredProducts.length !== 1 ? 's' : ''}{' '}
+                    {showWishlist ? 'salva' : 'selecionada'}{filteredProducts.length !== 1 ? 's' : ''}
+                    {totalPages > 1 && ` · página ${safePage} de ${totalPages}`}
+                  </>)}
                 </p>
               </div>
               {hasActiveFilters && (
@@ -638,8 +633,13 @@ export function Store() {
           </div>
 
           {/* Grid */}
-          {paginatedProducts.length > 0 ? (
+          {showCatalogSkeleton ? (
+            <CatalogSkeleton count={PRODUCTS_PER_PAGE} />
+          ) : showCatalogError ? (
+            <CatalogError onRetry={retryProducts} />
+          ) : paginatedProducts.length > 0 ? (
             <>
+              {isFromCache && <CatalogCacheNotice refreshFailed={refreshFailed} onRetry={retryProducts} />}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {paginatedProducts.map((product) => (
                   <ProductCard

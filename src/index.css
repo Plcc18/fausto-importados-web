@@ -114,6 +114,33 @@
   --sidebar-ring: oklch(0.553 0.013 58.071);
 }
 
+/* Skeleton com shimmer sutil (usa só os tokens de tema, funciona no claro e no escuro) */
+.skeleton-shimmer {
+  --skeleton-base: color-mix(in oklch, var(--foreground) 7%, var(--background));
+  --skeleton-highlight: color-mix(in oklch, var(--foreground) 3%, var(--background));
+  background-color: var(--skeleton-base);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--skeleton-highlight) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+.dark .skeleton-shimmer {
+  --skeleton-base: color-mix(in oklch, var(--foreground) 9%, var(--background));
+  --skeleton-highlight: color-mix(in oklch, var(--foreground) 15%, var(--background));
+}
+@keyframes skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer { animation: none; background-image: none; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
