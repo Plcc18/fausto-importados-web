@@ -42,19 +42,19 @@ export function PerfumeBottle404({ className }: { className?: string }) {
     >
       <defs>
         <linearGradient id={gold} gradientUnits="userSpaceOnUse" x1="0" y1="70" x2="0" y2="372">
-          <stop offset="0" stopColor="#f1e2b8" />
-          <stop offset="0.4" stopColor="#d9bc78" />
-          <stop offset="0.75" stopColor="#c19a4b" />
-          <stop offset="1" stopColor="#8a6a2c" />
+          <stop offset="0" style={{ stopColor: "var(--gold-hi)" }} />
+          <stop offset="0.4" style={{ stopColor: "var(--gold-mid)" }} />
+          <stop offset="0.75" style={{ stopColor: "var(--gold-lo)" }} />
+          <stop offset="1" style={{ stopColor: "var(--gold-deep)" }} />
         </linearGradient>
         <linearGradient id={glass} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#26262a" />
-          <stop offset="1" stopColor="#0d0d0f" />
+          <stop offset="0" style={{ stopColor: "var(--glass-a)" }} />
+          <stop offset="1" style={{ stopColor: "var(--glass-b)" }} />
         </linearGradient>
         <linearGradient id={floor} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#d9bc78" stopOpacity="0" />
-          <stop offset="0.5" stopColor="#d9bc78" stopOpacity="0.55" />
-          <stop offset="1" stopColor="#d9bc78" stopOpacity="0" />
+          <stop offset="0" style={{ stopColor: "var(--gold-mid)", stopOpacity: 0 }} />
+          <stop offset="0.5" style={{ stopColor: "var(--gold-mid)", stopOpacity: 0.55 }} />
+          <stop offset="1" style={{ stopColor: "var(--gold-mid)", stopOpacity: 0 }} />
         </linearGradient>
       </defs>
 
@@ -62,20 +62,20 @@ export function PerfumeBottle404({ className }: { className?: string }) {
 
       {/* Frasco (o "0") */}
       <g transform="translate(255 70)">
-        <g fill="#f1e2b8">
+        <g style={{ fill: "var(--gold-hi)" }}>
           {MIST.map((m, i) => (
             <circle key={i} cx={m.cx} cy={m.cy - 34} r={m.r} className="error-mist" style={{ animationDelay: m.delay }} />
           ))}
         </g>
-        <rect x="64" y="0" width="62" height="46" rx="9" fill={`url(#${glass})`} stroke={`url(#${gold})`} strokeWidth="3" />
-        <path d="M76 12V34M88 12V34M100 12V34M112 12V34" stroke="#d9bc78" strokeOpacity="0.28" strokeWidth="1.5" />
+        <rect x="64" y="0" width="62" height="46" rx="9" fill="#0d0d0f" stroke={`url(#${gold})`} strokeWidth="3" />
+        <path d="M76 12V34M88 12V34M100 12V34M112 12V34" style={{ stroke: "var(--gold-mid)" }} strokeOpacity="0.28" strokeWidth="1.5" />
         <rect x="72" y="46" width="46" height="9" rx="3" fill="#0d0d0f" stroke={`url(#${gold})`} strokeWidth="2.5" />
         <rect x="78" y="55" width="34" height="26" fill="#0d0d0f" stroke={`url(#${gold})`} strokeWidth="2.5" />
         <rect x="4" y="82" width="182" height="218" rx="38" fill={`url(#${glass})`} stroke={`url(#${gold})`} strokeWidth="3.5" />
         {/* contraforma do "0": o rótulo oval do frasco */}
-        <ellipse cx="95" cy="194" rx="50" ry="76" fill="#d9bc78" fillOpacity="0.05" stroke={`url(#${gold})`} strokeWidth="5" />
-        <path d="M27 120V262" stroke="#fff" strokeOpacity="0.16" strokeWidth="3" strokeLinecap="round" />
-        <path d="M160 238V266" stroke="#fff" strokeOpacity="0.1" strokeWidth="3" strokeLinecap="round" />
+        <ellipse cx="95" cy="194" rx="50" ry="76" style={{ fill: "var(--gold-mid)" }} fillOpacity="0.05" stroke={`url(#${gold})`} strokeWidth="5" />
+        <path d="M27 120V262" style={{ stroke: "var(--glass-shine)" }} strokeOpacity="0.16" strokeWidth="3" strokeLinecap="round" />
+        <path d="M160 238V266" style={{ stroke: "var(--glass-shine)" }} strokeOpacity="0.1" strokeWidth="3" strokeLinecap="round" />
       </g>
 
       <Four x={490} gold={gold} />
@@ -172,8 +172,8 @@ export function OrbitBottleVisual({ className }: { className?: string }) {
 export function QuietVisual({ className }: { className?: string }) {
   return (
     <div className={className} aria-hidden="true">
-      <div className="relative mx-auto h-px w-40 overflow-hidden bg-gold-300/20">
-        <div className="error-slide absolute inset-y-0 left-0 w-1/3 bg-linear-to-r from-transparent via-gold-300 to-transparent" />
+      <div className="relative mx-auto h-px w-40 overflow-hidden bg-primary/25">
+        <div className="error-slide absolute inset-y-0 left-0 w-1/3 bg-linear-to-r from-transparent via-primary to-transparent" />
       </div>
     </div>
   )

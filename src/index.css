@@ -82,6 +82,14 @@
   --sidebar-accent-foreground: #121214;
   --sidebar-border: #e3dac6;
   --sidebar-ring: #c19a4b;
+  /* Acabamento dourado e vidro (páginas de erro) */
+  --gold-hi: #c9a24f;
+  --gold-mid: #c19a4b;
+  --gold-lo: #a37f35;
+  --gold-deep: #7a5c20;
+  --glass-a: #ffffff;
+  --glass-b: #efe8d8;
+  --glass-shine: #ffffff;
 }
 
 .dark {
@@ -117,6 +125,13 @@
   --sidebar-accent-foreground: #f4efe6;
   --sidebar-border: rgb(217 188 120 / 0.14);
   --sidebar-ring: #d9bc78;
+  --gold-hi: #f1e2b8;
+  --gold-mid: #d9bc78;
+  --gold-lo: #c19a4b;
+  --gold-deep: #8a6a2c;
+  --glass-a: #26262a;
+  --glass-b: #0d0d0f;
+  --glass-shine: #ffffff;
 }
 
 /* Dourado da marca (derivado do acabamento da logo) e neutros das páginas de erro */
@@ -133,7 +148,7 @@
 
 /* Acabamento metálico discreto para textos dourados */
 .text-gold-metal {
-  background-image: linear-gradient(180deg, var(--color-gold-100) 0%, var(--color-gold-300) 40%, var(--color-gold-500) 70%, var(--color-gold-700) 100%);
+  background-image: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold-mid) 40%, var(--gold-lo) 70%, var(--gold-deep) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

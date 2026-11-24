@@ -33,10 +33,10 @@ export interface ErrorScreenProps {
 const step = (n: number): CSSProperties => ({ animationDelay: `${n * 120}ms` })
 
 const primaryClass =
-  "group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-gold-300 px-8 py-3 text-sm font-medium tracking-wide text-graphite-900 transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold-100 hover:shadow-[0_12px_32px_-12px_rgba(217,188,120,0.7)] active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-300"
+  "group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-primary px-8 py-3 text-sm font-medium tracking-wide text-primary-foreground transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-12px_var(--gold-mid)] active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
 
 const secondaryClass =
-  "relative text-sm tracking-wide text-offwhite/60 transition-colors duration-300 hover:text-gold-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-300 after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-gold-300/70 after:transition-transform after:duration-300 hover:after:scale-x-100"
+  "relative text-sm tracking-wide text-foreground/60 transition-colors duration-300 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-primary/70 after:transition-transform after:duration-300 hover:after:scale-x-100"
 
 function ActionButton({ action, className }: { action: ErrorAction; className: string }) {
   if (action.to) {
@@ -93,13 +93,13 @@ export function ErrorScreen({
   const body = (
     <div className={cn("flex w-full flex-col items-center", variant === "showcase" ? "max-w-3xl" : "max-w-xl")}>
       {variant === "showcase" ? (
-        <div className={cn("error-rise w-full", isPage ? "mb-8 max-w-[44rem]" : "mb-6 max-w-md")} style={step(1)}>
+        <div className={cn("error-rise w-full", isPage ? "mb-8 max-w-[44rem] px-3 sm:px-0" : "mb-6 max-w-md")} style={step(1)}>
           {visual}
         </div>
       ) : (
         <>
           {variant === "standard" && visual && (
-            <div className={cn("error-rise text-gold-300", isPage ? "mb-8 h-24 w-24" : "mb-5 h-16 w-16")} style={step(1)}>
+            <div className={cn("error-rise text-primary", isPage ? "mb-8 h-24 w-24" : "mb-5 h-16 w-16")} style={step(1)}>
               {visual}
             </div>
           )}
@@ -108,7 +108,7 @@ export function ErrorScreen({
               className={cn(
                 "error-rise font-light lining-nums",
                 variant === "quiet"
-                  ? "mb-5 text-xs uppercase tracking-[0.45em] text-gold-300/80"
+                  ? "mb-5 text-xs uppercase tracking-[0.45em] text-accent-foreground/80"
                   : cn("text-gold-metal tracking-[0.18em]", isPage ? "mb-4 text-6xl sm:text-7xl" : "mb-3 text-4xl sm:text-5xl")
               )}
               style={step(2)}
@@ -122,7 +122,7 @@ export function ErrorScreen({
 
       <Heading
         className={cn(
-          "error-rise font-serif font-medium tracking-tight text-offwhite text-balance",
+          "error-rise font-serif font-medium tracking-tight text-foreground text-balance",
           isPage ? "text-3xl sm:text-4xl md:text-5xl" : "text-2xl sm:text-3xl"
         )}
         style={step(3)}
@@ -131,7 +131,7 @@ export function ErrorScreen({
       </Heading>
       <p
         className={cn(
-          "error-rise mt-4 max-w-md text-balance leading-relaxed text-offwhite/60",
+          "error-rise mt-4 max-w-md text-balance leading-relaxed text-foreground/60",
           isPage ? "text-base" : "text-sm sm:text-base"
         )}
         style={step(4)}
@@ -154,15 +154,15 @@ export function ErrorScreen({
   )
 
   if (!isPage) {
-    // Dentro da vitrine: painel escuro com filete dourado — mantém a marca em qualquer tema do site
+    // Dentro da vitrine: painel com filete dourado, nas cores do tema
     return (
       <div
         role="alert"
-        className="relative isolate overflow-hidden rounded-3xl border border-gold-300/15 bg-graphite-900 px-6 py-14 text-center text-offwhite sm:py-20"
+        className="relative isolate overflow-hidden rounded-3xl border border-primary/20 bg-card px-6 py-14 text-center text-foreground sm:py-20"
       >
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_60%_at_50%_0%,rgba(70,70,76,0.45),transparent_70%)]"
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_60%_at_50%_0%,var(--muted),transparent_70%)] dark:bg-[radial-gradient(ellipse_70%_60%_at_50%_0%,rgba(70,70,76,0.45),transparent_70%)]"
         />
         <div className="flex justify-center">{body}</div>
       </div>
@@ -170,19 +170,19 @@ export function ErrorScreen({
   }
 
   return (
-    <main className="relative isolate flex min-h-svh flex-col items-center overflow-hidden bg-graphite-900 px-6 text-center text-offwhite">
+    <main className="relative isolate flex min-h-svh flex-col items-center overflow-hidden bg-background px-6 text-center text-foreground">
       {/* Fundo: grafite suave no topo e um respiro dourado quase imperceptível na base */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_55%_at_50%_0%,rgba(70,70,76,0.5),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_55%_at_50%_0%,var(--muted),transparent_70%)] dark:bg-[radial-gradient(ellipse_80%_55%_at_50%_0%,rgba(70,70,76,0.5),transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_100%,rgba(193,154,75,0.09),transparent_70%)]" />
-        <div className="absolute inset-3 rounded-[1.75rem] border border-gold-300/10 sm:inset-5 sm:rounded-[2.25rem]" />
+        <div className="absolute inset-3 rounded-[1.75rem] border border-primary/15 sm:inset-5 sm:rounded-[2.25rem]" />
       </div>
 
       <header className="error-rise pt-8 sm:pt-10" style={step(0)}>
         <Link
           to={ROUTES.home}
           aria-label="Fausto Importados — voltar à loja"
-          className="block transition-opacity duration-300 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-300"
+          className="block transition-opacity duration-300 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
         >
           <img
             src="/logoLoja.png"
@@ -194,7 +194,7 @@ export function ErrorScreen({
 
       <div className="flex w-full flex-1 flex-col items-center justify-center py-10">{body}</div>
 
-      <footer className="pb-8 text-[10px] uppercase tracking-[0.35em] text-offwhite/30">
+      <footer className="pb-8 text-[10px] uppercase tracking-[0.35em] text-foreground/30">
         Fausto Importados
       </footer>
     </main>
