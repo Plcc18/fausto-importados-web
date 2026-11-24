@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Copy, KeyRound, Trash2, UserCheck, UserPlus, UserX } from "lucide-react"
-import Swal from "sweetalert2"
 import { Button } from "@/Shadcn-Components/ui/button"
 import { Input } from "@/Shadcn-Components/ui/input"
 import { Label } from "@/Shadcn-Components/ui/label"
@@ -31,6 +30,15 @@ interface Account {
 }
 
 /** Senha temporária mostrada UMA vez (conta criada ou redefinida). */
+/** Pedido de confirmação aberto; `resolve(true)` = a pessoa confirmou. */
+interface Confirmation {
+  title: string
+  text: string
+  button: string
+  destructive: boolean
+  resolve: (confirmed: boolean) => void
+}
+
 interface IssuedCredentials {
   kind: "created" | "reset"
   email: string
@@ -84,6 +92,7 @@ export function AdminUsers() {
 
   const [credentials, setCredentials] = useState<IssuedCredentials | null>(null)
   const [copied, setCopied] = useState(false)
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -108,22 +117,22 @@ export function AdminUsers() {
 
   const activeAdmins = accounts?.filter((a) => a.role === "ADMIN" && a.active).length ?? 0
 
-  /** Pede confirmação (Swal), roda a operação sensível e atualiza a lista. */
+  const askConfirmation = (details: Omit<Confirmation, "resolve" | "destructive"> & { destructive?: boolean }) =>
+    new Promise<boolean>((resolve) => setConfirmation({ destructive: false, ...details, resolve }))
+
+  const answerConfirmation = (confirmed: boolean) => {
+    confirmation?.resolve(confirmed)
+    setConfirmation(null)
+  }
+
+  /** Pede confirmação (diálogo do site), roda a operação sensível e atualiza a lista. */
   const act = async (
     account: Account,
-    confirm: { title: string; text: string; button: string },
+    confirm: { title: string; text: string; button: string; destructive?: boolean },
     request: () => Promise<Response>,
     onOk?: (res: Response) => Promise<void>,
   ) => {
-    const answer = await Swal.fire({
-      icon: "warning",
-      title: confirm.title,
-      text: confirm.text,
-      showCancelButton: true,
-      confirmButtonText: confirm.button,
-      cancelButtonText: "Cancelar",
-    })
-    if (!answer.isConfirmed) return
+    if (!(await askConfirmation(confirm))) return
 
     setBusyId(account.id)
     setNotice(null)
@@ -146,7 +155,7 @@ export function AdminUsers() {
     act(
       account,
       account.active
-        ? { title: "Desativar conta?", text: `${account.email} perde o acesso agora e todas as sessões abertas são encerradas.`, button: "Desativar" }
+        ? { title: "Desativar conta?", text: `${account.email} perde o acesso agora e todas as sessões abertas são encerradas.`, button: "Desativar", destructive: true }
         : { title: "Reativar conta?", text: `${account.email} poderá entrar de novo.`, button: "Reativar" },
       () =>
         sensitiveFetch(`${API_URL}/api/user/${account.id}/active`, {
@@ -164,6 +173,7 @@ export function AdminUsers() {
         title: "Redefinir credenciais?",
         text: `Gera uma nova senha temporária para ${account.email}, apaga o autenticador e os códigos de recuperação e encerra as sessões. A pessoa precisará cadastrar o 2FA de novo.`,
         button: "Redefinir",
+        destructive: true,
       },
       () => sensitiveFetch(`${API_URL}/api/user/${account.id}/reset-credentials`, { method: "POST" }),
       async (res) => {
@@ -180,6 +190,7 @@ export function AdminUsers() {
         title: "Excluir conta?",
         text: `${account.email} será removida definitivamente. Para só bloquear o acesso, prefira desativar.`,
         button: "Excluir",
+        destructive: true,
       },
       () => sensitiveFetch(`${API_URL}/api/user/${account.id}`, { method: "DELETE" }),
       async () => setNotice({ tone: "ok", text: "Conta excluída." }),
@@ -340,6 +351,26 @@ export function AdminUsers() {
           e o último administrador ativo é sempre protegido. Quem sai da equipe: desative a conta no mesmo dia.
         </p>
       </main>
+
+      {/* Confirmação de ação (substitui o popup do SweetAlert2: diálogo do próprio site) */}
+      <Dialog open={confirmation !== null} onOpenChange={(open) => { if (!open) answerConfirmation(false) }}>
+        <DialogContent>
+          {confirmation && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{confirmation.title}</DialogTitle>
+                <DialogDescription>{confirmation.text}</DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => answerConfirmation(false)}>Cancelar</Button>
+                <Button type="button" variant={confirmation.destructive ? "destructive" : "default"} onClick={() => answerConfirmation(true)}>
+                  {confirmation.button}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Novo administrador */}
       <Dialog open={createOpen} onOpenChange={(open) => !creating && setCreateOpen(open)}>

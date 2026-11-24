@@ -2,12 +2,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
-import Swal from "sweetalert2"
 import { AdminUsers } from "./AdminUsers"
 import { authClient } from "@/lib/auth"
 
-// A confirmação (Swal) e o pedido de código 2FA (sensitiveFetch) têm testes próprios: aqui o foco é a tela.
-vi.mock("sweetalert2", () => ({ default: { fire: vi.fn(async () => ({ isConfirmed: true })) } }))
+// O pedido de código 2FA (sensitiveFetch) tem testes próprios: aqui o foco é a tela.
 vi.mock("@/admin/sensitive", async () => {
   const { authClient: client } = await import("@/lib/auth")
   return {
@@ -69,6 +67,11 @@ const renderPage = async () => {
   await screen.findByTestId("account-dono@loja.com")
 }
 const row = (email: string) => screen.getByTestId(`account-${email}`)
+/** A confirmação da ação é um diálogo do site: acha o diálogo aberto e clica no botão. */
+const answerConfirmation = async (button: string) => {
+  const dialog = await screen.findByRole("dialog")
+  fireEvent.click(within(dialog).getByRole("button", { name: button }))
+}
 const rowButton = (email: string, name: RegExp) => within(row(email)).getByRole("button", { name }) as HTMLButtonElement
 
 beforeEach(async () => {
@@ -81,8 +84,6 @@ beforeEach(async () => {
     matches: false, media: query, addEventListener() {}, removeEventListener() {},
     addListener() {}, removeListener() {}, dispatchEvent: () => false, onchange: null,
   }))
-  vi.mocked(Swal.fire).mockClear()
-  vi.mocked(Swal.fire).mockResolvedValue({ isConfirmed: true } as never)
   installApi()
   await authClient.login("dono@loja.com", "x") // o perfil define qual linha é "você"
   await authClient.loadProfile()
@@ -202,9 +203,11 @@ describe("desativar, redefinir e excluir", () => {
     await renderPage()
 
     fireEvent.click(rowButton("ana@loja.com", /desativar/i))
+    expect(await screen.findByText("Desativar conta?")).toBeTruthy() // pede confirmação antes de enviar qualquer coisa
+    expect(writes()).toHaveLength(0)
+    await answerConfirmation("Desativar")
 
     await waitFor(() => expect(within(row("ana@loja.com")).getByText("Desativado")).toBeTruthy())
-    expect(vi.mocked(Swal.fire)).toHaveBeenCalledWith(expect.objectContaining({ title: "Desativar conta?", showCancelButton: true }))
     const [patch] = writes()
     expect(patch.url).toContain("/api/user/id-ana@loja.com/active")
     expect(patch.init.method).toBe("PATCH")
@@ -213,12 +216,12 @@ describe("desativar, redefinir e excluir", () => {
   })
 
   it("se a pessoa cancelar a confirmação, NADA é enviado", async () => {
-    vi.mocked(Swal.fire).mockResolvedValueOnce({ isConfirmed: false } as never)
     await renderPage()
 
     fireEvent.click(rowButton("ana@loja.com", /desativar/i))
+    await answerConfirmation("Cancelar")
 
-    await waitFor(() => expect(vi.mocked(Swal.fire)).toHaveBeenCalled())
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
     expect(writes()).toHaveLength(0)
   })
 
@@ -227,6 +230,7 @@ describe("desativar, redefinir e excluir", () => {
     await renderPage()
 
     fireEvent.click(rowButton("off@loja.com", /reativar/i))
+    await answerConfirmation("Reativar")
 
     await waitFor(() => expect(within(row("off@loja.com")).getByText("Ativo")).toBeTruthy())
     expect(JSON.parse(String(writes()[0].init.body))).toEqual({ active: true })
@@ -236,6 +240,7 @@ describe("desativar, redefinir e excluir", () => {
     await renderPage()
 
     fireEvent.click(rowButton("ana@loja.com", /redefinir/i))
+    await answerConfirmation("Redefinir")
 
     expect((await screen.findByTestId("temporary-password")).textContent).toBe("Zz9yX8wV7uTs6rQq5pOn")
     expect(screen.getByText("Credenciais redefinidas")).toBeTruthy()
@@ -247,6 +252,7 @@ describe("desativar, redefinir e excluir", () => {
     await renderPage()
 
     fireEvent.click(rowButton("pendente@loja.com", /excluir/i))
+    await answerConfirmation("Excluir")
 
     await waitFor(() => expect(screen.queryByTestId("account-pendente@loja.com")).toBeNull())
     expect(writes()[0].init.method).toBe("DELETE")
@@ -257,6 +263,7 @@ describe("desativar, redefinir e excluir", () => {
     writeResponse = () => json({ message: "Cannot remove the last active administrator" }, 409)
 
     fireEvent.click(rowButton("ana@loja.com", /excluir/i))
+    await answerConfirmation("Excluir")
 
     expect((await screen.findByRole("alert")).textContent).toBe("Não é possível remover nem desativar o último administrador ativo.")
     expect(screen.getByTestId("account-ana@loja.com")).toBeTruthy() // nada mudou
@@ -267,6 +274,7 @@ describe("desativar, redefinir e excluir", () => {
     writeResponse = () => { throw new TypeError("Failed to fetch") }
 
     fireEvent.click(rowButton("ana@loja.com", /desativar/i))
+    await answerConfirmation("Desativar")
 
     expect((await screen.findByRole("alert")).textContent).toContain("conectar")
   })
