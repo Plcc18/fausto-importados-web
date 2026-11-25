@@ -1,3 +1,5 @@
+import fs from "node:fs"
+import path from "node:path"
 import { describe, expect, it } from "vitest"
 import vercelConfig from "../vercel.json"
 import { ERROR_ROUTE_CODES, ROUTES, safeNextPath } from "./routes"
@@ -7,8 +9,8 @@ const { rewrites: allRewrites, headers: headerRules } = vercelConfig as {
   headers: { source: string; headers: { key: string; value: string }[] }[]
 }
 
-// Rewrites com destino externo são proxies da API (ex.: /auth/*); os demais são rotas do SPA.
-const isProxy = (r: { destination: string }) => /^https?:\/\//.test(r.destination)
+// Rewrites para a função /api/* (proxy da API, ex.: /auth/*) ou para fora são proxies; os demais são rotas do SPA.
+const isProxy = (r: { destination: string }) => /^(https?:\/\/|\/api\/)/.test(r.destination)
 const rewrites = allRewrites.filter((r) => !isProxy(r))
 const proxies = allRewrites.filter(isProxy)
 
@@ -24,9 +26,16 @@ describe("vercel.json × proxy de /auth", () => {
     expect(proxies).toHaveLength(1)
     const [proxy] = proxies
     expect(proxy.source).toBe("/auth/:path*")
-    expect(proxy.destination).toMatch(/^https:\/\/.+\/auth\/:path\*$/) // HTTPS, e mantém o caminho
+    // passa pela função de borda, que acrescenta o IP do visitante e o segredo; mantém o caminho
+    expect(proxy.destination).toBe("/api/auth/:path*")
     // o proxy não vaza para o resto do site: o 404 real das demais URLs continua valendo
     expect(rewritten("/auth/refresh")).toBe(false)
+  })
+
+  it("a função de borda do proxy existe onde o rewrite aponta", () => {
+    const file = path.resolve(__dirname, "../api/auth/[...path].ts")
+    expect(fs.existsSync(file)).toBe(true)
+    expect(fs.readFileSync(file, "utf-8")).toContain('runtime: "edge"')
   })
 })
 

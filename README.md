@@ -105,11 +105,13 @@ Access token + refresh token com sessão deslizante (a API está em `fausto-impo
 
 ### Por que as rotas `/auth/*` passam pelo proxy da Vercel
 
-O cookie de refresh é `SameSite=Strict`, e o front (`*.vercel.app`) e a API (`*.onrender.com`) são **sites diferentes**: o browser não enviaria o cookie. A solução sem domínio próprio é o `rewrite` `/auth/:path*` do [vercel.json](vercel.json): o browser fala com `/auth/*` na própria origem do front e a Vercel repassa para o Render, e o cookie fica no domínio do front. As demais rotas (`/api/*`) vão direto ao Render, autenticadas por Bearer.
+O cookie de refresh é `SameSite=Strict`, e o front (`*.vercel.app`) e a API (`*.onrender.com`) são **sites diferentes**: o browser não enviaria o cookie. A solução sem domínio próprio é o `rewrite` `/auth/:path*` do [vercel.json](vercel.json): o browser fala com `/auth/*` na própria origem do front, o rewrite entrega a requisição à função de borda [api/auth/[...path].ts](api/auth/[...path].ts) ([src/server/authProxy.ts](src/server/authProxy.ts)) e ela repassa ao Render, e o cookie fica no domínio do front. As demais rotas (`/api/*`) vão direto ao Render, autenticadas por Bearer.
+
+Por que uma função e não um rewrite direto ao Render: o rewrite não entrega o IP do visitante, e a API passaria a enxergar só o endereço de saída da Vercel (o mesmo para todos), o que inutiliza o limite de tentativas por IP. A função lê o IP que a própria Vercel preenche e o repassa em `X-Client-IP`, junto com `X-Proxy-Secret`; a API só acredita nele quando o segredo confere. Cabeçalhos com esses nomes enviados pelo cliente são descartados.
 
 Para configurar a produção:
 
-1. No [vercel.json](vercel.json), troque `https://SUA-API.onrender.com` pela URL real da API no Render.
+1. Na Vercel, defina `API_ORIGIN` com a URL real da API no Render (sem barra final; o padrão é a API de produção atual) e `PROXY_SHARED_SECRET` com um segredo de pelo menos 32 caracteres (`openssl rand -base64 32`). **O mesmo valor** vai em `PROXY_SHARED_SECRET` no Render. Nenhuma das duas leva o prefixo `VITE_`: ficam só no servidor, fora do bundle. Sem o segredo a função repassa sem o IP (a API sem segredo funciona como antes).
 2. Na Vercel, defina `VITE_AUTH_SAME_ORIGIN=true` (além de `VITE_API_URL`).
 3. No Render, defina `FRONTEND_URL` com a URL do front na Vercel (ex.: `https://seu-app.vercel.app`). Aceita várias origens separadas por vírgula; as URLs de preview da Vercel só conseguem renovar a sessão se estiverem na lista.
 4. Remova `JWT_EXPIRATION` do Render (não é mais usado).

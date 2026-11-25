@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/auth/:path*", "destination": "https://fausto-importados-api.onrender.com/auth/:path*" },
+    { "source": "/auth/:path*", "destination": "/api/auth/:path*" },
     { "source": "/termos", "destination": "/index.html" },
     { "source": "/privacidade", "destination": "/index.html" },
     { "source": "/cookies", "destination": "/index.html" },
