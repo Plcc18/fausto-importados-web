@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest"
-import { authPath, DEFAULT_API_ORIGIN, handleAuthProxy, type ProxyEnv } from "./authProxy"
+import { authTarget, DEFAULT_API_ORIGIN, handleAuthProxy, type ProxyEnv } from "./authProxy"
 
 const SECRET = "0123456789abcdef0123456789abcdef-secret"
 
@@ -18,18 +18,39 @@ function setup(upstream: () => Response | Promise<Response> = () => new Response
 const login = (headers: Record<string, string> = {}, path = "https://loja.test/auth/login") =>
   new Request(path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: '{"a":1}' })
 
-describe("authPath", () => {
-  it("aceita /auth/* com ou sem o prefixo /api", () => {
-    expect(authPath("https://x.test/auth/login")).toBe("/auth/login")
-    expect(authPath("https://x.test/api/auth/password/forgot")).toBe("/auth/password/forgot")
+describe("authTarget", () => {
+  it("lê o caminho do parâmetro `path` do rewrite, inclusive com vários segmentos (/auth/mfa/setup)", () => {
+    expect(authTarget("https://x.test/api/auth?path=login")).toEqual({ path: "/auth/login", search: "" })
+    expect(authTarget("https://x.test/api/auth?path=mfa/setup")).toEqual({ path: "/auth/mfa/setup", search: "" })
+    expect(authTarget("https://x.test/api/auth?path=mfa%2Fsetup%2Fconfirm")).toEqual({
+      path: "/auth/mfa/setup/confirm",
+      search: "",
+    })
+    expect(authTarget("https://x.test/api/auth?path=login/mfa")?.path).toBe("/auth/login/mfa")
   })
 
-  it("recusa o que não é /auth/*, inclusive tentativas de escapar do prefixo", () => {
-    expect(authPath("https://x.test/auth")).toBeNull()
-    expect(authPath("https://x.test/api/product")).toBeNull()
-    expect(authPath("https://x.test/authors/1")).toBeNull()
-    expect(authPath("https://x.test/auth/../api/admin/users")).toBe(null)
-    expect(authPath("https://x.test/auth/%2e%2e/api/admin/users")).toBe(null)
+  it("o parâmetro `path` não segue para a API, mas o resto da query sim", () => {
+    expect(authTarget("https://x.test/api/auth?path=refresh&x=1&y=a%20b")).toEqual({
+      path: "/auth/refresh",
+      search: "?x=1&y=a+b",
+    })
+  })
+
+  it("sem o parâmetro, vale o próprio endereço (/auth/... ou /api/auth/...) e a query inteira", () => {
+    expect(authTarget("https://x.test/auth/login")).toEqual({ path: "/auth/login", search: "" })
+    expect(authTarget("https://x.test/api/auth/password/forgot?a=1")).toEqual({
+      path: "/auth/password/forgot",
+      search: "?a=1",
+    })
+  })
+
+  it("recusa o que não é /auth/*", () => {
+    expect(authTarget("https://x.test/auth")).toBeNull()
+    expect(authTarget("https://x.test/api/auth")).toBeNull()
+    expect(authTarget("https://x.test/api/auth?path=")).toBeNull()
+    expect(authTarget("https://x.test/api/auth?path=/")).toBeNull()
+    expect(authTarget("https://x.test/api/product")).toBeNull()
+    expect(authTarget("https://x.test/authors/1")).toBeNull()
   })
 })
 
@@ -42,6 +63,27 @@ describe("handleAuthProxy", () => {
     expect(sent().url).toBe(`${DEFAULT_API_ORIGIN}/auth/login`)
     expect(sent().headers.get("x-proxy-secret")).toBe(SECRET)
     expect(sent().headers.get("x-client-ip")).toBe("203.0.113.7")
+  })
+
+  it("repassa rotas de vários segmentos (cadastro e segundo passo do 2FA)", async () => {
+    for (const sub of ["mfa/setup", "mfa/setup/confirm", "login/mfa"]) {
+      const { call, sent } = setup()
+
+      await call(login({}, `https://loja.test/api/auth?path=${encodeURIComponent(sub)}`))
+
+      expect(sent().url).toBe(`${DEFAULT_API_ORIGIN}/auth/${sub}`)
+    }
+  })
+
+  it("não deixa o parâmetro `path` levar a requisição para fora de /auth/", async () => {
+    for (const evil of ["../api/admin/users", "%2e%2e/api/admin", "..%2fapi%2fadmin", "/../api/admin", "x/../../api"]) {
+      const { call, fetcher } = setup()
+
+      const response = await call(login({}, `https://loja.test/api/auth?path=${evil}`))
+
+      expect(response.status, evil).toBe(404)
+      expect(fetcher, evil).not.toHaveBeenCalled()
+    }
   })
 
   it("usa x-real-ip quando não há x-vercel-forwarded-for, e só o primeiro item", async () => {

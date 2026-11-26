@@ -1,4 +1,4 @@
-import { handleAuthProxy } from "../../src/server/authProxy"
+import { handleAuthProxy } from "../src/server/authProxy"
 
 // Função de borda da Vercel: repassa /auth/* à API com o IP do visitante (ver src/server/authProxy.ts)
 export const config = { runtime: "edge" }

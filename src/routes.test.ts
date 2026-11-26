@@ -26,15 +26,18 @@ describe("vercel.json × proxy de /auth", () => {
     expect(proxies).toHaveLength(1)
     const [proxy] = proxies
     expect(proxy.source).toBe("/auth/:path*")
-    // passa pela função de borda, que acrescenta o IP do visitante e o segredo; mantém o caminho
-    expect(proxy.destination).toBe("/api/auth/:path*")
+    // passa pela função de borda, que acrescenta o IP do visitante e o segredo. O caminho vai em ?path= porque um
+    // catch-all em arquivo ([...path].ts) NÃO casa /auth/mfa/setup (mais de um segmento): deu 404 em produção
+    expect(proxy.destination).toBe("/api/auth?path=:path*")
     // o proxy não vaza para o resto do site: o 404 real das demais URLs continua valendo
     expect(rewritten("/auth/refresh")).toBe(false)
   })
 
   it("a função de borda do proxy existe onde o rewrite aponta", () => {
-    const file = path.resolve(__dirname, "../api/auth/[...path].ts")
+    const file = path.resolve(__dirname, "../api/auth.ts")
     expect(fs.existsSync(file)).toBe(true)
+    // nada de pasta api/auth/ ao lado: confundiria o roteamento da função
+    expect(fs.existsSync(path.resolve(__dirname, "../api/auth"))).toBe(false)
     expect(fs.readFileSync(file, "utf-8")).toContain('runtime: "edge"')
   })
 })

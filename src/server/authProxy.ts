@@ -1,5 +1,5 @@
 /**
- * Proxy de /auth/* para a API (roda como função de borda da Vercel; ver `api/auth/[...path].ts`).
+ * Proxy de /auth/* para a API (roda como função de borda da Vercel; ver `api/auth.ts`).
  *
  * Por que existe: o cookie de refresh é SameSite=Strict e a Vercel e o Render são sites diferentes, então o front
  * chama /auth/* na própria origem e a Vercel repassa à API. Só que um rewrite simples NÃO entrega o IP do visitante
@@ -48,11 +48,27 @@ const DROP_RESPONSE = new Set(["content-encoding", "content-length", "transfer-e
 
 type Fetcher = (input: string, init: RequestInit) => Promise<Response>
 
-/** `/auth/login` (ou `/api/auth/login`, conforme o que a Vercel entregar à função) → `/auth/login`. */
-export function authPath(requestUrl: string): string | null {
-  const { pathname } = new URL(requestUrl)
-  const match = /^(?:\/api)?(\/auth\/.+)$/.exec(pathname)
-  return match ? match[1] : null
+/**
+ * Caminho de /auth/* e query a repassar à API.
+ *
+ * O rewrite do vercel.json manda `/auth/:path*` para `/api/auth?path=:path*` (um catch-all em arquivo, `[...path].ts`,
+ * não casa rotas com mais de um segmento, como /auth/mfa/setup). Então o caminho vem no parâmetro `path`; como
+ * garantia, se ele faltar, vale o próprio endereço (`/auth/...` ou `/api/auth/...`). O parâmetro `path` é nosso e não
+ * segue para a API. O destino final ainda é conferido em {@link handleAuthProxy}.
+ */
+export function authTarget(requestUrl: string): { path: string; search: string } | null {
+  const url = new URL(requestUrl)
+  const forwarded = new URLSearchParams(url.search)
+  const given = forwarded.getAll("path")
+  forwarded.delete("path")
+  const search = forwarded.size ? `?${forwarded.toString()}` : ""
+
+  if (given.length > 0) {
+    const sub = given[given.length - 1].replace(/^\/+/, "")
+    return sub ? { path: `/auth/${sub}`, search } : null
+  }
+  const match = /^(?:\/api)?(\/auth\/.+)$/.exec(url.pathname)
+  return match ? { path: match[1], search } : null
 }
 
 /** IP do visitante preenchido pela Vercel. Sem ele, nada é enviado (nunca se confia em X-Forwarded-For). */
@@ -70,11 +86,11 @@ export async function handleAuthProxy(
   env: ProxyEnv,
   fetcher: Fetcher = (input, init) => fetch(input, init),
 ): Promise<Response> {
-  const path = authPath(request.url)
-  if (!path) return json(404, "Not found")
+  const wanted = authTarget(request.url)
+  if (!wanted) return json(404, "Not found")
 
   const origin = new URL(env.API_ORIGIN?.trim() || DEFAULT_API_ORIGIN)
-  const target = new URL(path + new URL(request.url).search, origin)
+  const target = new URL(wanted.path + wanted.search, origin)
   // Defesa em profundidade: o destino é sempre a API configurada, em /auth/
   if (target.origin !== origin.origin || !target.pathname.startsWith("/auth/")) return json(404, "Not found")
 
