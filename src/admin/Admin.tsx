@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import type { Product } from "@/lib/types"
 import { Button } from "@/Shadcn-Components/ui/button"
@@ -67,6 +67,7 @@ import { Pagination } from "@/component/Pagination"
 import { usePagination } from "@/lib/usePagination"
 import { notify } from "@/lib/notice"
 import { API_URL } from "@/lib/api"
+import { IDEMPOTENCY_HEADER, useIdempotencyKeys } from "@/lib/idempotency"
 import { authFetch, authClient } from "@/lib/auth"
 import { toast } from "sonner"
 import { useAdminPushNotifications } from "@/admin/useAdminPushNotifications"
@@ -180,6 +181,20 @@ function SmartImageUploader({
   )
 }
 
+/** Código e mensagem de um erro da API (em texto puro, se a resposta não for JSON). */
+async function readApiError(res: Response): Promise<{ code?: string; message: string }> {
+  const text = await res.text()
+  try {
+    const body = JSON.parse(text) as { code?: string; message?: string; error?: string }
+    const message = body.code === "duplicate_product"
+      ? "Já existe um produto com esse nome, marca e tamanho."
+      : body.message || body.error || text
+    return { code: body.code, message }
+  } catch {
+    return { message: text }
+  }
+}
+
 // ============================================================================
 // Componente Principal - Admin
 // ============================================================================
@@ -192,6 +207,9 @@ export function Admin() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [imageUploading, setImageUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false) // trava já no primeiro envio, antes de o botão ser redesenhado
+  const createKeys = useIdempotencyKeys()
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [salesStats, setSalesStats] = useState({ day: 0, month: 0, year: 0 })
@@ -277,7 +295,7 @@ export function Admin() {
     setSalesStats({ day: 0, month: 0, year: 0 })
   }
 
-  const openCreateDialog = () => { setEditingProduct(null); setFormData(emptyForm); setIsDialogOpen(true) }
+  const openCreateDialog = () => { createKeys.reset(); setEditingProduct(null); setFormData(emptyForm); setIsDialogOpen(true) }
 
   const openEditDialog = (product: Product) => {
     setEditingProduct(product)
@@ -320,8 +338,13 @@ export function Admin() {
       inStock: formData.inStock ?? true,
       image: formData.image,
       stockQuantity: formData.stockQuantity,
+      // Versão lida ao abrir o formulário: se o produto mudou desde então, a API recusa em vez de sobrescrever.
+      version: editingProduct?.version,
     }
 
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
     try {
       if (editingProduct) {
         const form = new FormData()
@@ -332,33 +355,30 @@ export function Admin() {
           navigate(ROUTES.login); return
         }
         if (!res.ok) {
-          const text = await res.text()
-          let message = text
-          try {
-            const parsed = JSON.parse(text)
-            message = parsed.message || parsed.error || text
-          } catch { /* ignore */ }
+          const { code, message } = await readApiError(res)
+          if (code === "version_conflict") {
+            setIsDialogOpen(false); setEditingProduct(null); refreshProducts()
+            notify({ icon: "warning", title: "Produto alterado por outra operação", text: "Nada foi salvo: o produto mudou (por exemplo, com uma venda) depois que você o abriu. A lista foi atualizada; abra o produto e refaça a alteração." })
+            return
+          }
           notify({ icon: "error", title: "Erro ao atualizar produto", text: message || "Ocorreu um erro ao atualizar o produto." })
           return
         }
       } else {
+        const body = JSON.stringify(productData)
         const res = await authFetch(`${API_URL}/api/product`, {
-          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(productData),
+          method: "POST", headers: { "Content-Type": "application/json", [IDEMPOTENCY_HEADER]: createKeys.keyFor(body) }, body,
         })
         if (res.status === 401 || res.status === 403) {
           notify({ icon: "error", title: "Acesso negado", text: "Você não está autorizado!" })
           navigate(ROUTES.login); return
         }
         if (!res.ok) {
-          const text = await res.text()
-          let message = text
-          try {
-            const parsed = JSON.parse(text)
-            message = parsed.message || parsed.error || text
-          } catch { /* ignore */ }
+          const { message } = await readApiError(res)
           notify({ icon: "error", title: "Erro ao cadastrar produto", text: message || "Ocorreu um erro ao cadastrar o produto." })
           return
         }
+        createKeys.reset()
       }
       setIsDialogOpen(false); setFormData(emptyForm); setEditingProduct(null); refreshProducts()
       notify({ icon: "success", title: editingProduct ? "Produto atualizado" : "Produto cadastrado", text: editingProduct ? "O produto foi atualizado com sucesso." : "O produto foi cadastrado com sucesso.", timer: 2000 })
@@ -366,6 +386,9 @@ export function Admin() {
       console.error(error)
       const message = error instanceof Error ? error.message : undefined
       notify({ icon: "error", title: "Erro de conexão", text: message || "Não foi possível se comunicar com o servidor." })
+    } finally {
+      savingRef.current = false
+      setSaving(false)
     }
   }
 
@@ -982,8 +1005,8 @@ export function Admin() {
             </div>
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={imageUploading}>
-                {imageUploading ? "Enviando imagem..." : editingProduct ? "Salvar Alterações" : "Criar Produto"}
+              <Button type="submit" disabled={imageUploading || saving}>
+                {imageUploading ? "Enviando imagem..." : saving ? "Salvando..." : editingProduct ? "Salvar Alterações" : "Criar Produto"}
               </Button>
             </DialogFooter>
           </form>
@@ -996,7 +1019,7 @@ export function Admin() {
           setNotificationsOpen(v)
           if (!v) { pollPending(); fetchSalesStats(); }
         }}
-        onStatusChange={() => pollPending()}
+        onStatusChange={() => { pollPending(); refreshProducts(); fetchSalesStats() }}
       />
 
       <Dialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>

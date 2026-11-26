@@ -17,6 +17,7 @@ import { Input } from '@/Shadcn-Components/ui/input'
 import { Label } from '@/Shadcn-Components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/Shadcn-Components/ui/radio-group'
 import { notify } from '@/lib/notice'
+import { IDEMPOTENCY_HEADER, newIdempotencyKey } from '@/lib/idempotency'
 import { API_URL } from "@/lib/api"
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -94,10 +95,11 @@ function CheckoutModal({ open, onOpenChange, items, onCloseCart, onClear }: Chec
     if (!name.trim() || !whatsapp.trim()) { alert('Por favor, preencha seu nome e número de WhatsApp'); return }
     if (!phoneValid) { alert('Por favor, insira um número de WhatsApp válido com DDD.'); return }
     setIsSending(true)
+    let rejected = false
     try {
-      await fetch(`${API_URL}/api/orders`, {
+      const res = await fetch(`${API_URL}/api/orders`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', [IDEMPOTENCY_HEADER]: newIdempotencyKey() },
         body: JSON.stringify({
           customerName: name.trim(),
           customerWhatsapp: whatsapp.replace(/\D/g, ''),
@@ -115,8 +117,25 @@ function CheckoutModal({ open, onOpenChange, items, onCloseCart, onClear }: Chec
           })),
         }),
       })
+      // 400: a API recusou o conteúdo (ex.: produto que saiu do catálogo)
+      rejected = res.status === 400
+      if (!res.ok) console.error('Pedido não registrado: HTTP', res.status)
     } catch (err) { console.error('Erro ao salvar pedido:', err) }
 
+    if (rejected) {
+      // Mantém o carrinho. Ao reabri-lo, ele é conferido com o catálogo e os itens indisponíveis saem.
+      setIsSending(false)
+      onOpenChange(false)
+      onCloseCart()
+      notify({
+        icon: 'warning',
+        title: 'Pedido não enviado',
+        text: 'Algum produto do carrinho não está mais disponível. Abra o carrinho para atualizá-lo e envie novamente.',
+      })
+      return
+    }
+
+    // Falhas do servidor ou de rede não impedem a venda: o pedido segue pelo WhatsApp
     const message = encodeURIComponent(generateOrderMessage())
     window.open(`https://wa.me/${whatsappBusinessNumber}?text=${message}`, '_blank')
     setIsSending(false)
