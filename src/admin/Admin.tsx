@@ -244,7 +244,9 @@ export function Admin() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${API_URL}/api/product`)
+      // Autenticada: a API só devolve o estoque a administradores.
+      const response = await authFetch(`${API_URL}/api/product`)
+      if (!response.ok) throw new Error(`Falha ao buscar produtos (HTTP ${response.status})`)
       const data = await response.json()
       setProducts(data.content)
     } catch (error) {
@@ -292,7 +294,8 @@ export function Admin() {
       olfactiveFamily: product.olfactiveFamily || "",
       featured: product.featured || false,
       inStock: product.inStock ?? true,
-      stockQuantity: product.stockQuantity ?? 0,
+      // Sem o valor na resposta o campo fica vazio: presumir 0 zeraria o estoque ao salvar.
+      stockQuantity: product.stockQuantity,
     })
     setIsDialogOpen(true)
   }
@@ -301,6 +304,10 @@ export function Admin() {
     e.preventDefault()
     if (!formData.image) {
       notify({ icon: "warning", title: "Imagem obrigatória", text: "Aguarde o upload da imagem ou selecione uma imagem antes de salvar." })
+      return
+    }
+    if (formData.stockQuantity === undefined) {
+      notify({ icon: "warning", title: "Estoque obrigatório", text: "Informe a quantidade em estoque antes de salvar." })
       return
     }
     const productData = {
@@ -312,7 +319,7 @@ export function Admin() {
       featured: formData.featured ?? false,
       inStock: formData.inStock ?? true,
       image: formData.image,
-      stockQuantity: Number(formData.stockQuantity ?? 0),
+      stockQuantity: formData.stockQuantity,
     }
 
     try {
@@ -775,8 +782,8 @@ export function Admin() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className={`font-medium tabular-nums ${(product.stockQuantity ?? 0) === 0 ? "text-destructive" : (product.stockQuantity ?? 0) <= 3 ? "text-yellow-600" : ""}`}>
-                            {product.stockQuantity ?? 0} un.
+                          <span className={`font-medium tabular-nums ${product.stockQuantity === 0 ? "text-destructive" : (product.stockQuantity ?? Infinity) <= 3 ? "text-yellow-600" : ""}`}>
+                            {product.stockQuantity == null ? "—" : `${product.stockQuantity} un.`}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -812,8 +819,8 @@ export function Admin() {
                       <div className="flex flex-wrap items-center gap-1">
                         <Badge variant={product.inStock ? "success" : "destructive"}>{product.inStock ? "Disponível" : "Esgotado"}</Badge>
                         {product.featured && <Badge variant="default">Destaque</Badge>}
-                        <span className={`text-xs font-medium tabular-nums ${(product.stockQuantity ?? 0) === 0 ? "text-destructive" : (product.stockQuantity ?? 0) <= 3 ? "text-yellow-600" : "text-muted-foreground"}`}>
-                          {product.stockQuantity ?? 0} un.
+                        <span className={`text-xs font-medium tabular-nums ${product.stockQuantity === 0 ? "text-destructive" : (product.stockQuantity ?? Infinity) <= 3 ? "text-yellow-600" : "text-muted-foreground"}`}>
+                          {product.stockQuantity == null ? "Estoque: —" : `${product.stockQuantity} un.`}
                         </span>
                       </div>
                       <div className="mt-2 flex items-center justify-between">
@@ -950,8 +957,11 @@ export function Admin() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="stockQuantity">Quantidade em estoque</Label>
-                    <Input id="stockQuantity" type="number" min={0} value={formData.stockQuantity ?? 0} onChange={(e) => { const value = e.target.value; setFormData((prev) => ({ ...prev, stockQuantity: value === "" ? 0 : Number(value) })) }} required />
+                    <Input id="stockQuantity" type="number" min={0} value={formData.stockQuantity ?? ""} onChange={(e) => { const value = e.target.value; setFormData((prev) => ({ ...prev, stockQuantity: value === "" ? undefined : Number(value) })) }} required />
                     <p className="text-xs text-muted-foreground">Marcado como esgotado automaticamente quando chegar a 0.</p>
+                    {editingProduct && editingProduct.stockQuantity == null && (
+                      <p className="text-xs text-destructive">O estoque atual não foi informado pela API. Digite a quantidade correta antes de salvar.</p>
+                    )}
                   </div>
                   <SmartImageUploader value={formData.image || ""} onChange={(newImage) => setFormData((prev) => ({ ...prev, image: newImage }))} onLoadingChange={setImageUploading} maxSizeMB={8} />
                 </div>
