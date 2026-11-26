@@ -27,6 +27,7 @@ export const emptyForm: ProductFormData = {
   olfactiveFamily: "",
   featured: false,
   inStock: true,
+  stockQuantity: 0,
 }
 
 export type SmartImageUploaderProps = {
