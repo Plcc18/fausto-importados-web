@@ -35,7 +35,7 @@ Branches: trabalhar na `dev` (gera preview na Vercel) e abrir PR para `main` (pr
 ### API e autenticação
 - Rotas públicas usam `fetch` com `API_URL` (`src/lib/api.ts`). Rotas autenticadas usam `authFetch` (`src/lib/auth`), que renova o token em 401. Operações que a API protege com reautenticação 2FA usam `sensitiveFetch` (`src/admin/sensitive.ts`), atendido pelo `ReauthPromptHost`.
 - O access token fica só em memória; o refresh token é um cookie `HttpOnly` `SameSite=Strict`. Por isso, em produção, `/auth/*` passa pela mesma origem: rewrite → função de borda `api/auth.ts` → `src/server/authProxy.ts`, que repassa o IP do visitante e o segredo do proxy. `/api/*` vai direto para o Render com Bearer. Não crie `api/auth/` nem outro proxy sem rever `routes.test.ts` (o README explica o motivo).
-- O front ainda não envia `Idempotency-Key` nem `version`, que a API já aceita como opcionais.
+- Edições do painel enviam a `version` lida da API (409 `version_conflict` → atualizar a lista, nunca sobrescrever). POSTs sensíveis enviam `Idempotency-Key` (`src/lib/idempotency.ts`); rota nova desse tipo também deve enviar. A API aceita os dois como opcionais até `REQUIRE_VERSION` / `REQUIRE_IDEMPOTENCY_KEY` serem ligadas.
 
 ### Catálogo, carrinho e pedidos
 - `useProducts` faz stale-while-revalidate com cache em `localStorage`, retentativas e timeout longo (a API no Render pode levar cerca de 1 minuto para acordar). Falha de atualização não pode derrubar o catálogo já exibido.

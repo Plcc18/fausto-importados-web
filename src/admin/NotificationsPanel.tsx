@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/Shadcn-Components/ui/button"
 import { Badge } from "@/Shadcn-Components/ui/badge"
 import { Separator } from "@/Shadcn-Components/ui/separator"
@@ -14,6 +14,8 @@ import { Check, X, Clock, CheckCircle, XCircle, RefreshCw, Bell, Trash2 } from "
 import { API_URL } from "@/lib/api"
 import { authFetch } from "@/lib/auth"
 import { sensitiveFetch, SENSITIVE_NOT_DONE } from "@/admin/sensitive"
+import { IDEMPOTENCY_HEADER, useIdempotencyKeys } from "@/lib/idempotency"
+import { notify } from "@/lib/notice"
 import { toast } from "sonner"
 
 interface OrderItem {
@@ -47,6 +49,12 @@ const statusConfig = {
   CANCELLED: { label: "Cancelado", icon: XCircle, className: "text-red-600 bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800" },
 }
 
+/** A API responde em inglês quando o pedido já saiu de "pendente"; as demais mensagens já vêm em português. */
+function explainOrderError(message: string | undefined): string {
+  if (/only pending orders/i.test(message ?? "")) return "Este pedido já foi concluído ou cancelado."
+  return message || "Não foi possível concluir a operação. Tente novamente."
+}
+
 interface NotificationsPanelProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -60,6 +68,9 @@ export function NotificationsPanel({ open, onOpenChange, onStatusChange }: Notif
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const [clearing, setClearing] = useState(false)
   const [confirmAction, setConfirmAction] = useState<{ id: string; type: "complete" | "cancel" } | null>(null)
+  const [acting, setActing] = useState(false)
+  const actingRef = useRef(false) // trava já no primeiro clique, antes de o botão ser redesenhado
+  const keys = useIdempotencyKeys()
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -82,21 +93,38 @@ export function NotificationsPanel({ open, onOpenChange, onStatusChange }: Notif
     if (open) fetchOrders()
   }, [open, fetchOrders])
 
-  const handleComplete = async (id: string) => {
-    const res = await authFetch(`${API_URL}/api/orders/${id}/complete`, { method: "POST" })
-    if (res.status === 409) {
-      const data = await res.json()
-      alert("⚠️ " + (data.error || "Estoque insuficiente para concluir o pedido."))
-      return
+  /** Conclui ou cancela o pedido do diálogo aberto. Um envio de cada vez. */
+  const runOrderAction = async () => {
+    if (!confirmAction || actingRef.current) return
+    const { id, type } = confirmAction
+    actingRef.current = true
+    setActing(true)
+    try {
+      const res = await authFetch(`${API_URL}/api/orders/${id}/${type}`, {
+        method: "POST",
+        headers: { [IDEMPOTENCY_HEADER]: keys.keyFor(`${type}:${id}`) },
+      })
+      setConfirmAction(null)
+      if (res.ok) {
+        keys.reset()
+      } else {
+        const body = (await res.json().catch(() => null)) as { error?: string; message?: string } | null
+        notify({
+          icon: "warning",
+          title: type === "complete" ? "Pedido não concluído" : "Pedido não cancelado",
+          text: explainOrderError(body?.error ?? body?.message),
+        })
+      }
+      await fetchOrders()
+      onStatusChange?.()
+    } catch (err) {
+      // Sem resposta não se sabe se a API executou: o diálogo fica aberto e a nova tentativa usa a mesma chave
+      console.error("Erro ao atualizar pedido:", err)
+      toast.error("Não foi possível conectar ao servidor. Tente novamente.")
+    } finally {
+      actingRef.current = false
+      setActing(false)
     }
-    await fetchOrders()
-    onStatusChange?.()
-  }
-
-  const handleCancel = async (id: string) => {
-    await authFetch(`${API_URL}/api/orders/${id}/cancel`, { method: "POST" })
-    await fetchOrders()
-    onStatusChange?.()
   }
 
   const handleClearHistory = async () => {
@@ -294,7 +322,7 @@ export function NotificationsPanel({ open, onOpenChange, onStatusChange }: Notif
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={!!confirmAction} onOpenChange={(v) => { if (!v) setConfirmAction(null) }}>
+      <Dialog open={!!confirmAction} onOpenChange={(v) => { if (!v && !acting) setConfirmAction(null) }}>
   <DialogContent className="max-w-sm">
     <DialogHeader>
       <DialogTitle>
@@ -307,20 +335,16 @@ export function NotificationsPanel({ open, onOpenChange, onStatusChange }: Notif
         : "Tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita."}
     </p>
     <DialogFooter>
-      <Button variant="outline" onClick={() => setConfirmAction(null)}>
+      <Button variant="outline" onClick={() => setConfirmAction(null)} disabled={acting}>
         Voltar
       </Button>
       <Button
         variant={confirmAction?.type === "complete" ? "default" : "destructive"}
         className={confirmAction?.type === "complete" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
-        onClick={async () => {
-          if (!confirmAction) return
-          if (confirmAction.type === "complete") await handleComplete(confirmAction.id)
-          else await handleCancel(confirmAction.id)
-          setConfirmAction(null)
-        }}
+        onClick={runOrderAction}
+        disabled={acting}
       >
-        {confirmAction?.type === "complete" ? "Sim, concluir" : "Sim, cancelar"}
+        {acting ? "Aguarde..." : confirmAction?.type === "complete" ? "Sim, concluir" : "Sim, cancelar"}
       </Button>
     </DialogFooter>
   </DialogContent>

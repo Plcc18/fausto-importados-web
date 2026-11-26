@@ -20,6 +20,7 @@ import { API_URL } from "@/lib/api"
 import { authFetch, useAuthProfile } from "@/lib/auth"
 import { ROUTES } from "@/routes"
 import { SENSITIVE_NOT_DONE, sensitiveFetch } from "@/admin/sensitive"
+import { IDEMPOTENCY_HEADER, newIdempotencyKey, useIdempotencyKeys } from "@/lib/idempotency"
 
 interface Account {
   id: string
@@ -27,6 +28,8 @@ interface Account {
   role: "ADMIN" | "USER"
   active: boolean
   mfaEnabled: boolean
+  /** Enviada de volta ao alterar a conta. */
+  version?: number
 }
 
 /** Senha temporária mostrada UMA vez (conta criada ou redefinida). */
@@ -56,6 +59,7 @@ function explain(status: number, message: string | undefined): string {
   if (/deactivate your own/i.test(text)) return "Você não pode desativar a própria conta."
   if (/delete your own/i.test(text)) return "Você não pode excluir a própria conta."
   if (/reset your own/i.test(text)) return "Você não pode redefinir as próprias credenciais. Troque sua senha ou use um código de recuperação."
+  if (/no longer active/i.test(text)) return "Sua conta ou sessão não está mais ativa. Entre novamente."
   if (/Email is (invalid|mandatory)/i.test(text)) return "Informe um e-mail válido."
   if (status === 403) return SENSITIVE_NOT_DONE
   if (status === 404) return "Essa conta não existe mais. Atualize a lista."
@@ -64,7 +68,8 @@ function explain(status: number, message: string | undefined): string {
 }
 
 async function apiError(res: Response): Promise<string> {
-  const body = (await res.json().catch(() => null)) as { message?: string } | null
+  const body = (await res.json().catch(() => null)) as { code?: string; message?: string } | null
+  if (body?.code === "version_conflict") return "Essa conta foi alterada por outra operação. A lista foi atualizada: tente novamente."
   return explain(res.status, body?.message)
 }
 
@@ -93,6 +98,7 @@ export function AdminUsers() {
   const [credentials, setCredentials] = useState<IssuedCredentials | null>(null)
   const [copied, setCopied] = useState(false)
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
+  const createKeys = useIdempotencyKeys()
 
   const load = useCallback(async () => {
     try {
@@ -140,6 +146,7 @@ export function AdminUsers() {
       const res = await request()
       if (!res.ok) {
         setNotice({ tone: "error", text: await apiError(res) })
+        await load() // a recusa pode vir de uma lista desatualizada
         return
       }
       await onOk?.(res)
@@ -161,7 +168,7 @@ export function AdminUsers() {
         sensitiveFetch(`${API_URL}/api/user/${account.id}/active`, {
           method: "PATCH",
           headers: JSON_HEADERS,
-          body: JSON.stringify({ active: !account.active }),
+          body: JSON.stringify({ active: !account.active, version: account.version }),
         }),
       async () => setNotice({ tone: "ok", text: account.active ? "Conta desativada." : "Conta reativada." }),
     )
@@ -175,7 +182,11 @@ export function AdminUsers() {
         button: "Redefinir",
         destructive: true,
       },
-      () => sensitiveFetch(`${API_URL}/api/user/${account.id}/reset-credentials`, { method: "POST" }),
+      // chave nova a cada clique: quem repete quer uma senha nova (a anterior não pode ser mostrada de novo)
+      () => sensitiveFetch(`${API_URL}/api/user/${account.id}/reset-credentials`, {
+        method: "POST",
+        headers: { [IDEMPOTENCY_HEADER]: newIdempotencyKey() },
+      }),
       async (res) => {
         const body = (await res.json()) as { temporaryPassword: string; enrollmentExpiresAt: string | null }
         setCopied(false)
@@ -201,20 +212,28 @@ export function AdminUsers() {
     setCreating(true)
     setFormError(null)
     try {
+      const request = JSON.stringify({ email: email.trim() })
       const res = await sensitiveFetch(`${API_URL}/api/user`, {
         method: "POST",
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ email: email.trim() }),
+        headers: { ...JSON_HEADERS, [IDEMPOTENCY_HEADER]: createKeys.keyFor(request) },
+        body: request,
       })
       if (!res.ok) {
         setFormError(await apiError(res))
         return
       }
-      const body = (await res.json()) as { email: string; temporaryPassword: string; enrollmentExpiresAt: string | null }
+      const body = (await res.json()) as { email: string; temporaryPassword: string | null; enrollmentExpiresAt: string | null }
+      createKeys.reset()
       setCreateOpen(false)
       setEmail("")
       setCopied(false)
-      setCredentials({ kind: "created", ...body })
+      const { temporaryPassword } = body
+      if (temporaryPassword) {
+        setCredentials({ kind: "created", ...body, temporaryPassword })
+      } else {
+        // repetição de uma criação que já tinha dado certo: a API não mostra a senha pela segunda vez
+        setNotice({ tone: "error", text: `A conta ${body.email} já tinha sido criada, mas a senha temporária só aparece uma vez. Use “Redefinir credenciais” para gerar outra.` })
+      }
       await load()
     } catch {
       setFormError("Não foi possível conectar ao servidor. Tente novamente.")

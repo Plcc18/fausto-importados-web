@@ -79,7 +79,8 @@ afterEach(async () => {
   vi.unstubAllGlobals()
 })
 
-describe("carregamento sob demanda do painel", () => {
+// Cada teste reimporta o app inteiro: com muitos arquivos em paralelo isso passa do prazo padrão (5 s)
+describe("carregamento sob demanda do painel", { timeout: 30_000 }, () => {
   it("a loja não baixa o painel, nem o login, nem faz chamadas de autenticação", async () => {
     await visit("/")
 

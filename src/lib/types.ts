@@ -13,6 +13,8 @@ export interface Product {
   featured?: boolean
   inStock: boolean
   stockQuantity?: number
+  /** Enviada de volta ao editar; a API só a informa a administradores. */
+  version?: number
 }
 
 export interface CartItem {
