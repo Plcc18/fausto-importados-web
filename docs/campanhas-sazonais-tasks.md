@@ -155,6 +155,7 @@
   - Cobrir fundo principal e secundário, destaque, botões, textos e etiquetas promocionais, incluindo os tokens dourados.
   - Remover o tema ao encerrar a campanha ou ao entrar em área fora do alcance definido.
   - *Pronto quando:* trocar de campanha muda o visual sem condicionais por campanha nos componentes.
+  - *Resultado (27/11/2026):* `src/lib/campaign/theme.ts` converte `theme` em CSS Variables pela tabela do contrato (§4.1), incluindo `--gold-*` e os tokens novos `--campaign-badge` / `--campaign-badge-foreground` (os valores padrão deles entram na T19). O tema entra numa tag `<style id="campaign-theme">` presa ao atributo `data-campaign-theme` no `<html>`, com uma regra por modo; sem paleta clara, o modo claro fica no padrão. `CampaignThemeHost` (no `App.tsx`, dentro do `AppErrorBoundary`) só monta nas páginas públicas (`/`, `/termos`, `/privacidade`, `/cookies`): no painel, no login e nas telas de erro o tema sai e a campanha nem é buscada. Encerrar a campanha remove o tema. Front com 350 testes passando.
 
 - [ ] **T19. Ajustar os componentes para usar os tokens** · `WEB`
   - Substituir cores fixas relevantes e criar o token das etiquetas ("Oferta" e selo de campanha).

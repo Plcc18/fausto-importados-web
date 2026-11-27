@@ -9,6 +9,7 @@ import { authClient, useAuthStatus } from "@/lib/auth"
 import { HttpError, errorCodeFromError, type ErrorCode } from "@/lib/httpErrors"
 import { ROUTES, ERROR_ROUTE_PATTERN } from "@/routes"
 import { NoticeHost } from "@/component/NoticeHost"
+import { CampaignThemeHost } from "@/component/CampaignTheme"
 import { AppErrorBoundary } from "@/component/errors/AppErrorBoundary"
 import { ErrorView, ErrorRoutePage, NotFoundPage } from "@/component/errors/ErrorView"
 
@@ -108,6 +109,8 @@ export function App() {
       />
       <NoticeHost />
       <AppErrorBoundary resetKey={pathname}>
+      {/* Dentro do boundary: se a página quebrar, a tela de erro aparece com o tema padrão */}
+      <CampaignThemeHost />
       <Routes>
         <Route path={ROUTES.home} element={<Store />} />
         <Route
