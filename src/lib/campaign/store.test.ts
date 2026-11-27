@@ -274,6 +274,158 @@ describe("horários", () => {
   })
 })
 
+describe("sem assinantes (ex.: admin foi da loja para o painel)", () => {
+  function subscribed() {
+    store = createCampaignStore({ retryDelaysMs: [], timeoutMs: 1_000 })
+    const unsubscribe = store.subscribe(() => {})
+    return { store, unsubscribe }
+  }
+
+  it("para de buscar: nem ao voltar para a aba, nem no horário de mudança", async () => {
+    fetchMock.mockImplementation(async () => apiResponse(active()))
+    const { unsubscribe } = subscribed()
+    await flush()
+    unsubscribe()
+
+    vi.setSystemTime(NOW + CAMPAIGN_VISIBILITY_MIN_INTERVAL_MS)
+    document.dispatchEvent(new Event("visibilitychange"))
+    await vi.advanceTimersByTimeAsync(3 * HOUR)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("ao voltar logo depois, reaproveita a última resposta; mais tarde, busca de novo", async () => {
+    fetchMock.mockImplementation(async () => apiResponse(active()))
+    const first = subscribed()
+    await flush()
+    first.unsubscribe()
+
+    const again = first.store.subscribe(() => {})
+    await flush()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(first.store.getState().campaign?.id).toBe("c1")
+    again()
+
+    vi.setSystemTime(NOW + CAMPAIGN_VISIBILITY_MIN_INTERVAL_MS)
+    first.store.subscribe(() => {})
+    await flush()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("uma busca em andamento ao sair termina e é aproveitada ao voltar (sem recomeçar)", async () => {
+    let respond: (response: Response) => void = () => {}
+    fetchMock.mockImplementation(() => new Promise<Response>((resolve) => (respond = resolve)))
+    const { store, unsubscribe } = subscribed()
+    unsubscribe()
+
+    respond(apiResponse(active()))
+    await flush()
+    store.subscribe(() => {})
+    await flush()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(store.getState().campaign?.id).toBe("c1")
+  })
+
+  it("depois de sair, a tentativa que falhar não vira novas tentativas no painel", async () => {
+    fetchMock.mockResolvedValue(apiResponse({}, { status: 503 }))
+    store = createCampaignStore({ retryDelaysMs: [2_000, 4_000], timeoutMs: 1_000 })
+    const unsubscribe = store.subscribe(() => {})
+    unsubscribe()
+
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("sair durante a espera entre tentativas também cancela a próxima, sem aviso de falha no console", async () => {
+    fetchMock.mockResolvedValue(apiResponse({}, { status: 503 }))
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    store = createCampaignStore({ retryDelaysMs: [2_000, 4_000], timeoutMs: 1_000 })
+    const unsubscribe = store.subscribe(() => {})
+    await flush() // 1ª tentativa falhou; agora espera 2 s
+    unsubscribe()
+
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it("uma falha depois de um sucesso faz voltar à loja tentar de novo", async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(active()))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue(apiResponse(active()))
+    const { store, unsubscribe } = subscribed()
+    await flush()
+    vi.setSystemTime(NOW + CAMPAIGN_VISIBILITY_MIN_INTERVAL_MS)
+    document.dispatchEvent(new Event("visibilitychange")) // 2ª busca: falha
+    await flush()
+    unsubscribe()
+
+    store.subscribe(() => {})
+    await flush()
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it("com a loja aberta, ler o estado não tira a campanha às escondidas (todos são avisados juntos)", async () => {
+    fetchMock.mockResolvedValueOnce(apiResponse(active())).mockImplementation(hangingFetch)
+    const { store } = subscribed()
+    const other = vi.fn()
+    store.subscribe(other)
+    await flush()
+    other.mockClear()
+
+    // Fim às 16h; o timer dispara 2 s depois. Uma leitura no meio não pode "engolir" o aviso.
+    await vi.advanceTimersByTimeAsync(2 * HOUR + 1_000) // 16:00:01
+    expect(store.getState().campaign?.id).toBe("c1")
+    expect(other).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(2_000)
+
+    expect(store.getState().campaign).toBeNull()
+    expect(other).toHaveBeenCalled()
+  })
+
+  it("se a última busca falhou, voltar logo depois tenta de novo", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValue(apiResponse(active()))
+    const { store, unsubscribe } = subscribed()
+    await flush()
+    unsubscribe()
+
+    store.subscribe(() => {})
+    await flush()
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(store.getState().campaign?.id).toBe("c1")
+  })
+
+  it("a campanha que terminou enquanto ninguém assinava já não aparece na primeira leitura", async () => {
+    fetchMock.mockResolvedValue(apiResponse(active()))
+    const { store, unsubscribe } = subscribed()
+    await flush()
+    unsubscribe()
+
+    vi.setSystemTime(Date.parse("2026-11-27T17:00:00Z"))
+
+    expect(store.getState().campaign).toBeNull()
+  })
+
+  it("se a campanha terminou enquanto ninguém assinava, sai do ar ao voltar", async () => {
+    fetchMock.mockResolvedValueOnce(apiResponse(active())).mockImplementation(hangingFetch)
+    const { store, unsubscribe } = subscribed()
+    await flush()
+    unsubscribe()
+
+    vi.setSystemTime(Date.parse("2026-11-27T17:00:00Z"))
+    store.subscribe(() => {})
+
+    expect(store.getState().campaign).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe("volta para a aba", () => {
   it("atualiza ao voltar, mas não em alternâncias rápidas", async () => {
     fetchMock.mockResolvedValue(apiResponse(active()))
