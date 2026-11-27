@@ -142,12 +142,13 @@
   - *Pronto quando:* uma resposta malformada resulta no tema padrão, sem erro na tela.
   - *Resultado (27/11/2026):* `src/lib/campaign/` com os tipos (`types.ts`), a validação (`parse.ts`) e o cliente (`client.ts`). A validação monta um objeto novo só com os campos do contrato e confere cores, links e imagens do Cloudinary; campanha malformada vira `campaign: null` (tema padrão) e só gera aviso no console em desenvolvimento. `content: null` vira conteúdo vazio. O cliente faz uma única tentativa com `cache: "no-cache"` e usa o cabeçalho `Date` como `serverTime` (contrato §7.1); retentativas, cache local e timeout ficam na T17. Front com 304 testes passando.
 
-- [ ] **T17. Criar o carregamento da campanha ativa** · `WEB`
+- [x] **T17. Criar o carregamento da campanha ativa** · `WEB`
   - Um único ponto de busca, compartilhado entre os componentes, paralelo ao catálogo.
   - Cache local com validade, descartando campanha expirada.
   - Atualizar ao voltar para a aba e no próximo horário de mudança.
   - Timeout e fallback para falha, 404 ou API demorando a acordar.
   - *Pronto quando:* a loja funciona normalmente com a rota de campanhas fora do ar.
+  - *Resultado (27/11/2026):* `src/lib/campaign/store.ts` (uma instância compartilhada, via `useActiveCampaign` e `useSyncExternalStore`), iniciado pela `Store.tsx` junto com o catálogo. Cache em `fausto_campaign_cache_v1`, revalidado pelo `parse.ts` ao ler e descartado após 24 h, no fim da campanha ou no `nextChangeAt`. Nova busca ao voltar para a aba (mínimo de 30 s) e no `nextChangeAt`; a campanha que terminou sai do ar no horário mesmo com a API fora. Horários comparados pela hora do servidor (cabeçalho `Date`). Timeout de 60 s e 3 retentativas, como o catálogo; 404 e outros 4xx não repetem. Qualquer falha mantém o que já estava (cache válido ou tema padrão), sem tela de erro. Ninguém lê a campanha ainda: o tema entra na T18. Front com 324 testes passando.
 
 - [ ] **T18. Criar o sistema central de temas** · `WEB`
   - Um único módulo converte `theme` em CSS Variables (modos claro e escuro).
