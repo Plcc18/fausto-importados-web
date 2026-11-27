@@ -12,7 +12,8 @@ Seguem o que a API já faz hoje.
 | Nomes | JSON em `camelCase`. Valores de enum em MAIÚSCULAS (como `category` dos produtos). |
 | IDs | UUID em texto. |
 | Datas | ISO-8601 com fuso, sempre em UTC na resposta: `"2026-11-28T03:00:00Z"`. O banco guarda `TIMESTAMPTZ`. O painel mostra e recebe datas no horário de `America/Fortaleza` (UTC−03:00, sem horário de verão) e converte. |
-| Textos | Texto puro. A API rejeita `<` e `>` em qualquer campo de texto (sem HTML). Tamanhos contados em caracteres, depois de remover espaços das pontas. |
+| Textos | Texto puro. A API rejeita `<` e `>` em qualquer campo de texto (sem HTML). Nos textos de `content`, rejeita também quebras de linha e caracteres de controle. Tamanhos contados em caracteres, depois de remover espaços das pontas (um emoji conta como um). |
+| Normalização | A API grava sem espaços nas pontas; texto vazio vira `null` e lista ausente em `content` vira `[]`. Propriedades fora do contrato são ignoradas. |
 | Ausência | Campo opcional sem valor vem como `null` (não é omitido), para o front tratar um caso só. |
 | Paginação | `PagedModel` do Spring, igual a `/api/admin/audit`: `{ "content": [...], "page": { "size", "number", "totalElements", "totalPages" } }`. `page` começa em 0; `size` padrão 20, máximo 100. |
 | Edição concorrente | Toda escrita sobre uma campanha existente envia a `version` lida. Diferente da atual → `409 version_conflict`; ausente → `428 version_required`. |
@@ -37,11 +38,12 @@ O mesmo de hoje (`GlobalExceptionHandler`), com um campo novo, `fields`, só nos
 }
 ```
 
-`field` usa o caminho do JSON (com `[índice]` em listas), para o painel mostrar a mensagem junto do campo certo (T31).
+`field` usa o caminho do JSON (com `[índice]` em listas), para o painel mostrar a mensagem junto do campo certo (T31). As regras de campo vêm todas juntas; já um valor com tipo errado ou fora de um enum interrompe a leitura, e `fields` traz só o primeiro.
 
 | `code` | Status | Quando |
 |---|---|---|
 | `validation_failed` | 400 | Algum campo inválido (ver `fields`). |
+| `invalid_data` | 400 | O corpo não é um JSON válido. |
 | `discount_not_supported` | 400 | Desconto enviado antes da segunda etapa (ver §4.5). |
 | `not_found` | 404 | Campanha inexistente (ou arquivada, nas rotas que não as aceitam). |
 | `version_required` | 428 | Faltou `version`. |
@@ -80,7 +82,7 @@ Texto de até 300 caracteres, de um destes tipos:
 - caminho interno: começa com `/` e não com `//` (ex.: `/?colecao=ofertas`, `/#colecao`);
 - endereço externo: começa com `https://`.
 
-Qualquer outra coisa é rejeitada (`javascript:`, `data:`, `http://`, `//site.com`, espaços, quebras de linha).
+Qualquer outra coisa é rejeitada (`javascript:`, `data:`, `http://`, `//site.com`, espaços, quebras de linha). Também são rejeitados `\`, `<`, `>`, caracteres invisíveis e endereço `https://` sem servidor ou com `usuario@`.
 
 ### `Image`
 ```json
@@ -88,7 +90,7 @@ Qualquer outra coisa é rejeitada (`javascript:`, `data:`, `http://`, `//site.co
 ```
 | Campo | Regra |
 |---|---|
-| `url` | Obrigatório. Só do Cloudinary do projeto: `https://res.cloudinary.com/<CLOUDINARY_NAME>/`. |
+| `url` | Obrigatório, até 500 caracteres. Só arquivos enviados ao Cloudinary do projeto: `https://res.cloudinary.com/<CLOUDINARY_NAME>/image/upload/` (`/image/fetch/` é recusado, assim como `..` no caminho). |
 | `alt` | Obrigatório, 1 a 150 caracteres. |
 | `width`, `height` | Inteiros > 0, ou `null`. Usados para reservar espaço e não deslocar o layout (T23). O upload de banners (T15) passa a devolvê-los. |
 
@@ -273,6 +275,8 @@ Só o necessário para exibir. Nunca leva `name`, `description`, `priority`, aut
 - `theme.dark` com os campos obrigatórios;
 - `endsAt` no futuro;
 - se houver `hero`, a `imageDesktop`.
+
+Em `theme` e `content`, só o que está nesta lista pode faltar num rascunho. Os demais campos obrigatórios valem sempre que o objeto que os contém vier: por exemplo, `hero.title`, `topBar.text`, os quatro tons de `gold` e os cinco campos obrigatórios de `theme.light`.
 
 ## 7. Endpoints
 
