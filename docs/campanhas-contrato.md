@@ -44,7 +44,7 @@ O mesmo de hoje (`GlobalExceptionHandler`), com um campo novo, `fields`, só nos
 |---|---|---|
 | `validation_failed` | 400 | Algum campo inválido (ver `fields`). |
 | `invalid_data` | 400 | O corpo não é um JSON válido. |
-| `discount_not_supported` | 400 | Desconto enviado antes da segunda etapa (ver §4.5). |
+| `discount_not_supported` | 400 | Desconto enviado antes da segunda etapa (ver §4.5). `fields` aponta cada um; as demais validações não são feitas. |
 | `not_found` | 404 | Campanha inexistente (ou arquivada, nas rotas que não as aceitam). |
 | `version_required` | 428 | Faltou `version`. |
 | `version_conflict` | 409 | Outra pessoa alterou a campanha. O painel recarrega; nunca sobrescreve. |
@@ -177,12 +177,12 @@ Correspondência com as CSS Variables de `src/index.css` (aplicadas pelo módulo
 ```
 | Campo | Regra |
 |---|---|
-| lista | 0 a 8 coleções. |
-| `id` | Gerado pela API. Ao salvar, coleção sem `id` é nova; coleção existente que não vier na lista é removida. |
+| lista | 0 a 8 coleções. No `PUT`, lista ausente ou vazia remove todas (a edição substitui o documento inteiro). |
+| `id` | Gerado pela API. Ao salvar, coleção sem `id` é nova; coleção existente que não vier na lista é removida. Um `id` só vale para coleção da própria campanha, uma vez; na criação, nenhum. |
 | `title` | 1 a 60. |
-| `slug` | Identificador do link `/?colecao=<slug>`. 1 a 40, regex `^[a-z0-9]+(-[a-z0-9]+)*$`, único dentro da campanha. |
-| `position` | Ordem de exibição, 0 em diante. A API renumera em sequência ao salvar. |
-| `products` | 0 a 60 itens. `productId` precisa existir e não pode repetir na mesma coleção. Produto desativado é aceito, mas a resposta pública o omite. |
+| `slug` | Identificador do link `/?colecao=<slug>`. 1 a 40, regex `^[a-z0-9]+(-[a-z0-9]+)*$`, único dentro da campanha. Pode ser trocado entre coleções na mesma edição. |
+| `position` | Ordem de exibição, 0 em diante. A API ordena pelo valor enviado (ausente vale o índice na lista; empate mantém a ordem da lista) e renumera em sequência ao salvar. Vale para coleções e para produtos. |
+| `products` | 0 a 60 itens. `productId` precisa existir e não pode repetir na mesma coleção (pode estar em mais de uma). Produto desativado é aceito, mas a resposta pública o omite. A coleção pública pode ficar sem produtos. |
 | `discount` | Reservado para a segunda etapa (§4.5). Na primeira versão, sempre `null`. |
 
 Produtos aparecem só como ID: a loja cruza com o catálogo que já carregou (T24), sem requisição por produto.

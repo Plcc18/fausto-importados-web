@@ -100,10 +100,11 @@
   - *Pronto quando:* cada transição válida e inválida tem teste.
   - *Resultado (27/11/2026):* as sete rotas, com a tabela de transições em `CampaignAction` e as 42 combinações de situação e ação testadas; publicar, ativar, reativar, arquivar e excluir exigem 2FA; API com 565 testes passando, nenhum pulado. A auditoria registra cada ação com nome, status e versão; o antes e depois fica para a T14. `duplicate` exige `Idempotency-Key` (o painel precisa enviar, T27).
 
-- [ ] **T11. Gerenciar coleções e produtos participantes** · `API`
+- [x] **T11. Gerenciar coleções e produtos participantes** · `API`
   - Criar, editar, ordenar e remover coleções; associar e ordenar produtos.
   - Rejeitar produto inexistente ou duplicado; produto desativado não aparece na loja.
   - *Pronto quando:* alterar uma campanha não modifica nenhum dado dos produtos.
+  - *Resultado (27/11/2026):* coleções gravadas ao criar e editar, e desconto recusado com `discount_not_supported`; API com 591 testes passando, nenhum pulado. Um teste compara as linhas dos produtos antes e depois de todas as operações de campanha. `CampaignCatalog.publicCollections` já omite os desativados: a T12 deve usá-lo. `registerChange` passou a sempre avançar `updatedAt`, para uma mudança só nas coleções subir a `version`.
 
 - [ ] **T12. Criar o endpoint público e o de prévia** · `API`
   - `GET /api/campaigns/active`, liberado no `SecurityConfig`: só dados públicos, IDs dos produtos, horário do servidor e próxima mudança.
