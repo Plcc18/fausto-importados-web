@@ -61,13 +61,14 @@
   - *Pronto quando:* a validação de schema do Hibernate passa e os testes em H2 continuam funcionando.
   - *Resultado (27/11/2026):* entidades validadas contra o schema do Flyway em PostgreSQL 16 e testadas em H2; API com 284 testes passando, nenhum pulado. Toda alteração, mesmo só em produtos, precisa chamar `Campaign.registerChange` para a `version` subir (vale para T09 a T11).
 
-- [ ] **T06. Validar tema e conteúdo no backend** · `API`
+- [x] **T06. Validar tema e conteúdo no backend** · `API`
   - Cores apenas em formato hexadecimal.
   - Links apenas internos ou `https` (bloquear `javascript:`, `//` e afins).
   - Textos puros, sem HTML, com tamanho máximo.
   - Imagens apenas do Cloudinary do projeto.
   - Elementos decorativos escolhidos em um catálogo fechado, sem CSS ou script livre.
   - *Pronto quando:* entradas inválidas retornam 400 com mensagem clara, cobertas por teste.
+  - *Resultado (27/11/2026):* `CampaignContentValidator` e erro `validation_failed` com `fields`, testados com um controller de teste; API com 378 testes passando, nenhum pulado. As rotas reais (T09) precisam chamar o validador e gravar a cópia que ele devolve. Dados gerais (nome, descrição, datas, prioridade) ficam para a T09, coleções para a T11 e os requisitos de publicação para a T10. Regras detalhadas no contrato.
 
 ---
 
