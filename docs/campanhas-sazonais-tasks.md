@@ -34,12 +34,13 @@
     - Sem 2FA: criar e editar rascunho, duplicar, prévia e desativar. Desativar fica livre por ser o "botão de emergência" para tirar do ar uma campanha errada.
   - *Pronto quando:* todas as respostas estão registradas neste arquivo.
 
-- [ ] **T03. Definir o contrato da API**
+- [x] **T03. Definir o contrato da API**
   - Descrever o JSON de `theme`, `content`, coleções, resposta pública e endpoints administrativos, com limites de cada campo.
   - Tipos de evento: Black Friday, Natal, Páscoa, Namorados, Mães, Pais, Consumidor, Aniversário da loja e Personalizada.
-  - Reservar os campos de desconto da segunda etapa (T42 e T43), opcionais e ignorados na primeira versão.
+  - Reservar os campos de desconto da segunda etapa (T42 e T43), sempre `null` na primeira versão (outro valor é recusado com `discount_not_supported`).
   - Indicar quais ações exigem 2FA, conforme T02.
   - *Pronto quando:* backend e frontend podem ser desenvolvidos a partir do mesmo documento.
+  - *Resultado:* contrato em [`campanhas-contrato.md`](campanhas-contrato.md).
 
 ---
 
