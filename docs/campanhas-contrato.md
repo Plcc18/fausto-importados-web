@@ -332,6 +332,10 @@ Filtros da listagem: `status`, `phase`, `type` (cada um aceita vários, separado
 | `ARCHIVED` | — | — | — | — | — | — | — |
 
 - Fora da tabela → `409 invalid_transition`.
+- Nas ações, a `version` vai no corpo (`{ "version": 3 }`) e, no `DELETE`, na URL. Ela é conferida antes do estado.
+- `activate-now` muda `startsAt` para agora só se ele estiver vazio ou no futuro (um início que já passou é mantido). Como isso pode alongar a campanha, o limite de 120 dias é conferido de novo (`422 publish_requirements`, campo `endsAt`).
+- `publishedAt` é a última vez que a campanha passou a `PUBLISHED` (`publish`, `activate-now` de rascunho ou `reactivate`). `activate-now` de uma agendada não o altera.
+- `duplicate` vale para qualquer estado, inclusive arquivada. A cópia mantém nome, descrição, tipo, prioridade, `theme`, `content` e coleções com produtos (com ids novos); não leva datas nem `publishedAt`.
 - `DELETE` só para rascunhos: o que já foi ao ar é arquivado, para não perder o histórico.
 - Campanha expirada não é editada; para repetir no ano seguinte, duplique.
 - `PUT` nunca muda o `status`. Em campanha `PUBLISHED`, a edição precisa continuar atendendo a §6, inclusive `endsAt` no futuro (`422 publish_requirements`); para encerrar antes da hora, use `disable`. A `version` é conferida antes do estado e do 2FA.
