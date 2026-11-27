@@ -332,6 +332,7 @@ Filtros da listagem: `status`, `phase`, `type` (cada um aceita vários, separado
 - `DELETE` só para rascunhos: o que já foi ao ar é arquivado, para não perder o histórico.
 - Campanha expirada não é editada; para repetir no ano seguinte, duplique.
 - Conflito de período (`409 campaign_conflict`) é verificado em `publish`, `activate-now`, `reactivate` e no `PUT` de campanha publicada.
+- Há conflito quando os períodos de duas campanhas publicadas de mesma prioridade se cruzam. Encostar não conflita (o fim de uma pode ser o início da outra). Publicadas já expiradas também contam: para usar o período, arquive a antiga ou mude as datas ou a prioridade. `conflictingCampaign` traz a de início mais antigo entre as que conflitam, e `message` já a cita com as datas no horário de Fortaleza.
 
 ### 7.4 Upload de banners (T15)
 `POST /api/upload?folder=campaigns` (multipart, campo `file`). JPEG, PNG ou WebP, até 5 MB; SVG é recusado. Resposta: `{ "url", "width", "height" }`. O upload de produtos continua igual.

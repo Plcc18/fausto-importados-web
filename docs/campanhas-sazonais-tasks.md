@@ -81,11 +81,12 @@
   - *Pronto quando:* testes com relógio controlado cobrem os limites exatos de início e fim.
   - *Resultado (27/11/2026):* `ActiveCampaignService` e `Campaign.phaseAt`, com os limites testados em H2 e PostgreSQL 16; API com 398 testes passando, nenhum pulado. A API calcula com instantes em UTC; a exibição e a entrada em `America/Fortaleza` ficam no painel (contrato §1, T28). Ainda sem rota: o endpoint público é a T12.
 
-- [ ] **T08. Impedir campanhas conflitantes** · `API`
+- [x] **T08. Impedir campanhas conflitantes** · `API`
   - Validar ao publicar, reativar e editar uma campanha publicada.
   - Garantir a regra mesmo com requisições simultâneas (lock ou constraint no Postgres).
   - A mensagem de erro informa qual campanha conflita.
   - *Pronto quando:* um teste concorrente não consegue publicar duas campanhas conflitantes.
+  - *Resultado (27/11/2026):* `CampaignConflictGuard` (lock de transação) e constraint de exclusão na migration `V11`; teste com 8 publicações simultâneas em PostgreSQL 16; API com 426 testes passando, nenhum pulado. As rotas de publicar, reativar e editar ainda não existem: a T09 e a T10 precisam chamar `ensureNoConflict` dentro de `Transactions.run`, antes de gravar.
 
 - [ ] **T09. Criar os endpoints administrativos** · `API`
   - `/api/admin/campaigns`: listar (filtros por status, tipo e período, com paginação), detalhar, criar rascunho e editar.
