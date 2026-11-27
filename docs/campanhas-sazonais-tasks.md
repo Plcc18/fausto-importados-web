@@ -10,10 +10,11 @@
 
 ## Fase 0: Preparação
 
-- [ ] **T01. Fechar o trabalho pendente e criar as branches** · `API` `WEB`
-  - Concluir, testar e commitar o que está em andamento na `feat/admin-security` da API (há arquivos não commitados, incluindo as migrations `V8` e `V9`).
-  - Criar a branch de campanhas nos dois repositórios.
+- [x] **T01. Fechar o trabalho pendente e definir as branches** · `API` `WEB`
+  - `feat/admin-security` da API (com as migrations `V8` e `V9`) concluída e integrada à `dev` e à `main`.
+  - Branches: uma por task, criada a partir da `dev` (ex.: `feat/campanhas-t04-migration`), com PR para a `dev`. Sem branch longa de campanhas.
   - *Pronto quando:* os dois repositórios estão sem pendências, com testes passando antes de qualquer mudança.
+  - *Resultado (26/11/2026):* API com 256 testes passando, inclusive os de PostgreSQL real (nenhum pulado); WEB com 235 testes, lint limpo.
 
 - [ ] **T02. Tomar as decisões de produto e arquitetura**
   - [ ] Descontos: a campanha só destaca produtos (recomendado na primeira versão) ou também aplica preço promocional (habilita T42 e T43)?
@@ -35,7 +36,7 @@
 ## Fase 1: Banco de dados e domínio
 
 - [ ] **T04. Criar a migration das campanhas** · `API`
-  - Próxima versão do Flyway (`V10`, se `V8` e `V9` forem mantidas).
+  - Próxima versão do Flyway: `V10` (`V8` e `V9` já estão na `dev`).
   - `campaigns`: id, nome, descrição, tipo, status, início e fim (`TIMESTAMPTZ`), prioridade, `theme` e `content` (JSONB), versão, criação, atualização e autor.
   - `campaign_collections`: campanha, título, identificador para link, ordem.
   - `campaign_collection_products`: coleção, produto (FK), ordem.
