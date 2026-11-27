@@ -397,6 +397,8 @@ export function Store() {
         onQuickFilter={(filter) => { handleQuickFilter(filter); scrollToCollection() }}
       />
 
+      {/* Logo abaixo do banner e dos filtros rápidos: lê como continuação do banner */}
+      <CampaignPromoImages promoImages={campaign?.content.promoImages ?? []} />
       <CampaignCollections
         collections={collections}
         // "Ver todos (N)" mostra exatamente a coleção: os outros filtros e a busca saem
@@ -413,7 +415,6 @@ export function Store() {
           />
         )}
       />
-      <CampaignPromoImages promoImages={campaign?.content.promoImages ?? []} />
 
       {/* ── Products Section ── */}
       <section id="colecao" ref={collectionRef} className="px-4 py-16 md:py-24">
