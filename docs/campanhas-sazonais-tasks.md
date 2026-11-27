@@ -177,9 +177,10 @@
   - *Pronto quando:* a loja se comporta como antes e os testes passam.
   - *Resultado (27/11/2026):* `StoreHeader.tsx` (cabeçalho, com o estado do menu do celular), `StoreTopBar.tsx` (faixa superior, ponto de entrada da T22) e `StoreHero.tsx` (hero com o único `h1`, ponto de entrada da T23); tipos dos filtros em `storeTypes.ts`. Os componentes recebem o que mostrar por props e avisam a loja por callbacks; os filtros continuam no `Store.tsx` (765 → 595 linhas). O HTML gerado pela loja ficou idêntico byte a byte em 6 estados (inicial, gênero, promoções, favoritos, filtro rápido e menu do celular aberto). Front com 405 testes passando.
 
-- [ ] **T22. Implementar a faixa promocional superior** · `WEB`
+- [x] **T22. Implementar a faixa promocional superior** · `WEB`
   - Texto e link configuráveis, visível também no celular; sem campanha, permanece a faixa atual.
   - *Pronto quando:* a faixa funciona nos dois tamanhos de tela.
+  - *Resultado (27/11/2026):* `StoreTopBar.tsx` lê `content.topBar` da campanha ativa. Com faixa: texto centralizado, que quebra a linha no celular, com a cor de destaque da campanha (`bg-primary`) e visível em todos os tamanhos. No celular, no máximo 2 linhas (fica dentro do cabeçalho fixo). Link sempre sublinhado. Para outra página do site (`/termos`...) navega pelo React Router; para a própria loja (`/?produto=`, `/#colecao` e, a partir da T24, `/?colecao=`) ou caminho do servidor, navegação normal do navegador (a loja lê esses parâmetros ao abrir); externo (`https://`) abre em nova aba com `rel="noopener noreferrer"` e aviso "(abre em nova aba)" para leitores de tela. Sem campanha ou com `topBar: null`, a faixa de sempre, só no computador. Limitação aceita: na primeira visita (sem cache), a faixa aparece quando a API responde e, no celular, empurra a página um pouco. Front com 418 testes passando.
 
 - [ ] **T23. Implementar o banner principal** · `WEB`
   - Imagens separadas para desktop e celular, título, subtítulo, botões e links.
@@ -231,6 +232,7 @@
 - [ ] **T31. Criar o editor de conteúdo** · `WEB`
   - Faixa superior, banner, textos, botões, links, seções especiais, imagens de divulgação e decorações.
   - Validação junto ao campo.
+  - Faixa superior: no celular a loja mostra no máximo 2 linhas (~90 caracteres, T22); avisar quando o texto passar disso e mostrar a prévia no tamanho de celular.
   - *Pronto quando:* todo conteúdo exibido na loja é editável pelo painel.
 
 - [ ] **T32. Criar o seletor de produtos e coleções** · `WEB`
