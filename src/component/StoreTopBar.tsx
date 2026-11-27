@@ -1,7 +1,5 @@
-import type { ReactNode } from "react"
-import { Link } from "react-router-dom"
 import { useActiveCampaign } from "@/lib/campaign/useActiveCampaign"
-import { ROUTES } from "@/routes"
+import { CampaignLink } from "./CampaignLink"
 import type { CampaignTopBar } from "@/lib/campaign/types"
 
 /**
@@ -36,48 +34,15 @@ function CampaignTopBarStrip({ topBar }: { topBar: CampaignTopBar }) {
     <div className="border-b border-border bg-primary text-primary-foreground" data-testid="campaign-top-bar">
       {/* No celular, no máximo 2 linhas: a faixa fica dentro do cabeçalho fixo e não pode tomar a tela */}
       <div className="mx-auto line-clamp-2 max-w-7xl px-4 py-2 text-center text-xs font-medium tracking-wide text-balance md:line-clamp-none md:px-6">
-        {topBar.link ? <TopBarLink link={topBar.link}>{topBar.text}</TopBarLink> : topBar.text}
+        {topBar.link ? (
+          // Sempre sublinhado: no celular não há "passar o mouse" para descobrir que é um link
+          <CampaignLink link={topBar.link} className="underline underline-offset-4 hover:opacity-90">
+            {topBar.text}
+          </CampaignLink>
+        ) : (
+          topBar.text
+        )}
       </div>
     </div>
-  )
-}
-
-/** Páginas do site, fora a loja, abertas sem recarregar. */
-const SPA_PAGES: ReadonlySet<string> = new Set(
-  Object.values(ROUTES).filter((path) => path !== ROUTES.home),
-)
-
-/**
- * Para onde o link vai (o `parse.ts`, T16, só deixa passar caminho interno `/...` ou `https://`):
- * - outra página do site (`/termos`...): navega sem recarregar;
- * - a própria loja (`/?produto=...`, `/#colecao` e, a partir da T24, `/?colecao=...`) ou caminho que o servidor
- *   trata: navegação normal do navegador. A loja lê esses parâmetros ao abrir, e só mudar a URL não faria nada;
- * - externo: outra aba, sem dar à página aberta acesso a esta (`noopener`) nem dizer de onde veio.
- */
-function TopBarLink({ link, children }: { link: string; children: ReactNode }) {
-  // Sempre sublinhado: no celular não há "passar o mouse" para descobrir que é um link
-  const className = "underline underline-offset-4 hover:opacity-90"
-  const url = new URL(link, window.location.origin)
-  // `/termos/` é a mesma página que `/termos` (o Vercel só conhece a forma sem a barra final)
-  const pathname = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, "") : url.pathname
-  if (link.startsWith("/") && SPA_PAGES.has(pathname)) {
-    return (
-      <Link to={pathname + url.search + url.hash} className={className}>
-        {children}
-      </Link>
-    )
-  }
-  if (link.startsWith("/")) {
-    return (
-      <a href={link} className={className}>
-        {children}
-      </a>
-    )
-  }
-  return (
-    <a href={link} target="_blank" rel="noopener noreferrer" className={className}>
-      {children}{" "}
-      <span className="sr-only">(abre em nova aba)</span>
-    </a>
   )
 }
