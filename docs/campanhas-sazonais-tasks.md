@@ -94,10 +94,11 @@
   - *Pronto quando:* anônimos e não administradores não têm acesso a nenhuma rota.
   - *Resultado (27/11/2026):* listar, detalhar, criar e editar, com 2FA e conferência de conflito na edição de publicada; anônimo recebe 401 e não administrador 404; API com 474 testes passando, nenhum pulado. `collections` com itens é recusada até a T11 (a resposta já as devolve). `CampaignPublishRequirements` já existe, para a T10 reutilizar. A auditoria registra só a criação e a edição; o antes e depois fica para a T14.
 
-- [ ] **T10. Criar as ações sobre campanhas** · `API`
+- [x] **T10. Criar as ações sobre campanhas** · `API`
   - Publicar, ativar agora, desativar, reativar, duplicar (cópia como rascunho, sem datas) e excluir ou arquivar.
   - Exigir os campos mínimos para publicar; rascunho pode ficar incompleto.
   - *Pronto quando:* cada transição válida e inválida tem teste.
+  - *Resultado (27/11/2026):* as sete rotas, com a tabela de transições em `CampaignAction` e as 42 combinações de situação e ação testadas; publicar, ativar, reativar, arquivar e excluir exigem 2FA; API com 565 testes passando, nenhum pulado. A auditoria registra cada ação com nome, status e versão; o antes e depois fica para a T14. `duplicate` exige `Idempotency-Key` (o painel precisa enviar, T27).
 
 - [ ] **T11. Gerenciar coleções e produtos participantes** · `API`
   - Criar, editar, ordenar e remover coleções; associar e ordenar produtos.
