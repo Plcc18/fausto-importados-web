@@ -266,7 +266,9 @@ Só o necessário para exibir. Nunca leva `name`, `description`, `priority`, aut
   ]
 }
 ```
-`productIds` já vem na ordem certa e sem produtos desativados.
+`productIds` já vem na ordem certa e sem produtos desativados; pode vir vazio.
+
+Em `/api/campaigns/active`, `type`, `startsAt`, `endsAt` e `theme` sempre vêm preenchidos. Na prévia de um rascunho, os quatro podem ser `null`. `content` pode ser `null` nos dois casos, e `theme.light` também.
 
 ## 6. Requisitos para publicar
 
@@ -312,7 +314,7 @@ Sem autenticação. Responde sempre `200`:
 | `POST /api/admin/campaigns/{id}/duplicate` | Cópia como rascunho, sem datas (`Idempotency-Key`) | — | `201 CampaignDetail` | |
 | `POST /api/admin/campaigns/{id}/archive` | Arquiva | `{ "version" }` | `CampaignDetail` | 🔐 |
 | `DELETE /api/admin/campaigns/{id}?version=N` | Exclui | — | `204` | 🔐 |
-| `GET /api/admin/campaigns/{id}/preview` | Prévia, qualquer status (T33) | — | mesmo formato de `/api/campaigns/active`, com `campaign` preenchida | |
+| `GET /api/admin/campaigns/{id}/preview` | Prévia, qualquer status (T33) | — | mesmo formato de `/api/campaigns/active`, com `campaign` preenchida e `nextChangeAt` sempre `null` | |
 | `GET /api/admin/campaigns/{id}/history` | Histórico (T34) | — | `PagedModel` no formato de `/api/admin/audit` | |
 
 Filtros da listagem: `status`, `phase`, `type` (cada um aceita vários, separados por vírgula), `from` e `to` (campanhas cujo período cruza o intervalo), `q` (busca no nome), `page`, `size`. Ordem: `startsAt` decrescente, rascunhos sem data primeiro (empate: a criada por último primeiro).

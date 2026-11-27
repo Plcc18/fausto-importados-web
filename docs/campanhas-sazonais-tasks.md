@@ -106,11 +106,12 @@
   - *Pronto quando:* alterar uma campanha não modifica nenhum dado dos produtos.
   - *Resultado (27/11/2026):* coleções gravadas ao criar e editar, e desconto recusado com `discount_not_supported`; API com 591 testes passando, nenhum pulado. Um teste compara as linhas dos produtos antes e depois de todas as operações de campanha. `CampaignCatalog.publicCollections` já omite os desativados: a T12 deve usá-lo. `registerChange` passou a sempre avançar `updatedAt`, para uma mudança só nas coleções subir a `version`.
 
-- [ ] **T12. Criar o endpoint público e o de prévia** · `API`
+- [x] **T12. Criar o endpoint público e o de prévia** · `API`
   - `GET /api/campaigns/active`, liberado no `SecurityConfig`: só dados públicos, IDs dos produtos, horário do servidor e próxima mudança.
   - Resposta explícita quando não há campanha ativa. Rascunhos e agendadas nunca vazam.
   - `GET /api/admin/campaigns/{id}/preview`: mesmo formato, para qualquer status, só `ADMIN`.
   - *Pronto quando:* os testes de acesso e de conteúdo exposto passam.
+  - *Resultado (27/11/2026):* as duas rotas, com testes de acesso e do conjunto exato de campos expostos; API com 618 testes passando, nenhum pulado. De uma campanha agendada só sai o horário da próxima mudança (`nextChangeAt`, contrato §7.1). A rota pública ainda não tem cache nem `ETag` e responde com o `no-store` padrão: é a T13.
 
 - [ ] **T13. Adicionar cache à campanha ativa** · `API`
   - Cache em memória invalidado após cada alteração confirmada, respeitando início e fim.
