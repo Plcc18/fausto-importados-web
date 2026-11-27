@@ -1,5 +1,8 @@
+import { useState } from "react"
 import { Check, ShoppingBag, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useActiveCampaign } from "@/lib/campaign/useActiveCampaign"
+import { CampaignBanner } from "./CampaignBanner"
 import type { QuickFilter } from "./storeTypes"
 
 interface StoreHeroProps {
@@ -9,10 +12,38 @@ interface StoreHeroProps {
 }
 
 /**
- * Hero da loja ("A arte da perfumaria"), com os filtros rápidos e os selos de confiança. Tem o único `h1` da
- * página. Ponto de entrada do banner da campanha (T23), que usará este hero como fallback.
+ * Topo da loja, com o único `h1` da página. Com campanha que tenha `hero`, o banner dela (T23), seguido dos
+ * filtros rápidos e dos selos; sem isso (ou se a imagem do banner falhar), o hero de sempre ("A arte da
+ * perfumaria").
  */
-export function StoreHero({ quickFilters, activeQuickFilterId, onQuickFilter }: StoreHeroProps) {
+export function StoreHero(props: StoreHeroProps) {
+  // Limitação aceita (como a faixa da T22): na primeira visita, sem cache, o hero de sempre aparece e é trocado
+  // pelo banner quando a API responde. Um espaço vazio à espera dela (até ~1 min no Render) seria pior, e sem
+  // campanha ficaria vazio à toa; quem volta já tem o cache (T17/T20) e recebe o banner na primeira renderização.
+  const hero = useActiveCampaign().campaign?.content.hero ?? null
+  // Imagem que falhou: guarda quais URLs, para uma campanha nova (ou uma imagem trocada) tentar de novo
+  const [failedImages, setFailedImages] = useState<string | null>(null)
+  const imagesKey = hero ? `${hero.imageDesktop.url} ${hero.imageMobile?.url ?? ""}` : null
+
+  if (hero && imagesKey !== failedImages) {
+    return (
+      <>
+        <CampaignBanner hero={hero} onImageError={() => setFailedImages(imagesKey)} />
+        {/* A navegação da loja continua durante a campanha */}
+        <section className="px-4 pb-12 pt-10 md:py-16">
+          <div className="mx-auto max-w-4xl text-center">
+            <QuickFilters spacing="mt-0" {...props} />
+            <TrustBadges spacing="mt-12" />
+          </div>
+        </section>
+      </>
+    )
+  }
+  return <DefaultHero {...props} />
+}
+
+/** O hero de sempre: sem campanha, com `hero: null` ou se a imagem do banner falhar. */
+function DefaultHero(props: StoreHeroProps) {
   return (
     <section className="relative overflow-hidden bg-linear-to-b from-muted/50 via-muted/30 to-background px-4 py-24 md:py-36">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
@@ -39,26 +70,38 @@ export function StoreHero({ quickFilters, activeQuickFilterId, onQuickFilter }: 
           <br className="hidden sm:block" />
           ao seu alcance
         </h1>
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
-          {quickFilters.map((filter) => {
-            const Icon = filter.icon
-            const isActive = activeQuickFilterId === filter.id
-            return (
-              <button key={filter.id} onClick={() => onQuickFilter(filter)}
-                className={cn('group relative flex items-center gap-2.5 overflow-hidden rounded-full border px-6 py-3 text-sm font-medium transition-all duration-300', isActive ? 'border-primary bg-primary text-primary-foreground shadow-lg' : 'border-border/60 bg-background/80 text-foreground shadow-sm backdrop-blur-sm hover:border-primary/40 hover:bg-background hover:shadow-md')}>
-                <Icon className={cn('h-4 w-4 transition-all duration-300 group-hover:scale-110', isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground')} />
-                {filter.label}
-                <span className="text-xs opacity-60">{filter.description}</span>
-              </button>
-            )
-          })}
-        </div>
-        <div className="mt-16 flex flex-wrap items-center justify-center gap-8 text-muted-foreground">
-          <div className="flex items-center gap-2 text-sm"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50"><Check className="h-4 w-4" /></div><span>100% Original</span></div>
-          <div className="flex items-center gap-2 text-sm"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50"><ShoppingBag className="h-4 w-4" /></div><span>Envio Seguro</span></div>
-          <div className="flex items-center gap-2 text-sm"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50"><Star className="h-4 w-4" /></div><span>+100 Clientes</span></div>
-        </div>
+        <QuickFilters spacing="mt-12" {...props} />
+        <TrustBadges spacing="mt-16" />
       </div>
     </section>
+  )
+}
+
+function QuickFilters({ spacing, quickFilters, activeQuickFilterId, onQuickFilter }: StoreHeroProps & { spacing: string }) {
+  return (
+    <div className={`${spacing} flex flex-wrap items-center justify-center gap-3`}>
+      {quickFilters.map((filter) => {
+        const Icon = filter.icon
+        const isActive = activeQuickFilterId === filter.id
+        return (
+          <button key={filter.id} onClick={() => onQuickFilter(filter)}
+            className={cn('group relative flex items-center gap-2.5 overflow-hidden rounded-full border px-6 py-3 text-sm font-medium transition-all duration-300', isActive ? 'border-primary bg-primary text-primary-foreground shadow-lg' : 'border-border/60 bg-background/80 text-foreground shadow-sm backdrop-blur-sm hover:border-primary/40 hover:bg-background hover:shadow-md')}>
+            <Icon className={cn('h-4 w-4 transition-all duration-300 group-hover:scale-110', isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground')} />
+            {filter.label}
+            <span className="text-xs opacity-60">{filter.description}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function TrustBadges({ spacing }: { spacing: string }) {
+  return (
+    <div className={`${spacing} flex flex-wrap items-center justify-center gap-8 text-muted-foreground`}>
+      <div className="flex items-center gap-2 text-sm"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50"><Check className="h-4 w-4" /></div><span>100% Original</span></div>
+      <div className="flex items-center gap-2 text-sm"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50"><ShoppingBag className="h-4 w-4" /></div><span>Envio Seguro</span></div>
+      <div className="flex items-center gap-2 text-sm"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50"><Star className="h-4 w-4" /></div><span>+100 Clientes</span></div>
+    </div>
   )
 }
