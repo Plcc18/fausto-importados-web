@@ -150,7 +150,7 @@
   - *Pronto quando:* a loja funciona normalmente com a rota de campanhas fora do ar.
   - *Resultado (27/11/2026):* `src/lib/campaign/store.ts` (uma instância compartilhada, via `useActiveCampaign` e `useSyncExternalStore`), iniciado pela `Store.tsx` junto com o catálogo. Cache em `fausto_campaign_cache_v1`, revalidado pelo `parse.ts` ao ler e descartado após 24 h, no fim da campanha ou no `nextChangeAt`. Nova busca ao voltar para a aba (mínimo de 30 s) e no `nextChangeAt`; a campanha que terminou sai do ar no horário mesmo com a API fora. Horários comparados pela hora do servidor (cabeçalho `Date`). Timeout de 60 s e 3 retentativas, como o catálogo; 404 e outros 4xx não repetem. Qualquer falha mantém o que já estava (cache válido ou tema padrão), sem tela de erro. Ninguém lê a campanha ainda: o tema entra na T18. Front com 324 testes passando.
 
-- [ ] **T18. Criar o sistema central de temas** · `WEB`
+- [x] **T18. Criar o sistema central de temas** · `WEB`
   - Um único módulo converte `theme` em CSS Variables (modos claro e escuro).
   - Cobrir fundo principal e secundário, destaque, botões, textos e etiquetas promocionais, incluindo os tokens dourados.
   - Remover o tema ao encerrar a campanha ou ao entrar em área fora do alcance definido.
