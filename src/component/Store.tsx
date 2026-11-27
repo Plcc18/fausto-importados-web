@@ -33,7 +33,6 @@ import { AuthMenu } from "@/component/AuthMenu"
 import { useCartReconciliation } from "@/lib/useCartReconciliation"
 import { useDebounce } from "@/lib/useDebounce"
 import { useProducts } from "@/lib/useProducts"
-import { useActiveCampaign } from "@/lib/campaign/useActiveCampaign"
 import { CatalogSkeleton, CatalogError, CatalogCacheNotice } from "./CatalogStates"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -84,8 +83,6 @@ function buildShareUrl(productId: string): string {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function Store() {
   const { products, status: productsStatus, isFromCache, refreshFailed, errorCode, retry: retryProducts } = useProducts()
-  // Inicia a busca da campanha junto com o catálogo; o tema (T18) e o conteúdo (T22–T25) vão usar o resultado
-  useActiveCampaign()
   const [cart, setCart] = useState<CartItem[]>(getCart)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [stockChangedIds, setStockChangedIds] = useState<string[]>([])
