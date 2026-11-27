@@ -46,13 +46,14 @@
 
 ## Fase 1: Banco de dados e domínio
 
-- [ ] **T04. Criar a migration das campanhas** · `API`
+- [x] **T04. Criar a migration das campanhas** · `API`
   - Próxima versão do Flyway: `V10` (`V8` e `V9` já estão na `dev`).
   - `campaigns`: id, nome, descrição, tipo, status, início e fim (`TIMESTAMPTZ`), prioridade, `theme` e `content` (JSONB), versão, criação, atualização e autor.
   - `campaign_collections`: campanha, título, identificador para link, ordem.
   - `campaign_collection_products`: coleção, produto (FK), ordem.
   - Índices e constraints (fim depois do início, status e tipo válidos). Imagens guardadas só como URL.
   - *Pronto quando:* a migration roda em Postgres real sobre uma base existente.
+  - *Resultado (27/11/2026):* `V10__create_campaigns.sql` testada em PostgreSQL 16 sobre uma base na V9 com dados (`CampaignMigrationTest`); API com 266 testes passando, nenhum pulado. Nome, tipo, datas e tema só são obrigatórios no banco para campanha publicada (contrato §6).
 
 - [ ] **T05. Criar entidades, enums e repositórios** · `API`
   - Lock otimista (`@Version`), seguindo o padrão de produtos.
