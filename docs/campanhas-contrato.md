@@ -291,6 +291,7 @@ Sem autenticação. Responde sempre `200`:
   "campaign": { …PublicCampaign… }
 }
 ```
+- Qual aparece: entre as publicadas no período (`ACTIVE`), a de maior `priority`. Um empate (que a T08 impede) é resolvido sempre da mesma forma: início mais recente, depois a criada por último, depois o menor `id`.
 - `campaign: null` → nenhuma ativa; a loja usa o tema padrão.
 - `serverTime`: o front compara com o relógio local, para não confiar num computador com a hora errada (T17).
 - `nextChangeAt`: próximo instante em que a resposta muda sozinha (fim da ativa ou início da próxima agendada que passaria a vencer); `null` se nada estiver previsto. O front agenda a nova consulta para esse instante.
