@@ -32,6 +32,7 @@ import { StoreHeader } from "./StoreHeader"
 import { StoreHero } from "./StoreHero"
 import { CampaignCollections } from "./CampaignCollections"
 import { CampaignPromoImages } from "./CampaignPromoImages"
+import { CampaignDecorations } from "./CampaignDecorations"
 import { useSearchParams } from "react-router-dom"
 import { useActiveCampaign } from "@/lib/campaign/useActiveCampaign"
 import { campaignBadgeLabel, campaignProductIds, resolveCollections } from "@/lib/campaign/collections"
@@ -379,6 +380,8 @@ export function Store() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Enfeites da campanha (T25): por cima da loja, sem receber cliques; só na página da loja */}
+      <CampaignDecorations decorations={campaign?.content.decorations ?? []} />
       <StoreHeader
         gender={filters.gender}
         onSale={filters.onSale}
