@@ -126,11 +126,12 @@
   - *Pronto quando:* toda operação administrativa registra quem, o quê e quando.
   - *Resultado (27/11/2026):* antes e depois em todas as operações (`CampaignAuditDiff`) e `GET /api/admin/campaigns/{id}/history` (contrato §7.5). Um teste falha se surgir rota de escrita de campanha sem registro. Detalhes grandes deixaram de ser cortados no meio (JSON inválido); o limite passou a 16.000 caracteres. API com 642 testes passando; os de Redis não rodaram e, com o Docker parado, os de banco usaram um PostgreSQL 18 temporário. O histórico segue a retenção da auditoria (1 ano por padrão; citar nas limitações da T41).
 
-- [ ] **T15. Preparar o upload de banners** · `API`
+- [x] **T15. Preparar o upload de banners** · `API`
   - Configurar o limite de multipart (não há configuração no projeto; o padrão do Spring é 1 MB).
   - Validar tipo real (JPEG, PNG, WebP) e tamanho; recusar SVG.
   - Pasta própria no Cloudinary e erros claros, sem quebrar o upload de produtos.
   - *Pronto quando:* um banner grande dentro do limite sobe e um arquivo inválido é recusado.
+  - *Resultado (27/11/2026):* `POST /api/upload?folder=campaigns` com limite de 5 MB e tipo conferido pelo conteúdo; API com 665 testes passando (Cloudinary simulado; os de Redis não rodaram e, com o Docker parado, os de banco usaram um PostgreSQL 18 temporário). **Falta conferir contra o Cloudinary real** (pasta, `width` e `height`), o mais tardar na T39. O upload de produtos não mudou, exceto o limite, que passou de 1 MB para 5 MB; o painel ainda anuncia 8 MB (corrigir na T30).
 
 ---
 
