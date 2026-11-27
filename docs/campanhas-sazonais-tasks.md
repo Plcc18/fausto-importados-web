@@ -18,7 +18,7 @@
 
 - [x] **T02. Tomar as decisões de produto e arquitetura**
   - [x] Descontos: a campanha só destaca produtos (recomendado na primeira versão) ou também aplica preço promocional (habilita T42 e T43)?
-    - **Decidido:** terá preço promocional, em duas etapas. A primeira versão só destaca produtos; T42 e T43 entram na segunda etapa. O contrato (T03) e a modelagem (T04) já reservam os campos de desconto, para a segunda etapa só acrescentar.
+    - **Decidido:** terá preço promocional, em duas etapas. A primeira versão só destaca produtos; T42 e T43 entram na segunda etapa. O contrato (T03) já reserva os campos de desconto, para a segunda etapa só acrescentar; as colunas no banco entram numa migration da própria T42.
   - [x] Tema claro/escuro: paleta escura obrigatória e clara opcional (recomendado) ou uma paleta única?
     - **Decidido:** paleta escura obrigatória e clara opcional.
   - [x] Alcance do tema: só páginas públicas, mantendo painel, login e telas de erro no padrão (recomendado)?
