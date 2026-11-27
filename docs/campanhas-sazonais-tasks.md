@@ -113,11 +113,12 @@
   - *Pronto quando:* os testes de acesso e de conteúdo exposto passam.
   - *Resultado (27/11/2026):* as duas rotas, com testes de acesso e do conjunto exato de campos expostos; API com 618 testes passando, nenhum pulado. De uma campanha agendada só sai o horário da próxima mudança (`nextChangeAt`, contrato §7.1). A rota pública ainda não tem cache nem `ETag` e responde com o `no-store` padrão: é a T13.
 
-- [ ] **T13. Adicionar cache à campanha ativa** · `API`
+- [x] **T13. Adicionar cache à campanha ativa** · `API`
   - Cache em memória invalidado após cada alteração confirmada, respeitando início e fim.
   - `ETag` e `Cache-Control` curto na rota pública (substituindo o `no-store` padrão do Spring Security).
   - Conferir o limite de requisições para visitantes anônimos.
   - *Pronto quando:* uma edição aparece na loja dentro do prazo definido e acessos repetidos não consultam o banco.
+  - *Resultado (27/11/2026):* `ActiveCampaignCache` (60 s, invalidado por alterações de campanha e de produto ativo), `ETag`, `304` e `max-age` de até 60 s. A rota ganhou limite próprio em memória (`RATE_LIMIT_PUBLIC_READ`, 120/min por IP): antes dividia os 60/min anônimos com o catálogo e, sem Redis, gravava no banco a cada visita. API com 628 testes passando; os de Redis não rodaram e, com o Docker parado, os de banco usaram um PostgreSQL 18 temporário. O front deve usar o cabeçalho `Date` como hora do servidor (contrato §7.1, T16 e T17).
 
 - [ ] **T14. Registrar o histórico de alterações** · `API`
   - Novas ações de campanha em `AuditAction`, com o antes e depois via auditoria existente.
