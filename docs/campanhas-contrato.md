@@ -348,7 +348,15 @@ Filtros da listagem: `status`, `phase`, `type` (cada um aceita vários, separado
 - Há conflito quando os períodos de duas campanhas publicadas de mesma prioridade se cruzam. Encostar não conflita (o fim de uma pode ser o início da outra). Publicadas já expiradas também contam: para usar o período, arquive a antiga ou mude as datas ou a prioridade. `conflictingCampaign` traz a de início mais antigo entre as que conflitam, e `message` já a cita com as datas no horário de Fortaleza.
 
 ### 7.4 Upload de banners (T15)
-`POST /api/upload?folder=campaigns` (multipart, campo `file`). JPEG, PNG ou WebP, até 5 MB; SVG é recusado. Resposta: `{ "url", "width", "height" }`. O upload de produtos continua igual.
+`POST /api/upload?folder=campaigns` (multipart, campo `file`), só `ADMIN`. JPEG, PNG ou WebP, até 5 MB (5.242.880 bytes); SVG é recusado. O tipo é conferido pelo conteúdo do arquivo, não pelo nome. Resposta: `{ "url", "width", "height" }`, que serve direto como `Image` (falta o `alt`).
+
+| `code` | Status | Quando |
+|---|---|---|
+| `validation_failed` | 400 | `fields.file`: arquivo ausente, vazio, de outro tipo ou imagem corrompida. `fields.folder`: pasta diferente de `campaigns`. |
+| `file_too_large` | 413 | Acima de 5 MB. Para arquivos muito grandes (cerca de 20 MB) a conexão pode cair antes da resposta: o painel também deve conferir o tamanho antes de enviar. |
+| `upload_failed` | 502 | O Cloudinary não recebeu a imagem; dá para tentar de novo. |
+
+O upload de produtos continua igual (sem `folder`, campo `image`, resposta `{ "url" }`), exceto pelo limite: era de 1 MB e passou a 5 MB, porque o limite de multipart é um só.
 
 ### 7.5 Histórico (T14, T34)
 `GET /api/admin/campaigns/{id}/history?page=0&size=20` (máximo 100), do mais recente ao mais antigo. Cada item é como em `/api/admin/audit`: `id`, `occurredAt`, `actorId`, `actorEmail`, `action`, `entityType` (`CAMPAIGN`), `entityId`, `outcome`, `ip`, `userAgent` e `details`.
