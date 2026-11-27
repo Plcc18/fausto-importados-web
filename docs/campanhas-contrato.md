@@ -295,9 +295,12 @@ Sem autenticação. Responde sempre `200`:
 ```
 - Qual aparece: entre as publicadas no período (`ACTIVE`), a de maior `priority`. Um empate (que a T08 impede) é resolvido sempre da mesma forma: início mais recente, depois a criada por último, depois o menor `id`.
 - `campaign: null` → nenhuma ativa; a loja usa o tema padrão.
-- `serverTime`: o front compara com o relógio local, para não confiar num computador com a hora errada (T17).
+- `serverTime`: hora do servidor quando a resposta saiu. Para comparar com o relógio local (T17), ver "Relógio" abaixo.
 - `nextChangeAt`: próximo instante em que a resposta muda sozinha (fim da ativa ou início da próxima agendada que passaria a vencer); `null` se nada estiver previsto. O front agenda a nova consulta para esse instante.
-- Cabeçalhos (T13): `Cache-Control: public, max-age=60`, `ETag`; `If-None-Match` igual → `304`.
+- Cabeçalhos: `Cache-Control: public, max-age=N`, com `N` = 60, ou menos quando `nextChangeAt` está a menos de 60 s. `ETag` fraco, que ignora `serverTime`; `If-None-Match` igual → `304`.
+- Relógio: numa resposta que o navegador reaproveita (inclusive depois de um `304`) o corpo é o antigo, com o `serverTime` antigo. O front busca com `cache: "no-cache"` (sempre revalida) e usa o cabeçalho `Date`, exposto no CORS, como hora do servidor.
+- Prazo: uma alteração pelo painel (campanha, ou produto desativado ou reativado) vale no servidor na hora e chega a quem guardou a resposta em até 60 s. Uma alteração que não passe por esta instância da API chega em até 2 min.
+- Limite: 120 requisições por minuto por IP (`429` com `Retry-After`), separado do limite geral da API.
 
 ### 7.2 Painel (`/api/admin/campaigns`, só `ADMIN`)
 
