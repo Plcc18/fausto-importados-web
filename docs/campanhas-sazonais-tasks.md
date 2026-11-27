@@ -88,10 +88,11 @@
   - *Pronto quando:* um teste concorrente não consegue publicar duas campanhas conflitantes.
   - *Resultado (27/11/2026):* `CampaignConflictGuard` (lock de transação) e constraint de exclusão na migration `V11`; teste com 8 publicações simultâneas em PostgreSQL 16; API com 426 testes passando, nenhum pulado. As rotas de publicar, reativar e editar ainda não existem: a T09 e a T10 precisam chamar `ensureNoConflict` dentro de `Transactions.run`, antes de gravar.
 
-- [ ] **T09. Criar os endpoints administrativos** · `API`
+- [x] **T09. Criar os endpoints administrativos** · `API`
   - `/api/admin/campaigns`: listar (filtros por status, tipo e período, com paginação), detalhar, criar rascunho e editar.
   - Restritos a `ADMIN`, com controle de versão e `Idempotency-Key` na criação.
   - *Pronto quando:* anônimos e não administradores não têm acesso a nenhuma rota.
+  - *Resultado (27/11/2026):* listar, detalhar, criar e editar, com 2FA e conferência de conflito na edição de publicada; anônimo recebe 401 e não administrador 404; API com 474 testes passando, nenhum pulado. `collections` com itens é recusada até a T11 (a resposta já as devolve). `CampaignPublishRequirements` já existe, para a T10 reutilizar. A auditoria registra só a criação e a edição; o antes e depois fica para a T14.
 
 - [ ] **T10. Criar as ações sobre campanhas** · `API`
   - Publicar, ativar agora, desativar, reativar, duplicar (cópia como rascunho, sem datas) e excluir ou arquivar.

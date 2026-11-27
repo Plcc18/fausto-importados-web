@@ -191,10 +191,10 @@ Produtos aparecem só como ID: a loja cruza com o catálogo que já carregou (T2
 | Campo | Regra |
 |---|---|
 | `name` | 3 a 80. Interno (painel); não vai para a resposta pública. |
-| `description` | Até 500 ou `null`. Interno. |
+| `description` | Até 500 ou `null`. Interno. Aceita várias linhas. |
 | `type` | `CampaignType`. |
 | `priority` | Inteiro de 0 a 100. Padrão 0. Maior vence (T02). |
-| `startsAt`, `endsAt` | Datas (§1). `endsAt` > `startsAt`; duração máxima de 120 dias. Podem ser `null` em rascunho. |
+| `startsAt`, `endsAt` | Datas (§1), entre os anos 2000 e 2100. `endsAt` > `startsAt`; duração máxima de 120 dias. Podem ser `null` em rascunho. |
 
 ### 4.5 Desconto (reservado: segunda etapa, T42/T43)
 ```json
@@ -315,7 +315,10 @@ Sem autenticação. Responde sempre `200`:
 | `GET /api/admin/campaigns/{id}/preview` | Prévia, qualquer status (T33) | — | mesmo formato de `/api/campaigns/active`, com `campaign` preenchida | |
 | `GET /api/admin/campaigns/{id}/history` | Histórico (T34) | — | `PagedModel` no formato de `/api/admin/audit` | |
 
-Filtros da listagem: `status`, `phase`, `type` (cada um aceita vários, separados por vírgula), `from` e `to` (campanhas cujo período cruza o intervalo), `q` (busca no nome), `page`, `size`. Ordem: `startsAt` decrescente, rascunhos sem data primeiro.
+Filtros da listagem: `status`, `phase`, `type` (cada um aceita vários, separados por vírgula), `from` e `to` (campanhas cujo período cruza o intervalo), `q` (busca no nome), `page`, `size`. Ordem: `startsAt` decrescente, rascunhos sem data primeiro (empate: a criada por último primeiro).
+
+- Filtros combinam entre si (todos precisam valer). `phase` só encontra publicadas. `from` e `to` são datas com fuso (§1), `to` exclusivo; campanha sem datas fica de fora quando algum dos dois é usado. `q` ignora maiúsculas, e `%` e `_` são texto comum.
+- Valor inválido em `status`, `phase`, `type`, `from` ou `to` → `400 validation_failed`, com o nome do parâmetro em `fields`. `size` fora de 1 a 100 é ajustado para o limite.
 
 ### 7.3 Transições permitidas
 
@@ -331,6 +334,7 @@ Filtros da listagem: `status`, `phase`, `type` (cada um aceita vários, separado
 - Fora da tabela → `409 invalid_transition`.
 - `DELETE` só para rascunhos: o que já foi ao ar é arquivado, para não perder o histórico.
 - Campanha expirada não é editada; para repetir no ano seguinte, duplique.
+- `PUT` nunca muda o `status`. Em campanha `PUBLISHED`, a edição precisa continuar atendendo a §6, inclusive `endsAt` no futuro (`422 publish_requirements`); para encerrar antes da hora, use `disable`. A `version` é conferida antes do estado e do 2FA.
 - Conflito de período (`409 campaign_conflict`) é verificado em `publish`, `activate-now`, `reactivate` e no `PUT` de campanha publicada.
 - Há conflito quando os períodos de duas campanhas publicadas de mesma prioridade se cruzam. Encostar não conflita (o fim de uma pode ser o início da outra). Publicadas já expiradas também contam: para usar o período, arquive a antiga ou mude as datas ou a prioridade. `conflictingCampaign` traz a de início mais antigo entre as que conflitam, e `message` já a cita com as datas no horário de Fortaleza.
 
