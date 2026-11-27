@@ -16,19 +16,29 @@
   - *Pronto quando:* os dois repositórios estão sem pendências, com testes passando antes de qualquer mudança.
   - *Resultado (26/11/2026):* API com 256 testes passando, inclusive os de PostgreSQL real (nenhum pulado); WEB com 235 testes, lint limpo.
 
-- [ ] **T02. Tomar as decisões de produto e arquitetura**
-  - [ ] Descontos: a campanha só destaca produtos (recomendado na primeira versão) ou também aplica preço promocional (habilita T42 e T43)?
-  - [ ] Tema claro/escuro: paleta escura obrigatória e clara opcional (recomendado) ou uma paleta única?
-  - [ ] Alcance do tema: só páginas públicas, mantendo painel, login e telas de erro no padrão (recomendado)?
-  - [ ] Conflitos: bloquear períodos sobrepostos com a mesma prioridade; com prioridades diferentes, vence a maior (recomendado).
-  - [ ] Status: gravar só rascunho, publicada, desativada e arquivada; calcular "agendada", "ativa" e "expirada" pelas datas, sem cron (recomendado).
-  - [ ] Prévia: abrir a loja real em nova aba com `/?previa=<id>`, só para admin (recomendado; o site hoje bloqueia iframe).
-  - [ ] Segurança: publicar ou excluir campanha exige nova confirmação 2FA?
+- [x] **T02. Tomar as decisões de produto e arquitetura**
+  - [x] Descontos: a campanha só destaca produtos (recomendado na primeira versão) ou também aplica preço promocional (habilita T42 e T43)?
+    - **Decidido:** terá preço promocional, em duas etapas. A primeira versão só destaca produtos; T42 e T43 entram na segunda etapa. O contrato (T03) e a modelagem (T04) já reservam os campos de desconto, para a segunda etapa só acrescentar.
+  - [x] Tema claro/escuro: paleta escura obrigatória e clara opcional (recomendado) ou uma paleta única?
+    - **Decidido:** paleta escura obrigatória e clara opcional.
+  - [x] Alcance do tema: só páginas públicas, mantendo painel, login e telas de erro no padrão (recomendado)?
+    - **Decidido:** só páginas públicas.
+  - [x] Conflitos: bloquear períodos sobrepostos com a mesma prioridade; com prioridades diferentes, vence a maior (recomendado).
+    - **Decidido:** conforme a recomendação.
+  - [x] Status: gravar só rascunho, publicada, desativada e arquivada; calcular "agendada", "ativa" e "expirada" pelas datas, sem cron (recomendado).
+    - **Decidido:** conforme a recomendação.
+  - [x] Prévia: abrir a loja real em nova aba com `/?previa=<id>`, só para admin (recomendado; o site hoje bloqueia iframe).
+    - **Decidido:** conforme a recomendação. O código da prévia só é carregado depois de confirmar o admin, para não entrar no bundle público (`build.test.ts`).
+  - [x] Segurança: publicar ou excluir campanha exige nova confirmação 2FA?
+    - **Decidido:** exige 2FA toda ação que coloca, muda ou tira conteúdo do ar de forma definitiva: publicar, ativar agora, reativar, editar campanha publicada, excluir e arquivar.
+    - Sem 2FA: criar e editar rascunho, duplicar, prévia e desativar. Desativar fica livre por ser o "botão de emergência" para tirar do ar uma campanha errada.
   - *Pronto quando:* todas as respostas estão registradas neste arquivo.
 
 - [ ] **T03. Definir o contrato da API**
   - Descrever o JSON de `theme`, `content`, coleções, resposta pública e endpoints administrativos, com limites de cada campo.
   - Tipos de evento: Black Friday, Natal, Páscoa, Namorados, Mães, Pais, Consumidor, Aniversário da loja e Personalizada.
+  - Reservar os campos de desconto da segunda etapa (T42 e T43), opcionais e ignorados na primeira versão.
+  - Indicar quais ações exigem 2FA, conforme T02.
   - *Pronto quando:* backend e frontend podem ser desenvolvidos a partir do mesmo documento.
 
 ---
@@ -227,7 +237,7 @@
   - Manter o selo "Oferta" e o filtro "Promoções" funcionando.
   - *Pronto quando:* preços exibidos, carrinho e total do pedido continuam consistentes.
 
-> As tasks T42 e T43 só valem se T02 aprovar preço promocional por campanha. Elas ficam no fim para não alterar a numeração.
+> As tasks T42 e T43 (preço promocional por campanha) foram aprovadas em T02 como segunda etapa. Elas ficam no fim para não alterar a numeração.
 
 ---
 
@@ -279,9 +289,9 @@
 
 ---
 
-## Opcionais: preço promocional por campanha
+## Segunda etapa: preço promocional por campanha
 
-*Execute entre T35 e T36, se aprovado em T02.*
+*Aprovado em T02. Execute depois da primeira versão publicada (T40 e T41), com testes próprios e nova publicação.*
 
 - [ ] **T42. Calcular o preço promocional no servidor** · `API`
   - Desconto por produto ou coleção, sem alterar o preço cadastrado, válido só no período ativo.
