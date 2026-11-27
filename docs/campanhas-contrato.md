@@ -51,6 +51,7 @@ O mesmo de hoje (`GlobalExceptionHandler`), com um campo novo, `fields`, só nos
 | `publish_requirements` | 422 | Faltam campos obrigatórios para publicar (ver §6). Usa `fields`. |
 | `reauth_required` | 403 | Ação 🔐 sem `X-Reauth` válido. |
 | `idempotency_key_required` | 400 | `POST` de criação sem `Idempotency-Key`. |
+| `idempotency_key_reused` | 422 | Mesma `Idempotency-Key` com outro corpo. O front gera uma chave nova por ação (`createIdempotencyKeys`). |
 
 ## 2. Enums
 
