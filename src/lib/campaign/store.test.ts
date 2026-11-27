@@ -172,6 +172,18 @@ describe("cache local", () => {
     expect(store.getState()).toMatchObject({ status: "loading", campaign: { id: "c1" } })
   })
 
+  it("entrega a campanha do cache já na primeira leitura, antes de assinar (sem piscar, T20)", async () => {
+    fetchMock.mockResolvedValue(apiResponse(active()))
+    const first = startStore()
+    await flush()
+    first.store.stop()
+
+    store = createCampaignStore({ retryDelaysMs: [], timeoutMs: 1_000 })
+
+    expect(store.getState()).toMatchObject({ status: "loading", campaign: { id: "c1" } })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it("descarta campanha do cache que já terminou", () => {
     localStorage.setItem(
       CAMPAIGN_CACHE_KEY,

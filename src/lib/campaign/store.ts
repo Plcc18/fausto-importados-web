@@ -259,16 +259,33 @@ export function createCampaignStore({
     void load()
   }
 
+  /**
+   * Lê o cache na primeira consulta ao estado, antes da primeira renderização (T20). Assim o React já nasce com a
+   * campanha que o script do `index.html` aplicou, e não remove o tema para reaplicá-lo logo depois (o "pisca").
+   */
+  let initialized = false
+  function init() {
+    if (initialized) return
+    initialized = true
+    const cached = readCampaignCache(storage)
+    if (!cached) return
+    current = { response: cached.response, clockOffsetMs: cached.clockOffsetMs }
+    state = { status: "loading", campaign: cached.response.campaign }
+  }
+
   function start() {
     started = true
-    const cached = readCampaignCache(storage)
-    if (cached) apply(cached.response, cached.clockOffsetMs, "loading")
+    init()
+    scheduleChange()
     if (typeof document !== "undefined") document.addEventListener("visibilitychange", handleVisibility)
     void load()
   }
 
   return {
-    getState: () => state,
+    getState() {
+      init()
+      return state
+    },
     subscribe(listener) {
       listeners.add(listener)
       if (!started) start()

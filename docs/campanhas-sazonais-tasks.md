@@ -163,9 +163,10 @@
   - *Pronto quando:* sem campanha, o visual é igual ao atual.
   - *Resultado (27/11/2026):* a loja já usava tokens quase em tudo; as cores fixas que restam têm significado próprio e ficam (sucesso, aviso, informação, coração de favorito, fundo branco das fotos, escurecimento das janelas). Tokens novos `--campaign-badge` / `--campaign-badge-foreground` no `index.css` (padrão: `--primary` / `--primary-foreground`) e classes `bg-campaign-badge` / `text-campaign-badge-foreground`, usadas nas duas etiquetas "Oferta". Única mudança sem campanha, decidida na task: a "Oferta" da janela de detalhes deixou o fundo `accent` e ficou dourada como a do card. `src/component/themeTokens.test.ts` falha se um componente da loja ganhar cor fixa fora da lista de exceções. Logo, coroa e tipografia intactos. Front com 365 testes passando.
 
-- [ ] **T20. Evitar a troca visível de tema no carregamento** · `WEB`
+- [x] **T20. Evitar a troca visível de tema no carregamento** · `WEB`
   - Aplicar o tema em cache antes da primeira renderização (script no `index.html`), checando a validade.
   - *Pronto quando:* recarregar durante uma campanha não pisca o tema padrão.
+  - *Resultado (27/11/2026):* segundo script clássico no `index.html`, logo depois do de claro/escuro: lê `fausto_campaign_cache_v1`, confere rota pública, idade (24 h), início, fim e `nextChangeAt` pela hora do servidor e as cores (`#RRGGBB`; cor inválida ou obrigatória faltando descarta tudo), e cria a mesma `<style id="campaign-theme">` do `theme.ts`. O store passou a ler o cache na primeira leitura do estado (antes da primeira renderização), então o React já nasce com a campanha e reaproveita a tag sem removê-la. `src/lib/campaign/prepaint.test.ts` executa o script do `index.html` e confere CSS idêntico ao do `theme.ts` e a mesma validade do `store.ts`. Front com 384 testes passando.
 
 ---
 
