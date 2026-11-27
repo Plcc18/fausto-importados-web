@@ -120,10 +120,11 @@
   - *Pronto quando:* uma edição aparece na loja dentro do prazo definido e acessos repetidos não consultam o banco.
   - *Resultado (27/11/2026):* `ActiveCampaignCache` (60 s, invalidado por alterações de campanha e de produto ativo), `ETag`, `304` e `max-age` de até 60 s. A rota ganhou limite próprio em memória (`RATE_LIMIT_PUBLIC_READ`, 120/min por IP): antes dividia os 60/min anônimos com o catálogo e, sem Redis, gravava no banco a cada visita. API com 628 testes passando; os de Redis não rodaram e, com o Docker parado, os de banco usaram um PostgreSQL 18 temporário. O front deve usar o cabeçalho `Date` como hora do servidor (contrato §7.1, T16 e T17).
 
-- [ ] **T14. Registrar o histórico de alterações** · `API`
+- [x] **T14. Registrar o histórico de alterações** · `API`
   - Novas ações de campanha em `AuditAction`, com o antes e depois via auditoria existente.
   - Endpoint do histórico por campanha.
   - *Pronto quando:* toda operação administrativa registra quem, o quê e quando.
+  - *Resultado (27/11/2026):* antes e depois em todas as operações (`CampaignAuditDiff`) e `GET /api/admin/campaigns/{id}/history` (contrato §7.5). Um teste falha se surgir rota de escrita de campanha sem registro. Detalhes grandes deixaram de ser cortados no meio (JSON inválido); o limite passou a 16.000 caracteres. API com 642 testes passando; os de Redis não rodaram e, com o Docker parado, os de banco usaram um PostgreSQL 18 temporário. O histórico segue a retenção da auditoria (1 ano por padrão; citar nas limitações da T41).
 
 - [ ] **T15. Preparar o upload de banners** · `API`
   - Configurar o limite de multipart (não há configuração no projeto; o padrão do Spring é 1 MB).

@@ -350,6 +350,39 @@ Filtros da listagem: `status`, `phase`, `type` (cada um aceita vários, separado
 ### 7.4 Upload de banners (T15)
 `POST /api/upload?folder=campaigns` (multipart, campo `file`). JPEG, PNG ou WebP, até 5 MB; SVG é recusado. Resposta: `{ "url", "width", "height" }`. O upload de produtos continua igual.
 
+### 7.5 Histórico (T14, T34)
+`GET /api/admin/campaigns/{id}/history?page=0&size=20` (máximo 100), do mais recente ao mais antigo. Cada item é como em `/api/admin/audit`: `id`, `occurredAt`, `actorId`, `actorEmail`, `action`, `entityType` (`CAMPAIGN`), `entityId`, `outcome`, `ip`, `userAgent` e `details`.
+
+- `action`: `CAMPAIGN_CREATED`, `CAMPAIGN_UPDATED`, `CAMPAIGN_PUBLISHED`, `CAMPAIGN_ACTIVATED`, `CAMPAIGN_DISABLED`, `CAMPAIGN_REACTIVATED`, `CAMPAIGN_ARCHIVED`, `CAMPAIGN_DUPLICATED` ou `CAMPAIGN_DELETED`. Só operações concluídas entram.
+- `details` é um **texto** com JSON:
+
+```json
+{
+  "name": "Black Friday 2026", "status": "PUBLISHED", "version": 4,
+  "changes": {
+    "status": { "from": "DRAFT", "to": "PUBLISHED" },
+    "theme.dark.primary": { "from": "#000000", "to": "#C1121F" },
+    "content.hero.buttons[0].label": { "from": null, "to": "Ver ofertas" },
+    "collections": {
+      "added":   [ { "slug": "kits", "title": "Kits", "products": 3 } ],
+      "removed": [ { "slug": "sobra", "title": "Sobra", "products": 1 } ],
+      "changed": [ {
+        "slug": "ofertas",
+        "changes": { "title": { "from": "Ofertas", "to": "Ofertas Black Friday" } },
+        "productsAdded": { "count": 25, "ids": [ "3f2a…" ] },
+        "productsRemoved": { "count": 1, "ids": [ "9b7e…" ] },
+        "productsReordered": true
+      } ]
+    }
+  }
+}
+```
+- `changes` usa o caminho do campo no JSON da campanha e traz só o que mudou; `null` = sem valor. Criação e cópia partem do vazio; exclusão termina no vazio. `sourceId` aparece em `CAMPAIGN_DUPLICATED`.
+- Em `collections`, cada chave só aparece se houver algo. `ids` cita até 20 produtos; `count` é o total.
+- Textos com mais de 500 caracteres são cortados. Se o registro passar do limite, os maiores valores viram `"[omitted]"` e vem `"truncated": true`.
+- Um rascunho excluído continua com histórico. `404 not_found` só quando não há campanha nem registro.
+- Os registros seguem a retenção da auditoria (`security.audit.retention`, padrão 1 ano).
+
 ## 8. Impacto no front
 - `/api/admin/campaigns` entra em `ADMIN_ONLY_MARKERS` (`src/build.test.ts`): nenhuma dessas chamadas pode ir no bundle público, nem a da prévia.
 - Os tipos TypeScript (T16) nascem deste documento; a resposta de `/api/campaigns/active` é validada antes do uso e, se vier malformada, a loja fica no tema padrão.
