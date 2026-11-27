@@ -215,6 +215,51 @@
   .error-mist, .error-ripple { opacity: 0.35; }
 }
 
+/*
+ * Enfeites das campanhas (T25). Cada enfeite recebe, por variáveis no próprio elemento, a posição de repouso
+ * (`--decor-top`), a duração e o atraso (negativo: já começa no meio do caminho), o desvio lateral e o giro.
+ * Só `transform` e `opacity` são animados (o navegador já os compõe à parte, sem `will-change` em cada um).
+ * Com "reduzir movimento", ficam parados na posição de repouso.
+ */
+.campaign-decor { position: absolute; }
+.campaign-decor-fall {
+  top: -6%;
+  animation: campaign-fall var(--decor-duration) linear var(--decor-delay) infinite;
+}
+.campaign-decor-sway {
+  top: -6%;
+  animation: campaign-sway var(--decor-duration) ease-in-out var(--decor-delay) infinite;
+}
+.campaign-decor-rise {
+  top: 104%;
+  animation: campaign-rise var(--decor-duration) ease-in var(--decor-delay) infinite;
+}
+.campaign-decor-twinkle {
+  top: var(--decor-top);
+  animation: campaign-twinkle var(--decor-duration) ease-in-out var(--decor-delay) infinite;
+}
+@keyframes campaign-fall {
+  from { transform: translate3d(0, 0, 0) rotate(0deg); }
+  to { transform: translate3d(var(--decor-drift), 112vh, 0) rotate(var(--decor-spin)); }
+}
+@keyframes campaign-sway {
+  0% { transform: translate3d(0, 0, 0) rotate(-18deg); }
+  50% { transform: translate3d(calc(var(--decor-drift) / 2), 56vh, 0) rotate(18deg); }
+  100% { transform: translate3d(var(--decor-drift), 112vh, 0) rotate(-18deg); }
+}
+@keyframes campaign-rise {
+  0% { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0; }
+  15% { opacity: var(--decor-opacity); }
+  100% { transform: translate3d(var(--decor-drift), -112vh, 0) scale(1.1); opacity: 0; }
+}
+@keyframes campaign-twinkle {
+  0%, 100% { transform: scale(0.6); opacity: 0.1; }
+  50% { transform: scale(1); opacity: var(--decor-opacity); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .campaign-decor { animation: none; top: var(--decor-top); opacity: var(--decor-opacity); }
+}
+
 /* Skeleton com shimmer sutil (usa só os tokens de tema, funciona no claro e no escuro) */
 .skeleton-shimmer {
   --skeleton-base: color-mix(in oklch, var(--foreground) 7%, var(--background));
