@@ -123,7 +123,7 @@ export function ProductCard({
           />
 
           {hasDiscount && (
-            <Badge className="absolute top-3 right-3 bg-primary text-primary-foreground">Oferta</Badge>
+            <Badge className="absolute top-3 right-3 bg-campaign-badge text-campaign-badge-foreground">Oferta</Badge>
           )}
           {isFeatured && !hasDiscount && (
             <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">Destaque</Badge>
@@ -233,7 +233,7 @@ export function ProductCard({
                     {f.trim().charAt(0).toUpperCase() + f.trim().slice(1).toLowerCase()}
                   </Badge>
                 ))}
-                {hasDiscount && <Badge className="bg-accent text-accent-foreground">Oferta</Badge>}
+                {hasDiscount && <Badge className="bg-campaign-badge text-campaign-badge-foreground">Oferta</Badge>}
               </div>
 
               <p className="mt-4 text-sm uppercase tracking-wider text-muted-foreground">{product.brand}</p>
