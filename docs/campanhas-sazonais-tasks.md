@@ -55,10 +55,11 @@
   - *Pronto quando:* a migration roda em Postgres real sobre uma base existente.
   - *Resultado (27/11/2026):* `V10__create_campaigns.sql` testada em PostgreSQL 16 sobre uma base na V9 com dados (`CampaignMigrationTest`); API com 266 testes passando, nenhum pulado. Nome, tipo, datas e tema só são obrigatórios no banco para campanha publicada (contrato §6).
 
-- [ ] **T05. Criar entidades, enums e repositórios** · `API`
+- [x] **T05. Criar entidades, enums e repositórios** · `API`
   - Lock otimista (`@Version`), seguindo o padrão de produtos.
   - Consultas sem N+1 para campanha com coleções e produtos.
   - *Pronto quando:* a validação de schema do Hibernate passa e os testes em H2 continuam funcionando.
+  - *Resultado (27/11/2026):* entidades validadas contra o schema do Flyway em PostgreSQL 16 e testadas em H2; API com 284 testes passando, nenhum pulado. Toda alteração, mesmo só em produtos, precisa chamar `Campaign.registerChange` para a `version` subir (vale para T09 a T11).
 
 - [ ] **T06. Validar tema e conteúdo no backend** · `API`
   - Cores apenas em formato hexadecimal.
