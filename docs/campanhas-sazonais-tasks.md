@@ -137,9 +137,10 @@
 
 ## Fase 3: Tema dinâmico na loja
 
-- [ ] **T16. Criar os tipos e o cliente da campanha** · `WEB`
+- [x] **T16. Criar os tipos e o cliente da campanha** · `WEB`
   - Tipos conforme T03 e validação da resposta antes do uso.
   - *Pronto quando:* uma resposta malformada resulta no tema padrão, sem erro na tela.
+  - *Resultado (27/11/2026):* `src/lib/campaign/` com os tipos (`types.ts`), a validação (`parse.ts`) e o cliente (`client.ts`). A validação monta um objeto novo só com os campos do contrato e confere cores, links e imagens do Cloudinary; campanha malformada vira `campaign: null` (tema padrão) e só gera aviso no console em desenvolvimento. `content: null` vira conteúdo vazio. O cliente faz uma única tentativa com `cache: "no-cache"` e usa o cabeçalho `Date` como `serverTime` (contrato §7.1); retentativas, cache local e timeout ficam na T17. Front com 304 testes passando.
 
 - [ ] **T17. Criar o carregamento da campanha ativa** · `WEB`
   - Um único ponto de busca, compartilhado entre os componentes, paralelo ao catálogo.
