@@ -308,7 +308,150 @@ describe("selo no card", () => {
 })
 
 describe("imagens de divulgação", () => {
-  it("aparecem com link e carregamento preguiçoso; a que falha some", async () => {
+  const promo = (name: string) => ({
+    image: { url: `${PROMO.replace("promo", name)}`, alt: name, width: 800, height: 800 },
+    link: null,
+  })
+  const withPromos = (count: number) =>
+    withCampaign({
+      content: {
+        topBar: null,
+        hero: null,
+        decorations: [],
+        promoImages: Array.from({ length: count }, (_, i) => promo(`promo-${i}`)),
+      },
+    } as Partial<PublicCampaign>)
+
+  it("ficam antes das coleções e da vitrine", async () => {
+    withPromos(1)
+    await renderStore()
+
+    const promos = screen.getByTestId("campaign-promo-images")
+    const collections = screen.getByTestId("campaign-collections")
+    const catalog = document.getElementById("colecao")!
+    expect(promos.compareDocumentPosition(collections) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(collections.compareDocumentPosition(catalog) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  const itemClasses = () => screen.getAllByTestId("campaign-promo-item").map((item) => item.className)
+
+  it.each([
+    [1, "max-w-3xl", "w-full"],
+    [2, "max-w-7xl", "sm:w-[calc(50%-0.5rem)]"],
+    [3, "max-w-7xl", "lg:w-[calc((100%-2rem)/3)]"],
+    [4, "max-w-7xl", "lg:w-[calc((100%-2rem)/3)]"],
+  ])("com %i imagem(ns), o formato acompanha a quantidade e a linha que sobra fica centralizada", async (count, container, item) => {
+    withPromos(count)
+    await renderStore()
+
+    const grid = screen.getByTestId("campaign-promo-grid")
+    expect(grid.className.split(" ")).toEqual(expect.arrayContaining(["flex", "flex-wrap", "justify-center", container]))
+    expect(itemClasses()).toHaveLength(count)
+    for (const classes of itemClasses()) expect(classes).toContain(item)
+  })
+
+  it("se uma imagem falhar, as outras não mudam de tamanho nem de lugar", async () => {
+    withPromos(2)
+    await renderStore()
+    const before = itemClasses()[0]
+
+    fireEvent.error(screen.getByRole("img", { name: "promo-1" }))
+
+    expect(itemClasses()).toEqual([before])
+  })
+
+  it.each([
+    [1, "(min-width: 50rem) 48rem, calc(100vw - 2rem)"],
+    [2, "(min-width: 82rem) 39.5rem, (min-width: 40rem) calc(50vw - 1.5rem), calc(100vw - 2rem)"],
+    [3, "(min-width: 82rem) 26rem, (min-width: 64rem) calc(33vw - 1.33rem), (min-width: 40rem) calc(50vw - 1.5rem), calc(100vw - 2rem)"],
+  ])("com %i imagem(ns), o navegador baixa o tamanho em que ela aparece (com o limite da largura máxima)", async (count, sizes) => {
+    withPromos(count)
+    await renderStore()
+
+    expect(screen.getByRole("img", { name: "promo-0" }).getAttribute("sizes")).toBe(sizes)
+  })
+
+  it("só a primeira carrega já; as demais, ao chegar perto (mesmo se a primeira falhar)", async () => {
+    withPromos(3)
+    await renderStore()
+    const loading = () => [1, 2].map((i) => screen.getByRole("img", { name: `promo-${i}` }).getAttribute("loading"))
+
+    expect(screen.getByRole("img", { name: "promo-0" }).getAttribute("loading")).toBe("eager")
+    expect(loading()).toEqual(["lazy", "lazy"])
+
+    fireEvent.error(screen.getByRole("img", { name: "promo-0" }))
+
+    expect(loading()).toEqual(["lazy", "lazy"])
+  })
+
+  it("uma campanha nova não herda as falhas da anterior", async () => {
+    withPromos(1)
+    const tree = () => (
+      <MemoryRouter>
+        <Store />
+      </MemoryRouter>
+    )
+    const view = render(tree())
+    await act(async () => {})
+    fireEvent.error(screen.getByRole("img", { name: "promo-0" }))
+    expect(screen.queryByTestId("campaign-promo-images")).toBeNull()
+
+    withCampaign({
+      content: { topBar: null, hero: null, decorations: [], promoImages: [promo("nova")] },
+    } as Partial<PublicCampaign>)
+    view.rerender(tree())
+
+    expect(screen.getByRole("img", { name: "nova" })).toBeTruthy()
+  })
+
+  it("se uma falhar, as seguintes não são recriadas, e outra com a mesma URL não some junto", async () => {
+    withCampaign({
+      content: {
+        topBar: null,
+        hero: null,
+        decorations: [],
+        promoImages: [
+          { image: { url: PROMO, alt: "primeira", width: 800, height: 800 }, link: null },
+          { image: { url: PROMO.replace("promo", "outra"), alt: "segunda", width: 800, height: 800 }, link: null },
+          { image: { url: PROMO, alt: "mesma URL da primeira", width: 800, height: 800 }, link: "/termos" },
+        ],
+      },
+    } as Partial<PublicCampaign>)
+    await renderStore()
+    const second = screen.getByRole("img", { name: "segunda" })
+
+    fireEvent.error(screen.getByRole("img", { name: "primeira" }))
+
+    expect(screen.getByRole("img", { name: "segunda" })).toBe(second)
+    expect(screen.getByRole("img", { name: "mesma URL da primeira" })).toBeTruthy()
+  })
+
+  it("com o banner da campanha, ficam entre os filtros rápidos e as coleções", async () => {
+    const IMG = "https://res.cloudinary.com/fausto/image/upload/v1/campaigns/banner.jpg"
+    withCampaign({
+      content: {
+        topBar: null,
+        decorations: [],
+        promoImages: [promo("promo-0")],
+        hero: {
+          title: "Black Friday",
+          subtitle: null,
+          imageDesktop: { url: IMG, alt: "Banner", width: 1920, height: 640 },
+          imageMobile: null,
+          buttons: [],
+        },
+      },
+    } as Partial<PublicCampaign>)
+    await renderStore()
+
+    const quickFilter = screen.getByRole("button", { name: /Novidades/ })
+    const promos = screen.getByTestId("campaign-promo-images")
+    const collections = screen.getByTestId("campaign-collections")
+    expect(quickFilter.compareDocumentPosition(promos) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(promos.compareDocumentPosition(collections) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it("aparecem com link (quando há); a que falha some", async () => {
     withCampaign({
       content: {
         topBar: null,
@@ -323,7 +466,6 @@ describe("imagens de divulgação", () => {
     await renderStore()
 
     const kits = screen.getByRole("img", { name: "Kits de presente" })
-    expect(kits.getAttribute("loading")).toBe("lazy")
     expect(kits.closest("a")?.getAttribute("href")).toBe("/?colecao=ofertas")
     expect(screen.getByRole("img", { name: "Frete grátis" }).closest("a")).toBeNull()
 
