@@ -30,6 +30,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  /* Etiquetas promocionais ("Oferta" e, depois, o selo de campanha): a campanha pode dar uma cor própria (T18/T19) */
+  --color-campaign-badge: var(--campaign-badge);
+  --color-campaign-badge-foreground: var(--campaign-badge-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -90,6 +93,9 @@
   --glass-a: #ffffff;
   --glass-b: #efe8d8;
   --glass-shine: #ffffff;
+  /* Sem campanha (ou com `badge: null`), a etiqueta segue o destaque da paleta, nos dois modos */
+  --campaign-badge: var(--primary);
+  --campaign-badge-foreground: var(--primary-foreground);
 }
 
 .dark {
