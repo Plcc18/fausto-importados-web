@@ -13,6 +13,75 @@
         if (dark) document.documentElement.classList.add("dark");
       } catch (e) {}
     </script>
+    <script>
+      // Tema da campanha guardada no cache, aplicado antes do primeiro paint para não piscar o tema padrão (T20).
+      // Repete regras de src/lib/campaign: a validade de store.ts e o CSS de theme.ts. prepaint.test.ts confere
+      // que os dois geram exatamente o mesmo resultado; mudou lá, muda aqui.
+      try {
+        (function () {
+          var path = location.pathname.length > 1 ? location.pathname.replace(/\/+$/, "") : location.pathname;
+          if (["/", "/termos", "/privacidade", "/cookies"].indexOf(path) < 0) return;
+
+          var entry = JSON.parse(localStorage.getItem("fausto_campaign_cache_v1") || "null");
+          if (!entry || typeof entry.savedAt !== "number" || typeof entry.clockOffsetMs !== "number") return;
+          var now = Date.now();
+          if (now - entry.savedAt > 86400000 || entry.savedAt > now + 60000) return;
+
+          var response = entry.response;
+          var campaign = response && response.campaign;
+          if (!campaign || !campaign.theme || !campaign.theme.dark) return;
+          var serverNow = now + entry.clockOffsetMs;
+          if (!(serverNow >= Date.parse(campaign.startsAt))) return;
+          var limits = [response.nextChangeAt, campaign.endsAt];
+          for (var i = 0; i < limits.length; i++) {
+            if (typeof limits[i] === "string" && serverNow >= Date.parse(limits[i])) return;
+          }
+
+          var HEX = /^#[0-9A-Fa-f]{6}$/;
+          var FIELDS = [
+            ["background", ["--background"], true],
+            ["foreground", ["--foreground", "--card-foreground", "--popover-foreground"], true],
+            ["surface", ["--card", "--popover"]],
+            ["primary", ["--primary", "--ring"], true],
+            ["primaryForeground", ["--primary-foreground"], true],
+            ["accent", ["--accent", "--secondary", "--muted"], true],
+            ["mutedForeground", ["--muted-foreground"]],
+            ["border", ["--border", "--input"]],
+            ["badge", ["--campaign-badge"]],
+            ["badgeForeground", ["--campaign-badge-foreground"]]
+          ];
+          var GOLD = [["hi", "--gold-hi"], ["mid", "--gold-mid"], ["lo", "--gold-lo"], ["deep", "--gold-deep"]];
+
+          // Uma cor fora do formato descarta tudo, como faria o parse.ts: na dúvida, tema padrão
+          function rule(selector, palette) {
+            var lines = [];
+            function add(names, value, required) {
+              if (value === null || value === undefined) {
+                if (required) throw new Error("cor obrigatória");
+                return;
+              }
+              if (!HEX.test(value)) throw new Error("cor inválida");
+              for (var n = 0; n < names.length; n++) lines.push("  " + names[n] + ": " + value + ";");
+            }
+            for (var f = 0; f < FIELDS.length; f++) add(FIELDS[f][1], palette[FIELDS[f][0]], FIELDS[f][2]);
+            if (palette.gold) {
+              for (var g = 0; g < GOLD.length; g++) add([GOLD[g][1]], palette.gold[GOLD[g][0]], true);
+            }
+            return selector + " {\n" + lines.join("\n") + "\n}";
+          }
+
+          var root = ":root[data-campaign-theme]";
+          var css = rule(root + ".dark", campaign.theme.dark);
+          if (campaign.theme.light) css = rule(root + ":not(.dark)", campaign.theme.light) + "\n" + css;
+
+          var style = document.createElement("style");
+          style.id = "campaign-theme";
+          style.textContent = css;
+          document.head.appendChild(style);
+          document.documentElement.setAttribute("data-campaign-theme", "");
+        })();
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
