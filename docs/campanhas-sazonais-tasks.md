@@ -172,9 +172,10 @@
 
 ## Fase 4: Conteúdo da campanha na loja
 
-- [ ] **T21. Separar cabeçalho e hero do `Store.tsx`** · `WEB`
+- [x] **T21. Separar cabeçalho e hero do `Store.tsx`** · `WEB`
   - Refatoração sem mudança visual, preparando os pontos de conteúdo dinâmico.
   - *Pronto quando:* a loja se comporta como antes e os testes passam.
+  - *Resultado (27/11/2026):* `StoreHeader.tsx` (cabeçalho, com o estado do menu do celular), `StoreTopBar.tsx` (faixa superior, ponto de entrada da T22) e `StoreHero.tsx` (hero com o único `h1`, ponto de entrada da T23); tipos dos filtros em `storeTypes.ts`. Os componentes recebem o que mostrar por props e avisam a loja por callbacks; os filtros continuam no `Store.tsx` (765 → 595 linhas). O HTML gerado pela loja ficou idêntico byte a byte em 6 estados (inicial, gênero, promoções, favoritos, filtro rápido e menu do celular aberto). Front com 405 testes passando.
 
 - [ ] **T22. Implementar a faixa promocional superior** · `WEB`
   - Texto e link configuráveis, visível também no celular; sem campanha, permanece a faixa atual.
@@ -272,6 +273,7 @@
 - [ ] **T38. Revisar responsividade, acessibilidade, desempenho e SEO** · `WEB`
   - Celular, tablet e desktop; modos claro e escuro; teclado e contraste.
   - Comparar o carregamento do catálogo antes e depois; conferir títulos e textos alternativos.
+  - Já anotado (review da T21, problema anterior às campanhas): o botão de favoritos do cabeçalho (`StoreHeader.tsx`) só tem `title`; falta `aria-label` e `aria-pressed`.
   - *Pronto quando:* não há regressão em relação à loja atual.
 
 - [ ] **T39. Validar os critérios de aceitação de ponta a ponta**

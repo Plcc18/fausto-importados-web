@@ -27,7 +27,7 @@ const SEMANTIC_FAMILIES: Record<string, string> = {
 /** Exceções de um arquivo só. */
 const FILE_EXCEPTIONS: Record<string, { families?: string[]; raw?: string[]; reason: string }> = {
   "ProductCard.tsx": { families: ["red"], raw: ["#3CB371", "#ffffff"], reason: "coração de favorito e toast de sucesso" },
-  "Store.tsx": { raw: ["rgba(0,0,0,0.18)"], reason: "sombra neutra do logo" },
+  "StoreHero.tsx": { raw: ["rgba(0,0,0,0.18)"], reason: "sombra neutra do logo" },
 }
 
 /** `text-gold-metal` não é cor fixa: o degradê usa os tokens `--gold-*` (ver `index.css`). */

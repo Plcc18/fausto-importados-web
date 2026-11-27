@@ -1,6 +1,5 @@
 'use client'
 
-import React from "react"
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import type { Product, CartItem } from '@/lib/types'
 import { Input } from "@/Shadcn-Components/ui/input"
@@ -14,13 +13,10 @@ import { Badge } from '@/Shadcn-Components/ui/badge'
 import { Separator } from '@/Shadcn-Components/ui/separator'
 import { cn } from '@/lib/utils'
 import {
-  ShoppingBag, Sparkles, Gift, Star, Flower2, TreePine, Citrus, Moon,
-  Waves, Cherry, Cake, X, Check, ChevronDown, RotateCcw, Menu, Search,
+  Sparkles, Gift, Star, Flower2, TreePine, Citrus, Moon,
+  Waves, Cherry, Cake, X, Check, ChevronDown, RotateCcw, Search,
   Heart, ArrowUpDown, ChevronLeft, ChevronRight, Leaf, Wind, Shield, Gem,
 } from 'lucide-react'
-import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
-} from '@/Shadcn-Components/ui/sheet'
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/Shadcn-Components/ui/popover'
@@ -28,39 +24,14 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
   CommandList, CommandSeparator,
 } from '@/Shadcn-Components/ui/command'
-import { ThemeToggle } from "@/component/ThemeToggle"
-import { AuthMenu } from "@/component/AuthMenu"
 import { useCartReconciliation } from "@/lib/useCartReconciliation"
 import { useDebounce } from "@/lib/useDebounce"
 import { useProducts } from "@/lib/useProducts"
 import { CatalogSkeleton, CatalogError, CatalogCacheNotice } from "./CatalogStates"
+import { StoreHeader } from "./StoreHeader"
+import { StoreHero } from "./StoreHero"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type GenderFilter = 'todos' | 'feminino' | 'masculino' | 'unissex'
-type OlfativeFamily =
-  | 'todos' | 'floral' | 'amadeirado' | 'citrico'
-  | 'oriental' | 'aquatico' | 'frutado' | 'gourmand'
-  | 'aromatico' | 'fougere' | 'chipre' | 'couro'
-type Concentration = 'todos' | 'edt' | 'edp' | 'parfum' | 'extrait'
-type SortKey = 'default' | 'price_asc' | 'price_desc' | 'newest' | 'best_sellers'
-
-interface Filters {
-  gender: GenderFilter
-  family: OlfativeFamily
-  concentration: Concentration
-  minPrice: string
-  maxPrice: string
-  onSale: boolean
-}
-
-interface QuickFilter {
-  id: string
-  label: string
-  icon: React.ElementType
-  description: string
-  apply: (filters: Filters) => Filters
-  isActive: (filters: Filters) => boolean
-}
+import type { Filters, GenderFilter, OlfativeFamily, QuickFilter, SortKey } from './storeTypes'
 
 const PRODUCTS_PER_PAGE = 12
 const FAVORITES_KEY = 'fausto_favorites'
@@ -105,7 +76,6 @@ export function Store() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const collectionRef = useRef<HTMLDivElement | null>(null)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const [highlightProductId, setHighlightProductId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
@@ -330,163 +300,23 @@ export function Store() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-xl supports-backdrop-filter:bg-background/60">
-        <div className="hidden border-b border-border bg-card text-accent-foreground md:block">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-2 text-xs tracking-wide">
-            <span className="opacity-80">Fragrâncias 100% Originais</span>
-            <span className="opacity-80">Parcele em até 12x</span>
-          </div>
-        </div>
-        <div className="mx-auto max-w-7xl px-4 md:px-6">
-          <div className="flex h-16 items-center justify-between gap-4 md:h-20">
-            {/* Mobile Menu */}
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <button className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted md:hidden">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Menu</span>
-                </button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-75 p-0">
-                <SheetHeader className="sr-only"><SheetTitle>Menu de navegação</SheetTitle></SheetHeader>
-                <div className="flex flex-col">
-                  <div className="border-b border-border p-6">
-                    <span className="font-serif text-xl font-medium tracking-tight">Fausto</span>
-                    <span className="block text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Importados</span>
-                  </div>
-                  <nav className="flex flex-col p-4">
-                    {(['feminino', 'masculino', 'unissex'] as GenderFilter[]).map((g) => (
-                      <button key={g} onClick={() => { setFilters((prev) => ({ ...prev, gender: g })); setActiveQuickFilter(null); scrollToCollection(); setIsMobileMenuOpen(false) }}
-                        className={cn('rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors capitalize', filters.gender === g ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
-                        {g}
-                      </button>
-                    ))}
-                    <button onClick={() => { setFilters((prev) => ({ ...prev, onSale: !prev.onSale })); setActiveQuickFilter(null); scrollToCollection(); setIsMobileMenuOpen(false) }}
-                      className={cn('rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors', filters.onSale ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
-                      Promoções
-                    </button>
-                    <button onClick={() => { setShowWishlist((v) => !v); scrollToCollection(); setIsMobileMenuOpen(false) }}
-                      className={cn('flex items-center gap-2 rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors', showWishlist ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
-                      <Heart className="h-4 w-4" />
-                      Favoritos
-                      {favorites.length > 0 && <span className="ml-auto text-xs opacity-70">{favorites.length}</span>}
-                    </button>
-                  </nav>
-                </div>
-              </SheetContent>
-            </Sheet>
+      <StoreHeader
+        gender={filters.gender}
+        onSale={filters.onSale}
+        showWishlist={showWishlist}
+        favoritesCount={favorites.length}
+        cartCount={cartCount}
+        onSelectGender={(g) => { setFilters((prev) => ({ ...prev, gender: g })); setActiveQuickFilter(null); scrollToCollection() }}
+        onToggleSale={() => { setFilters((prev) => ({ ...prev, onSale: !prev.onSale })); setActiveQuickFilter(null); scrollToCollection() }}
+        onToggleWishlist={() => { setShowWishlist((v) => !v); scrollToCollection() }}
+        onOpenCart={() => setIsCartOpen(true)}
+      />
 
-            {/* Brand + Nav */}
-            <div className="flex items-center gap-8">
-              <a href="/" className="group flex flex-col items-center transition-opacity hover:opacity-80 md:items-start">
-                <span className="font-serif text-xl font-medium tracking-tight">Fausto</span>
-                <span className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Importados</span>
-              </a>
-              <nav className="hidden items-center gap-1 lg:flex">
-                {(['feminino', 'masculino', 'unissex'] as GenderFilter[]).map((g) => (
-                  <button key={g} onClick={() => { setFilters((prev) => ({ ...prev, gender: g })); setActiveQuickFilter(null); scrollToCollection() }}
-                    className={cn('rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 capitalize', filters.gender === g ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
-                    {g}
-                  </button>
-                ))}
-                <button onClick={() => { setFilters((prev) => ({ ...prev, onSale: !prev.onSale })); setActiveQuickFilter(null); scrollToCollection() }}
-                  className={cn('rounded-full px-4 py-2 text-sm font-medium transition-all duration-200', filters.onSale ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
-                  Promoções
-                </button>
-              </nav>
-            </div>
-
-            {/* Right Actions */}
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <AuthMenu />
-              <button onClick={() => { setShowWishlist((v) => !v); scrollToCollection() }}
-                className={cn('relative flex items-center gap-1.5 rounded-full border px-3 py-2 text-sm font-medium transition-all duration-200', showWishlist ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-foreground hover:border-primary/50 hover:bg-muted')}
-                title="Minha lista de favoritos">
-                <Heart className={cn('h-4 w-4', showWishlist && 'fill-current')} />
-                {favorites.length > 0 && <span className="text-xs">{favorites.length}</span>}
-              </button>
-              <button onClick={() => setIsCartOpen(true)}
-                className={cn('group relative flex items-center gap-2 rounded-full border px-3 py-2 transition-all duration-300', cartCount > 0 ? 'border-primary bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-[1.02]' : 'border-border bg-transparent text-foreground hover:border-primary/50 hover:bg-muted')}>
-                <div className="relative">
-                  <ShoppingBag className={cn('h-4.5 w-4.5 transition-transform duration-300', cartCount > 0 ? 'group-hover:scale-110' : '')} />
-                  {cartCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-background/50 opacity-75" />
-                      <span className="relative inline-flex h-3 w-3 rounded-full bg-background" />
-                    </span>
-                  )}
-                </div>
-                {cartCount > 0 ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold">{cartCount}</span>
-                    <span className="hidden text-xs opacity-80 sm:block">{cartCount === 1 ? 'item' : 'itens'}</span>
-                  </div>
-                ) : (
-                  <span className="hidden text-sm font-medium sm:block">Carrinho</span>
-                )}
-                {cartCount > 0 && (
-                  <div className="hidden items-center gap-1 border-l border-background/30 pl-2 md:flex">
-                    <span className="text-xs font-medium opacity-90">Ver</span>
-                    <svg className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-linear-to-b from-muted/50 via-muted/30 to-background px-4 py-24 md:py-36">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSA2MCAwIEwgMCAwIDAgNjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMDA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-50" />
-        <div className="relative mx-auto max-w-4xl text-center">
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/50 px-4 py-1.5 backdrop-blur-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-            </span>
-            <span className="text-xs font-medium tracking-wide text-muted-foreground">2026 + Elegante</span>
-          </div>
-          <div className="flex justify-center mb-4 mt-2">
-            <img src="/logoLoja.png" alt="Fausto Importados" className="w-full max-w-70 sm:max-w-sm md:max-w-md object-contain" style={{ filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.18))' }} />
-          </div>
-          <h1 className="text-4xl font-light leading-[1.1] tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl text-balance">
-            A arte da
-            <span className="text-gold-metal relative mx-3 inline-block font-serif italic">
-              perfumaria
-              <svg className="absolute -bottom-2 left-0 h-3 w-full text-primary/30" viewBox="0 0 100 12" preserveAspectRatio="none">
-                <path d="M0 9 Q 25 0, 50 9 T 100 9" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-            </span>
-            <br className="hidden sm:block" />
-            ao seu alcance
-          </h1>
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
-            {quickFilters.map((filter) => {
-              const Icon = filter.icon
-              const isActive = activeQuickFilter === filter.id
-              return (
-                <button key={filter.id} onClick={() => { handleQuickFilter(filter); scrollToCollection() }}
-                  className={cn('group relative flex items-center gap-2.5 overflow-hidden rounded-full border px-6 py-3 text-sm font-medium transition-all duration-300', isActive ? 'border-primary bg-primary text-primary-foreground shadow-lg' : 'border-border/60 bg-background/80 text-foreground shadow-sm backdrop-blur-sm hover:border-primary/40 hover:bg-background hover:shadow-md')}>
-                  <Icon className={cn('h-4 w-4 transition-all duration-300 group-hover:scale-110', isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground')} />
-                  {filter.label}
-                  <span className="text-xs opacity-60">{filter.description}</span>
-                </button>
-              )
-            })}
-          </div>
-          <div className="mt-16 flex flex-wrap items-center justify-center gap-8 text-muted-foreground">
-            <div className="flex items-center gap-2 text-sm"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50"><Check className="h-4 w-4" /></div><span>100% Original</span></div>
-            <div className="flex items-center gap-2 text-sm"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50"><ShoppingBag className="h-4 w-4" /></div><span>Envio Seguro</span></div>
-            <div className="flex items-center gap-2 text-sm"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50"><Star className="h-4 w-4" /></div><span>+100 Clientes</span></div>
-          </div>
-        </div>
-      </section>
+      <StoreHero
+        quickFilters={quickFilters}
+        activeQuickFilterId={activeQuickFilter}
+        onQuickFilter={(filter) => { handleQuickFilter(filter); scrollToCollection() }}
+      />
 
       {/* ── Products Section ── */}
       <section id="colecao" ref={collectionRef} className="px-4 py-16 md:py-24">
