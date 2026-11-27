@@ -74,11 +74,12 @@
 
 ## Fase 2: Regras e endpoints
 
-- [ ] **T07. Resolver a campanha ativa no servidor** · `API`
+- [x] **T07. Resolver a campanha ativa no servidor** · `API`
   - Usar o `Clock` injetado; exibição e entrada de datas em `America/Fortaleza`.
   - Antes do início: agendada. No período: ativa. Depois: expirada. Sem ativa: tema padrão.
   - Aplicar a regra de prioridade com desempate previsível e calcular o próximo horário de mudança.
   - *Pronto quando:* testes com relógio controlado cobrem os limites exatos de início e fim.
+  - *Resultado (27/11/2026):* `ActiveCampaignService` e `Campaign.phaseAt`, com os limites testados em H2 e PostgreSQL 16; API com 398 testes passando, nenhum pulado. A API calcula com instantes em UTC; a exibição e a entrada em `America/Fortaleza` ficam no painel (contrato §1, T28). Ainda sem rota: o endpoint público é a T12.
 
 - [ ] **T08. Impedir campanhas conflitantes** · `API`
   - Validar ao publicar, reativar e editar uma campanha publicada.
