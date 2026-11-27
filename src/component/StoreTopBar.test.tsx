@@ -84,7 +84,16 @@ describe("StoreTopBar", () => {
     expect(screen.getByTestId("location").textContent).toBe("/termos")
   })
 
-  it.each(["/?colecao=ofertas", "/#colecao", "/?produto=123", "/auth/algo"])(
+  it("link para uma coleção da loja (/?colecao=) navega sem recarregar: a loja reage ao parâmetro", () => {
+    withTopBar({ text: "Ver ofertas", link: "/?colecao=ofertas" })
+    renderBar()
+
+    fireEvent.click(screen.getByRole("link", { name: "Ver ofertas" }))
+
+    expect(screen.getByTestId("location").textContent).toBe("/?colecao=ofertas")
+  })
+
+  it.each(["/?colecao=ofertas#colecao", "/?colecao=a&produto=1", "/#colecao", "/?produto=123", "/auth/algo"])(
     "link para a própria loja ou para o servidor (%s) usa a navegação normal do navegador",
     (href) => {
       withTopBar({ text: "Ver ofertas", link: href })

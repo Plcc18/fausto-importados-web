@@ -19,6 +19,8 @@ interface ProductCardProps {
   copiedId?: string | null
   highlight?: boolean
   onHighlightAck?: () => void
+  /** Selo do produto participante da campanha ("Black Friday", "Natal"...), T24. Sem campanha: nada. */
+  campaignBadge?: string | null
 }
 
 export function ProductCard({
@@ -30,6 +32,7 @@ export function ProductCard({
   copiedId,
   highlight = false,
   onHighlightAck,
+  campaignBadge = null,
 }: ProductCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [quantity, setQuantity] = useState(1)
@@ -127,6 +130,16 @@ export function ProductCard({
           )}
           {isFeatured && !hasDiscount && (
             <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">Destaque</Badge>
+          )}
+          {campaignBadge && (
+            // Canto superior esquerdo (embaixo ficam favorito e compartilhar): abaixo do "Destaque", se houver, e
+            // cortado com reticências antes do "Oferta" do outro canto. O nome inteiro está nos detalhes.
+            <Badge
+              title={campaignBadge}
+              className={`absolute left-3 max-w-[calc(100%-6rem)] bg-campaign-badge text-campaign-badge-foreground ${isFeatured && !hasDiscount ? "top-11" : "top-3"}`}
+            >
+              <span className="truncate">{campaignBadge}</span>
+            </Badge>
           )}
           {isOutOfStock && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80">
@@ -234,6 +247,7 @@ export function ProductCard({
                   </Badge>
                 ))}
                 {hasDiscount && <Badge className="bg-campaign-badge text-campaign-badge-foreground">Oferta</Badge>}
+                {campaignBadge && <Badge className="bg-campaign-badge text-campaign-badge-foreground">{campaignBadge}</Badge>}
               </div>
 
               <p className="mt-4 text-sm uppercase tracking-wider text-muted-foreground">{product.brand}</p>

@@ -43,7 +43,7 @@ function hero(overrides: Partial<CampaignHero> = {}): CampaignHero {
 function withHero(value: CampaignHero | null) {
   campaignState.current = {
     status: "ready",
-    campaign: { id: "c1", content: { topBar: null, hero: value, promoImages: [], decorations: [] } } as unknown as PublicCampaign,
+    campaign: { id: "c1", type: "BLACK_FRIDAY", collections: [], content: { topBar: null, hero: value, promoImages: [], decorations: [] } } as unknown as PublicCampaign,
   }
 }
 

@@ -30,6 +30,11 @@ import { useProducts } from "@/lib/useProducts"
 import { CatalogSkeleton, CatalogError, CatalogCacheNotice } from "./CatalogStates"
 import { StoreHeader } from "./StoreHeader"
 import { StoreHero } from "./StoreHero"
+import { CampaignCollections } from "./CampaignCollections"
+import { CampaignPromoImages } from "./CampaignPromoImages"
+import { useSearchParams } from "react-router-dom"
+import { useActiveCampaign } from "@/lib/campaign/useActiveCampaign"
+import { campaignBadgeLabel, campaignProductIds, resolveCollections } from "@/lib/campaign/collections"
 
 import type { Filters, GenderFilter, OlfativeFamily, QuickFilter, SortKey } from './storeTypes'
 
@@ -55,6 +60,33 @@ function buildShareUrl(productId: string): string {
 export function Store() {
   const { products, status: productsStatus, isFromCache, refreshFailed, errorCode, retry: retryProducts } = useProducts()
   const [cart, setCart] = useState<CartItem[]>(getCart)
+
+  // ── Campanha: coleções, selo e ?colecao= (T24) ──────────────────────────────
+  // Os produtos das coleções vêm do catálogo já carregado (só os IDs vêm da campanha): nenhuma requisição a mais
+  const { campaign } = useActiveCampaign()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const collectionSlug = searchParams.get('colecao')
+  const collections = useMemo(() => resolveCollections(campaign, products), [campaign, products])
+  // Coleção que não existe (ou de uma campanha que já terminou) não filtra nada
+  const activeCollection = useMemo(
+    () => (collectionSlug ? collections.find((c) => c.slug === collectionSlug) ?? null : null),
+    [collections, collectionSlug]
+  )
+  // Selo só nos produtos das coleções que estão de fato na tela
+  const participantIds = useMemo(() => campaignProductIds(collections), [collections])
+  const campaignBadge = campaign ? campaignBadgeLabel(campaign.type) : null
+  // Abrir ou tirar uma coleção é uma navegação (o "voltar" a desfaz). Sem mudança, nada: "Limpar filtros" sem
+  // coleção aberta não cria entradas repetidas no histórico. Um `?colecao=` que não existe (campanha que já
+  // terminou) não filtra nem aparece; o "compartilhar" do produto já monta o link sem os parâmetros da vitrine.
+  const setCollection = useCallback((slug: string | null) => {
+    if (slug === collectionSlug) return
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (slug) next.set('colecao', slug)
+      else next.delete('colecao')
+      return next
+    })
+  }, [setSearchParams, collectionSlug])
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [stockChangedIds, setStockChangedIds] = useState<string[]>([])
   const ackStockChanged = useCallback(() => setStockChangedIds([]), [])
@@ -96,14 +128,15 @@ export function Store() {
 
   // Volta para a página 1 sempre que um filtro mudar (ajuste de estado durante a
   // renderização, evitando um efeito só para sincronizar estado interno)
-  const [prevPageFilters, setPrevPageFilters] = useState({ debouncedSearch, filters, sortKey, showWishlist })
+  const [prevPageFilters, setPrevPageFilters] = useState({ debouncedSearch, filters, sortKey, showWishlist, collectionSlug })
   if (
     prevPageFilters.debouncedSearch !== debouncedSearch ||
     prevPageFilters.filters !== filters ||
     prevPageFilters.sortKey !== sortKey ||
-    prevPageFilters.showWishlist !== showWishlist
+    prevPageFilters.showWishlist !== showWishlist ||
+    prevPageFilters.collectionSlug !== collectionSlug
   ) {
-    setPrevPageFilters({ debouncedSearch, filters, sortKey, showWishlist })
+    setPrevPageFilters({ debouncedSearch, filters, sortKey, showWishlist, collectionSlug })
     setCurrentPage(1)
   }
 
@@ -169,13 +202,18 @@ export function Store() {
     const max = filters.maxPrice !== '' ? Number(filters.maxPrice) : Infinity
     result = result.filter((p) => p.price >= min && p.price <= max)
     if (filters.onSale) result = result.filter((p) => p.originalPrice && p.originalPrice > p.price)
+    // ?colecao=: só os produtos da coleção, combinável com a busca e os demais filtros
+    const collectionOrder = activeCollection ? new Map(activeCollection.products.map((p, i) => [p.id, i])) : null
+    if (collectionOrder) result = result.filter((p) => collectionOrder.has(p.id))
     result = [...result]
-    if (sortKey === 'price_asc') result.sort((a, b) => a.price - b.price)
+    // Sem outra ordenação escolhida, vale a ordem definida na campanha
+    if (sortKey === 'default' && collectionOrder) result.sort((a, b) => collectionOrder.get(a.id)! - collectionOrder.get(b.id)!)
+    else if (sortKey === 'price_asc') result.sort((a, b) => a.price - b.price)
     else if (sortKey === 'price_desc') result.sort((a, b) => b.price - a.price)
     else if (sortKey === 'newest') result.sort((a, b) => b.id.localeCompare(a.id))
     else if (sortKey === 'best_sellers') result.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
     return result
-  }, [products, filters, debouncedSearch, sortKey, showWishlist, favorites])
+  }, [products, filters, debouncedSearch, sortKey, showWishlist, favorites, activeCollection])
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE))
   const safePage = Math.min(currentPage, totalPages)
@@ -248,6 +286,12 @@ export function Store() {
     setShowWishlist(false)
   }, [])
 
+  /** "Limpar filtros" / "Remover filtros": também tira a coleção (desligar um filtro rápido não tira). */
+  const clearAllFilters = useCallback(() => {
+    resetFilters()
+    setCollection(null)
+  }, [resetFilters, setCollection])
+
   const handleQuickFilter = useCallback((filter: QuickFilter) => {
     if (activeQuickFilter === filter.id) { resetFilters() }
     else { setActiveQuickFilter(filter.id); setFilters((prev) => filter.apply(prev)) }
@@ -255,8 +299,8 @@ export function Store() {
 
   const hasActiveFilters = useMemo(() =>
     filters.gender !== 'todos' || filters.family !== 'todos' || filters.concentration !== 'todos'
-    || filters.minPrice !== '' || filters.maxPrice !== '' || filters.onSale || showWishlist,
-    [filters, showWishlist])
+    || filters.minPrice !== '' || filters.maxPrice !== '' || filters.onSale || showWishlist || activeCollection !== null,
+    [filters, showWishlist, activeCollection])
 
   const activeFiltersCount = useMemo(() => {
     let count = 0
@@ -266,12 +310,47 @@ export function Store() {
     if (filters.minPrice !== '' || filters.maxPrice !== '') count++
     if (filters.onSale) count++
     if (showWishlist) count++
+    if (activeCollection) count++
     return count
-  }, [filters, showWishlist])
+  }, [filters, showWishlist, activeCollection])
 
   const scrollToCollection = () => {
     collectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  // Rolagens automáticas não podem puxar a página de quem já começou a ler (a campanha e o catálogo podem chegar
+  // até ~1 min depois, com a API acordando): depois do primeiro gesto da pessoa, só o clique dela rola
+  const userInteracted = useRef(false)
+  useEffect(() => {
+    const mark = () => { userInteracted.current = true }
+    const events = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const
+    events.forEach((event) => window.addEventListener(event, mark, { once: true, passive: true }))
+    return () => events.forEach((event) => window.removeEventListener(event, mark))
+  }, [])
+
+  // Ao abrir uma coleção, leva até a vitrine já filtrada. A do endereço de chegada pode só existir quando a
+  // campanha e o catálogo chegarem: se a pessoa já mexeu na página até lá, não rola
+  const activeCollectionSlug = activeCollection?.slug ?? null
+  const landingCollection = useRef({ slug: collectionSlug, handled: false })
+  useEffect(() => {
+    if (!activeCollectionSlug) return
+    const landing = landingCollection.current
+    if (!landing.handled && activeCollectionSlug === landing.slug) {
+      landing.handled = true
+      if (userInteracted.current) return
+    }
+    collectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [activeCollectionSlug])
+
+  // Com `/#colecao`, as seções da campanha podem aparecer acima da vitrine depois da rolagem inicial: rola de
+  // novo uma vez, se a pessoa ainda não mexeu na página
+  const hasCampaignSections = collections.length > 0 || (campaign?.content.promoImages.length ?? 0) > 0
+  const sectionsScrollDone = useRef(false)
+  useEffect(() => {
+    if (!hasCampaignSections || sectionsScrollDone.current) return
+    sectionsScrollDone.current = true
+    if (window.location.hash === '#colecao' && !userInteracted.current) collectionRef.current?.scrollIntoView()
+  }, [hasCampaignSections])
 
   const paginationPages = useMemo(() => {
     const pages: (number | '...')[] = []
@@ -318,6 +397,24 @@ export function Store() {
         onQuickFilter={(filter) => { handleQuickFilter(filter); scrollToCollection() }}
       />
 
+      <CampaignCollections
+        collections={collections}
+        // "Ver todos (N)" mostra exatamente a coleção: os outros filtros e a busca saem
+        onShowAll={(slug) => { resetFilters(); setCollection(slug); scrollToCollection() }}
+        renderProduct={(product) => (
+          <ProductCard
+            product={product}
+            onAddToCart={handleAddToCart}
+            isFavorite={favorites.includes(product.id)}
+            onToggleFavorite={toggleFavorite}
+            onShare={handleShare}
+            copiedId={copiedId}
+            campaignBadge={campaignBadge}
+          />
+        )}
+      />
+      <CampaignPromoImages promoImages={campaign?.content.promoImages ?? []} />
+
       {/* ── Products Section ── */}
       <section id="colecao" ref={collectionRef} className="px-4 py-16 md:py-24">
         <div className="mx-auto max-w-7xl">
@@ -336,7 +433,7 @@ export function Store() {
                 </p>
               </div>
               {hasActiveFilters && (
-                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground" onClick={resetFilters}>
+                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground" onClick={clearAllFilters}>
                   <RotateCcw className="h-3.5 w-3.5" />
                   Limpar filtros
                   {activeFiltersCount > 0 && <Badge variant="secondary" className="ml-1">{activeFiltersCount}</Badge>}
@@ -466,6 +563,7 @@ export function Store() {
             {/* Active Filter Tags */}
             {hasActiveFilters && (
               <div className="flex flex-wrap items-center gap-2">
+                {activeCollection && <Badge variant="secondary" className="gap-1.5 rounded-full py-1.5 pl-3 pr-1.5">Coleção: {activeCollection.title}<button onClick={() => setCollection(null)} aria-label="Remover filtro de coleção" className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"><X className="h-3 w-3" /></button></Badge>}
                 {showWishlist && <Badge variant="secondary" className="gap-1.5 rounded-full py-1.5 pl-3 pr-1.5">♥ Favoritos<button onClick={() => setShowWishlist(false)} className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"><X className="h-3 w-3" /></button></Badge>}
                 {filters.gender !== 'todos' && <Badge variant="secondary" className="gap-1.5 rounded-full py-1.5 pl-3 pr-1.5">{filters.gender.charAt(0).toUpperCase() + filters.gender.slice(1)}<button onClick={() => setFilters((prev) => ({ ...prev, gender: 'todos' }))} className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"><X className="h-3 w-3" /></button></Badge>}
                 {filters.family !== 'todos' && <Badge variant="secondary" className="gap-1.5 rounded-full py-1.5 pl-3 pr-1.5">{familyFilters.find((f) => f.value === filters.family)?.label}<button onClick={() => setFilters((prev) => ({ ...prev, family: 'todos' }))} className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"><X className="h-3 w-3" /></button></Badge>}
@@ -495,6 +593,7 @@ export function Store() {
                     copiedId={copiedId}
                     highlight={highlightProductId === product.id}
                     onHighlightAck={ackHighlight}
+                    campaignBadge={participantIds.has(product.id) ? campaignBadge : null}
                   />
                 ))}
               </div>
@@ -528,7 +627,7 @@ export function Store() {
               </div>
               <h3 className="text-xl font-medium">{showWishlist ? 'Nenhum favorito ainda' : 'Nenhuma fragrância encontrada'}</h3>
               <p className="mt-2 max-w-sm text-muted-foreground">{showWishlist ? 'Clique no ♥ em qualquer produto para salvá-lo aqui.' : 'Ajuste os filtros para descobrir perfumes que combinam com você.'}</p>
-              <Button variant="outline" className="mt-8 rounded-full bg-transparent px-6" onClick={resetFilters}>
+              <Button variant="outline" className="mt-8 rounded-full bg-transparent px-6" onClick={clearAllFilters}>
                 <RotateCcw className="mr-2 h-4 w-4" />
                 {showWishlist ? 'Ver todos os produtos' : 'Remover filtros'}
               </Button>
