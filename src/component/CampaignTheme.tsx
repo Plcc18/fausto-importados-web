@@ -19,7 +19,7 @@ function ActiveCampaignTheme() {
 
 /**
  * Liga o tema de campanha só nas páginas públicas (T02). Fora delas o componente acima nem é montado: o tema
- * sai e, no painel, a campanha nem é buscada.
+ * sai e, no painel, nenhuma busca nova da campanha começa (só termina a tentativa que já estava em andamento).
  */
 export function CampaignThemeHost() {
   const { pathname } = useLocation()

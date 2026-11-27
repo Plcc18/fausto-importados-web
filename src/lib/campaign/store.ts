@@ -133,14 +133,17 @@ async function fetchOnce(signal: AbortSignal, timeoutMs: number): Promise<Active
   }
 }
 
-async function fetchWithRetry(signal: AbortSignal, retryDelaysMs: number[], timeoutMs: number) {
+/** `keepTrying`: consultado antes de cada nova tentativa (ex.: a pessoa saiu da loja → para de tentar). */
+async function fetchWithRetry(signal: AbortSignal, retryDelaysMs: number[], timeoutMs: number, keepTrying: () => boolean) {
   for (let attempt = 0; ; attempt++) {
     try {
       return await fetchOnce(signal, timeoutMs)
     } catch (error) {
       // 404 e outros 4xx não melhoram tentando de novo; rede, timeout e 5xx sim
-      if (signal.aborted || attempt >= retryDelaysMs.length || !isRetryableError(error)) throw error
+      if (signal.aborted || attempt >= retryDelaysMs.length || !isRetryableError(error) || !keepTrying()) throw error
       await sleep(retryDelaysMs[attempt], signal)
+      // A pessoa pode ter saído da loja durante a espera
+      if (!keepTrying()) throw error
     }
   }
 }
@@ -161,9 +164,12 @@ export interface CampaignStoreOptions {
 
 export interface CampaignStore {
   getState(): CampaignState
-  /** Assina as mudanças. A primeira assinatura inicia o carregamento. Devolve a função para cancelar. */
+  /**
+   * Assina as mudanças. A primeira assinatura inicia o carregamento; quando a última é cancelada, a busca e os
+   * timers param (o estado fica guardado para a próxima). Devolve a função para cancelar.
+   */
   subscribe(listener: () => void): () => void
-  /** Para tudo (requisição, timers e eventos). Usado nos testes. */
+  /** Para tudo (requisição, timers e eventos) e volta ao estado inicial. Usado nos testes. */
   stop(): void
 }
 
@@ -187,6 +193,8 @@ export function createCampaignStore({
   let current: { response: ActiveCampaignResponse; clockOffsetMs: number } | null = null
   let abort: AbortController | null = null
   let lastFinishedAt = 0
+  /** Última busca que deu certo: só ela conta para "busquei há pouco, não precisa de novo" ao voltar à loja. */
+  let lastSuccessAt = 0
   let changeTimer: ReturnType<typeof setTimeout> | null = null
 
   const serverNow = () => Date.now() + (current?.clockOffsetMs ?? 0)
@@ -210,7 +218,8 @@ export function createCampaignStore({
   function scheduleChange() {
     if (changeTimer) clearTimeout(changeTimer)
     changeTimer = null
-    if (!current) return
+    // Sem assinantes (pausado), nada fica agendado; `start()` agenda de novo ao voltar
+    if (!started || !current) return
     const until = validUntil(current.response)
     if (!Number.isFinite(until)) return
     const remaining = until - serverNow()
@@ -235,15 +244,19 @@ export function createCampaignStore({
     const controller = new AbortController()
     abort = controller
     try {
-      const response = await fetchWithRetry(controller.signal, retryDelaysMs, timeoutMs)
+      const response = await fetchWithRetry(controller.signal, retryDelaysMs, timeoutMs, () => started)
       if (controller.signal.aborted) return
       const clockOffsetMs = Date.parse(response.serverTime) - Date.now()
       writeCampaignCache(storage, { savedAt: Date.now(), clockOffsetMs, response })
+      lastSuccessAt = Date.now()
       apply(response, clockOffsetMs, "ready")
     } catch (error) {
       if (controller.signal.aborted) return
-      // A loja segue com o que já tem (cache ainda válido ou tema padrão); nada de tela de erro
-      console.warn("Campanha indisponível; mantendo o tema atual:", error)
+      // A última busca falhou: ao voltar à loja, vale tentar de novo, mesmo que uma anterior tenha dado certo
+      lastSuccessAt = 0
+      // A loja segue com o que já tem (cache ainda válido ou tema padrão); nada de tela de erro. Se ninguém
+      // assina mais (a pessoa saiu da loja e as tentativas pararam de propósito), não é falha para avisar.
+      if (started) console.warn("Campanha indisponível; mantendo o tema atual:", error)
       setState({ ...state, status: "ready" })
     } finally {
       if (abort === controller) {
@@ -273,31 +286,63 @@ export function createCampaignStore({
     state = { status: "loading", campaign: cached.response.campaign }
   }
 
+  /** Começa (ou retoma) a busca e as atualizações. Chamado quando aparece o primeiro assinante. */
   function start() {
     started = true
     init()
+    // Enquanto ninguém assinava, o horário de mudança pode ter passado: a campanha que terminou sai na hora
+    const expired = current !== null && !isStillValid(current.response, serverNow())
+    if (expired) setState({ ...state, campaign: null })
     scheduleChange()
     if (typeof document !== "undefined") document.addEventListener("visibilitychange", handleVisibility)
-    void load()
+    // Uma busca que começou antes de sair continua valendo: não recomeça (a API pode estar acordando)
+    if (abort) return
+    // Ao voltar logo depois de uma busca que deu certo, reaproveita a resposta (mesmo intervalo da troca de aba)
+    const recentlySucceeded = lastSuccessAt > 0 && Date.now() - lastSuccessAt < CAMPAIGN_VISIBILITY_MIN_INTERVAL_MS
+    if (expired || !recentlySucceeded) void load()
+  }
+
+  /**
+   * Para o timer e o evento da aba, mas guarda o estado. Chamado quando o último assinante sai (ex.: o admin foi
+   * da loja para o painel), para o painel não ficar consultando a campanha. A tentativa já em andamento termina
+   * (e o resultado fica guardado: quem volta logo não espera a API acordar de novo), mas nenhuma outra começa.
+   */
+  function pause() {
+    started = false
+    if (changeTimer) clearTimeout(changeTimer)
+    changeTimer = null
+    if (typeof document !== "undefined") document.removeEventListener("visibilitychange", handleVisibility)
   }
 
   return {
     getState() {
       init()
+      // Pausado (sem assinantes), ninguém tirou do ar a campanha que terminou: quem lê agora já recebe o tema
+      // padrão, sem piscar. Com assinantes, quem tira é o timer do horário de mudança, que avisa todos.
+      if (!started && state.campaign && current && !isStillValid(current.response, serverNow())) {
+        state = { ...state, campaign: null }
+      }
       return state
     },
     subscribe(listener) {
       listeners.add(listener)
       if (!started) start()
-      return () => listeners.delete(listener)
+      return () => {
+        listeners.delete(listener)
+        if (listeners.size === 0) pause()
+      }
     },
     stop() {
+      pause()
       abort?.abort()
       abort = null
-      if (changeTimer) clearTimeout(changeTimer)
-      changeTimer = null
-      if (typeof document !== "undefined") document.removeEventListener("visibilitychange", handleVisibility)
       listeners.clear()
+      // Volta ao estado inicial (usado nos testes, para um não depender do anterior)
+      state = { status: "loading", campaign: null }
+      current = null
+      initialized = false
+      lastFinishedAt = 0
+      lastSuccessAt = 0
     },
   }
 }

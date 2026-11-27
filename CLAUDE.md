@@ -60,4 +60,4 @@ O ambiente padrão do Vitest é Node. Testes de DOM declaram `// @vitest-environ
 ## Campanhas sazonais
 - Tasks em `docs/campanhas-sazonais-tasks.md`. Faça uma por vez e marque `[x]` só quando atender ao "Pronto quando".
 - Ativar, encerrar ou editar uma campanha nunca altera os preços cadastrados dos produtos.
-- Sem campanha ativa, ou se a consulta falhar, a loja usa o tema padrão.
+- Sem campanha ativa, ou se a consulta falhar e não houver campanha ainda válida no cache local (`src/lib/campaign/store.ts`), a loja usa o tema padrão. Uma campanha em cache sai do ar no fim dela mesmo com a API fora.

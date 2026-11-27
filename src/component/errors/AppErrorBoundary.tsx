@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react"
+import { applyCampaignTheme } from "@/lib/campaign/theme"
 import { ErrorView } from "./ErrorView"
 
 interface Props {
@@ -25,6 +26,9 @@ export class AppErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Erro de renderização:", error, info.componentStack)
+    // Telas de erro ficam sempre no tema padrão (T02). Se a página quebrar já na primeira renderização, quem
+    // aplicaria e removeria o tema nem chega a montar, e o tema do script do index.html (T20) ficaria na tela.
+    applyCampaignTheme(null)
   }
 
   componentDidUpdate(prev: Props) {

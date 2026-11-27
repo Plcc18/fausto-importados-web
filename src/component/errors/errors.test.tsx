@@ -7,6 +7,8 @@ import { authClient } from "@/lib/auth"
 import { AppErrorBoundary } from "./AppErrorBoundary"
 import { ErrorView } from "./ErrorView"
 import { RETRY_DELAYS_MS } from "@/lib/useProducts"
+import { activeCampaignStore } from "@/lib/campaign/useActiveCampaign"
+import { applyCampaignTheme } from "@/lib/campaign/theme"
 
 vi.mock("@/admin/Admin", () => ({ Admin: () => <div data-testid="admin-panel">painel</div> }))
 vi.mock("@/admin/SalesReport", () => ({ SalesReport: () => <div data-testid="sales-report">relatório</div> }))
@@ -50,6 +52,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   authClient.dispose() // o cliente de auth é um singleton: zera sessão/timers entre os testes
+  activeCampaignStore.stop() // a campanha também: um teste não herda busca nem resposta do anterior
+  applyCampaignTheme(null) // e nenhum tema de campanha fica no documento
   vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -115,7 +119,8 @@ describe("/erro/:codigo (acesso direto / atualização da página)", () => {
     renderApp("/erro/503")
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }))
     expect(screen.getByTestId("path").textContent).toBe("/")
-    expect(fetchMock).toHaveBeenCalledTimes(1) // a loja buscou o catálogo
+    // a loja buscou o catálogo e, em paralelo, a campanha (T17)
+    expect(fetchMock.mock.calls.map(([url]) => new URL(String(url)).pathname).sort()).toEqual(["/api/campaigns/active", "/api/product"])
   })
 
   it("não expõe detalhes técnicos", () => {
@@ -243,6 +248,32 @@ describe("erro de renderização", () => {
     shouldThrow = false
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }))
     expect(screen.getByText("tudo certo")).toBeTruthy()
+  })
+})
+
+describe("erro de renderização com campanha no ar", () => {
+  it("a tela 500 fica no tema padrão, mesmo com o tema aplicado antes do React (T20)", () => {
+    // Como o script do index.html deixa a página: tema da campanha já aplicado
+    const style = document.createElement("style")
+    style.id = "campaign-theme"
+    style.textContent = ":root[data-campaign-theme].dark { --primary: #E0242F; }"
+    document.head.appendChild(style)
+    document.documentElement.setAttribute("data-campaign-theme", "")
+
+    function Bomb(): never {
+      throw new Error("quebrou na primeira renderização")
+    }
+    render(
+      <MemoryRouter>
+        <AppErrorBoundary>
+          <Bomb />
+        </AppErrorBoundary>
+      </MemoryRouter>
+    )
+
+    expect(screen.getByRole("heading", { name: "Algo não saiu como esperado." })).toBeTruthy()
+    expect(document.getElementById("campaign-theme")).toBeNull()
+    expect(document.documentElement.hasAttribute("data-campaign-theme")).toBe(false)
   })
 })
 
