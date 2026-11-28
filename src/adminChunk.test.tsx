@@ -62,6 +62,10 @@ beforeEach(() => {
     loaded.push("AdminUsers")
     return { AdminUsers: () => <div data-testid="admin-users">administradores</div> }
   })
+  vi.doMock("@/admin/campaigns/Campaigns", () => {
+    loaded.push("Campaigns")
+    return { Campaigns: () => <div data-testid="admin-campaigns">campanhas</div> }
+  })
   vi.doMock("@/component/Login", () => {
     loaded.push("Login")
     return { Login: () => <div data-testid="login-page">entrar</div> }
@@ -75,6 +79,7 @@ afterEach(async () => {
   vi.doUnmock("@/admin/Admin")
   vi.doUnmock("@/admin/SalesReport")
   vi.doUnmock("@/admin/AdminUsers")
+  vi.doUnmock("@/admin/campaigns/Campaigns")
   vi.doUnmock("@/component/Login")
   vi.unstubAllGlobals()
 })
@@ -133,6 +138,29 @@ describe("carregamento sob demanda do painel", { timeout: 30_000 }, () => {
     await visit("/admin/administradores")
     expect(await screen.findByTestId("admin-users")).toBeTruthy()
     expect(loaded).toEqual(["AdminUsers"])
+  })
+
+  it("a área de campanhas é outro chunk: abre direto pela URL, só para administrador", async () => {
+    serverFor("none")
+    await visit("/admin/campanhas")
+    expect(await screen.findByTestId("login-page")).toBeTruthy()
+    expect(loaded).not.toContain("Campaigns")
+
+    cleanup()
+    vi.resetModules()
+    loaded.length = 0
+    serverFor("USER")
+    await visit("/admin/campanhas")
+    expect(await screen.findByRole("heading", { name: "Esta área é reservada." })).toBeTruthy()
+    expect(loaded).not.toContain("Campaigns")
+
+    cleanup()
+    vi.resetModules()
+    loaded.length = 0
+    serverFor("ADMIN")
+    await visit("/admin/campanhas")
+    expect(await screen.findByTestId("admin-campaigns")).toBeTruthy()
+    expect(loaded).toEqual(["Campaigns"])
   })
 
   it("o relatório é outro chunk: abrir /admin/relatorio não baixa o painel principal", async () => {

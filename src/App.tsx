@@ -19,6 +19,7 @@ const Admin = lazy(() => import('@/admin/Admin').then((m) => ({ default: m.Admin
 const SalesReport = lazy(() => import('@/admin/SalesReport').then((m) => ({ default: m.SalesReport })))
 const ReauthPromptHost = lazy(() => import('@/admin/ReauthPromptHost').then((m) => ({ default: m.ReauthPromptHost })))
 const AdminUsers = lazy(() => import('@/admin/AdminUsers').then((m) => ({ default: m.AdminUsers })))
+const Campaigns = lazy(() => import('@/admin/campaigns/Campaigns').then((m) => ({ default: m.Campaigns })))
 const Login = lazy(() => import('@/component/Login').then((m) => ({ default: m.Login })))
 
 // Resultado da verificação com o backend:
@@ -142,6 +143,14 @@ export function App() {
           element={
             <RequireAdmin>
               <AdminUsers />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path={ROUTES.adminCampaigns}
+          element={
+            <RequireAdmin>
+              <Campaigns />
             </RequireAdmin>
           }
         />

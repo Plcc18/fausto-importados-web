@@ -97,7 +97,14 @@ describe("rotas da área administrativa", () => {
   it("usam caminhos convencionais: a proteção real está na API, não em um endereço secreto", () => {
     expect(ROUTES.admin).toBe("/admin")
     expect(ROUTES.adminReport).toBe("/admin/relatorio")
+    expect(ROUTES.adminCampaigns).toBe("/admin/campanhas")
     expect(ROUTES.login).toBe("/entrar")
+  })
+
+  it("a área de campanhas abre direto pela URL, e só no endereço exato", () => {
+    expect(rewritten("/admin/campanhas")).toBe(true)
+    expect(rewritten("/admin/campanhas/")).toBe(true)
+    expect(rewritten("/admin/campanhas/xyz")).toBe(false)
   })
 })
 

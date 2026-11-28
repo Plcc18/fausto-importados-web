@@ -18,6 +18,7 @@ export const ROUTES = {
   admin: "/admin",
   adminReport: "/admin/relatorio",
   adminUsers: "/admin/administradores",
+  adminCampaigns: "/admin/campanhas",
 } as const
 
 /** Lê o segmento `:codigo` de `/erro/:codigo` (pré-visualização / link direto das telas de erro). */

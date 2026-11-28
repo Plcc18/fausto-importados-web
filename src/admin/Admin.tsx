@@ -53,7 +53,8 @@ import {
   Search,
   LogOut,
   ArrowUpDown,
-  Check
+  Check,
+  Megaphone
 } from "lucide-react"
 import {
   Popover,
@@ -449,7 +450,8 @@ export function Admin() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4">
+        {/* No celular os botões não cabem ao lado do título: descem para a segunda linha */}
+        <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2">
 
           {/* Esquerda */}
           <div className="flex min-w-0 items-center gap-2">
@@ -463,7 +465,7 @@ export function Admin() {
           </div>
 
           {/* Direita */}
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
 
             <ThemeToggle />
 
@@ -475,6 +477,17 @@ export function Admin() {
               title="Relatório de Vendas"
             >
               <FileText className="h-4 w-4" />
+            </Button>
+
+            {/* Campanhas */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate(ROUTES.adminCampaigns)}
+              title="Campanhas"
+              aria-label="Campanhas"
+            >
+              <Megaphone className="h-4 w-4" />
             </Button>
 
             {/* Administradores */}
