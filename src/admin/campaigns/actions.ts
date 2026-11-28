@@ -1,6 +1,7 @@
 import type { NoticeOptions } from "@/lib/notice"
 import { SENSITIVE_NOT_DONE } from "@/admin/sensitive"
 import { situationOf, type Situation } from "@/admin/campaigns/labels"
+import { THEME_FIELD_LABELS } from "@/admin/campaigns/theme/themeDraft"
 import type { CampaignSummary } from "@/admin/campaigns/types"
 
 export type CampaignAction = "activate" | "disable" | "reactivate" | "duplicate" | "archive" | "delete"
@@ -103,12 +104,7 @@ export const FIELD_LABELS: Record<string, string> = {
   priority: "Prioridade",
   startsAt: "Início",
   endsAt: "Fim",
-  "theme.dark": "Tema escuro",
-  "theme.dark.background": "Cor de fundo",
-  "theme.dark.foreground": "Cor do texto",
-  "theme.dark.primary": "Cor de destaque",
-  "theme.dark.primaryForeground": "Texto sobre o destaque",
-  "theme.dark.accent": "Cor secundária",
+  ...THEME_FIELD_LABELS,
   "content.hero.imageDesktop": "Imagem do banner",
 }
 

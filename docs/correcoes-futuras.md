@@ -76,6 +76,7 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C
   - *Problema:* `accent` troca `--accent`, `--secondary` e `--muted`, mas `--accent-foreground` e `--secondary-foreground` continuam os da loja. Afeta botões e selos secundários, destaque nos menus e a faixa superior padrão.
   - *Como reproduzir:* paleta escura com `accent` pastel claro; o botão secundário do banner fica com texto claro sobre fundo claro.
   - *Sugestão:* definir também essas cores de texto, ou exigir contraste do `accent`; a decisão muda o contrato. O alerta de contraste da T29 pode cobrir parte disso.
+  - *Coberto em parte (28/11/2026, T29):* o editor avisa quando a cor secundária ou os cartões apagam esses textos. A loja continua igual, e o alerta não impede publicar.
 
 - [ ] **C07. Falha no horário da troca não é tentada de novo** · Menor
   - *Onde:* [store.ts](../src/lib/campaign/store.ts), `catch` de `load`.
@@ -183,3 +184,10 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C
   - *Confirmado no código (27/11/2026):* a API não lê a chave em publicar, ativar, reativar e arquivar.
   - *Sugestão:* enviar a chave, ou ajustar a regra do `CLAUDE.md` ao contrato.
 
+- [ ] **C22. No celular, a miniprévia do tema sai da tela ao editar as cores** · Menor
+  - *Origem:* percebido ao conferir a T29 (28/11/2026).
+  - *Onde:* [ThemeEditor.tsx](../src/admin/campaigns/theme/ThemeEditor.tsx).
+  - *Problema:* em telas estreitas a prévia fica acima da lista de cores e não acompanha a rolagem; para ver o efeito de uma cor do fim da lista é preciso voltar para cima. No computador ela fica fixa ao lado.
+  - *Como reproduzir:* abrir o formulário com um tema em 390 px e mudar a cor das etiquetas.
+  - *Confirmado no Chrome (28/11/2026).*
+  - *Sugestão:* uma versão reduzida da prévia fixa no topo, ou um botão para vê-la sem sair do campo.

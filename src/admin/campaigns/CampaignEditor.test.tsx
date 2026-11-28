@@ -5,6 +5,8 @@ import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-rou
 import { toast } from "sonner"
 import { Campaigns } from "./Campaigns"
 import type { CampaignDetail } from "./types"
+import { templateTheme } from "./theme/templates"
+import { themeInput } from "./theme/themeDraft"
 import { ReauthPromptHost } from "@/admin/ReauthPromptHost"
 import { NoticeHost } from "@/component/NoticeHost"
 import { authClient } from "@/lib/auth"
@@ -562,6 +564,113 @@ describe("alterações não salvas", () => {
 
     click("Salvar rascunho")
     await waitFor(() => expect(unload()).toBe(false))
+  })
+})
+
+describe("tema no formulário", () => {
+  const color = (label: string) => screen.getByRole("textbox", { name: label }) as HTMLInputElement
+  const paint = (label: string, value: string) => fireEvent.change(color(label), { target: { value } })
+  const applyTemplate = () => click("Aplicar modelo")
+
+  it("monta um tema completo pelo painel e publica a campanha nova", async () => {
+    renderAt()
+    click("Nova campanha")
+    type("Nome", "Natal 2026")
+    type("Tipo", "CHRISTMAS")
+    applyTemplate()
+    paint("Destaque", "#AA1122")
+
+    await confirmPublish()
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Campanha publicada."))
+    const [create] = writes()
+    const christmas = themeInput(templateTheme("CHRISTMAS"))!
+    expect(create.body.theme).toEqual({ ...christmas, dark: { ...christmas.dark, primary: "#AA1122" } })
+    expect(written()).toEqual(["POST /api/admin/campaigns", "POST /api/admin/campaigns/novo/publish"])
+  })
+
+  it("mudar uma cor conta como alteração não salva e vai junto no salvamento", async () => {
+    await openFromList()
+    paint("Fundo", "#101820")
+    expect(screen.getByText("Alterações não salvas")).toBeTruthy()
+
+    click("Cancelar")
+    fireEvent.click(await inDialog("Continuar editando"))
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    click("Salvar rascunho")
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Alterações salvas."))
+    expect(writes()[0].body.theme.dark).toMatchObject({ background: "#101820", primary: "#C1121F", surface: null, gold: null })
+    expect(writes()[0].body.theme.light).toBeNull()
+    await nothingPending()
+  })
+
+  it("voltar à cor original deixa de contar como alteração e envia o tema como veio", async () => {
+    await openForm()
+    paint("Fundo", "#101820")
+    paint("Fundo", "#000000")
+    expect(screen.queryByText("Alterações não salvas")).toBeNull()
+
+    type("Nome", "Outro")
+    click("Salvar rascunho")
+
+    await waitFor(() => expect(writes()).toHaveLength(1))
+    expect(writes()[0].body.theme).toEqual(theme)
+  })
+
+  it("recusa uma cor fora do formato antes de enviar", async () => {
+    await openForm()
+    paint("Destaque", "vermelh")
+
+    click("Salvar rascunho")
+
+    expect(color("Destaque").getAttribute("aria-invalid")).toBe("true")
+    expect(screen.getByText("Use uma cor no formato #RRGGBB.")).toBeTruthy()
+    expect(writes()).toHaveLength(0)
+  })
+
+  it("mostra os erros de tema da API no campo e no aviso, e limpa só o da cor corrigida", async () => {
+    writeAnswers = [() => json({
+      code: "validation_failed",
+      fields: [
+        { field: "theme.dark.primary", message: "Cor recusada A." },
+        { field: "theme.dark.accent", message: "Cor recusada B." },
+      ],
+    }, 400)]
+    await openForm()
+    type("Nome", "Outro")
+
+    click("Salvar rascunho")
+
+    const alert = await screen.findByRole("alert")
+    expect(alert.textContent).toContain("Modo escuro · Destaque: Cor recusada A.")
+    await settled()
+    expect(color("Destaque").getAttribute("aria-invalid")).toBe("true")
+    paint("Destaque", "#112233")
+    expect(color("Destaque").getAttribute("aria-invalid")).toBe("false")
+    expect(color("Cor secundária").getAttribute("aria-invalid")).toBe("true")
+  })
+
+  it("um erro no modo que está escondido também aparece no aviso", async () => {
+    server = detail({ theme: { ...theme, light: { ...theme.dark, accent: "" } } })
+    await openForm()
+    type("Nome", "Outro") // o modo escuro é o que está na tela
+
+    click("Salvar rascunho")
+
+    expect(screen.getByRole("alert").textContent).toContain("Modo claro · Cor secundária: Preencha esta cor.")
+    expect(writes()).toHaveLength(0)
+  })
+
+  it("remover o tema envia vazio", async () => {
+    await openForm()
+    click("Remover o tema")
+    fireEvent.click(await inDialog("Remover"))
+
+    click("Salvar rascunho")
+
+    await waitFor(() => expect(writes()).toHaveLength(1))
+    expect(writes()[0].body.theme).toBeNull()
   })
 })
 
