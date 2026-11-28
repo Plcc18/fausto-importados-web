@@ -202,11 +202,11 @@ describe("listagem de campanhas", () => {
     renderPage()
     await findRow("rascunho")
 
-    expect(rowButtons("rascunho")).toEqual(["Ativar agora", "Duplicar", "Arquivar", "Excluir"])
-    expect(rowButtons("agendada")).toEqual(["Ativar agora", "Desativar", "Duplicar"])
-    expect(rowButtons("no-ar")).toEqual(["Desativar", "Duplicar"])
+    expect(rowButtons("rascunho")).toEqual(["Editar", "Ativar agora", "Duplicar", "Arquivar", "Excluir"])
+    expect(rowButtons("agendada")).toEqual(["Editar", "Ativar agora", "Desativar", "Duplicar"])
+    expect(rowButtons("no-ar")).toEqual(["Editar", "Desativar", "Duplicar"])
     expect(rowButtons("encerrada")).toEqual(["Duplicar", "Arquivar"])
-    expect(rowButtons("desativada")).toEqual(["Reativar", "Duplicar", "Arquivar"])
+    expect(rowButtons("desativada")).toEqual(["Editar", "Reativar", "Duplicar", "Arquivar"])
     expect(rowButtons("arquivada")).toEqual(["Duplicar"])
     for (const [id, label] of [["rascunho", "Rascunho"], ["agendada", "Agendada"], ["encerrada", "Encerrada"], ["desativada", "Desativada"], ["arquivada", "Arquivada"]]) {
       expect(within(row(id)).getByText(label)).toBeTruthy()

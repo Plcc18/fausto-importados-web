@@ -17,6 +17,10 @@ const AVAILABLE: Record<Situation, CampaignAction[]> = {
 
 export const availableActions = (campaign: CampaignSummary) => AVAILABLE[situationOf(campaign)]
 
+/** Encerrada não é editada (duplica-se) e arquivada é definitiva (contrato §7.3). */
+export const isEditable = (campaign: Pick<CampaignSummary, "status" | "phase">) =>
+  !["EXPIRED", "ARCHIVED"].includes(situationOf(campaign))
+
 interface ActionTexts {
   /** Botão da lista e da confirmação. */
   label: string
@@ -92,9 +96,11 @@ export const ACTIONS: Record<CampaignAction, ActionTexts> = {
   },
 }
 
-const FIELD_LABELS: Record<string, string> = {
+export const FIELD_LABELS: Record<string, string> = {
   name: "Nome",
+  description: "Descrição",
   type: "Tipo",
+  priority: "Prioridade",
   startsAt: "Início",
   endsAt: "Fim",
   "theme.dark": "Tema escuro",
@@ -106,15 +112,23 @@ const FIELD_LABELS: Record<string, string> = {
   "content.hero.imageDesktop": "Imagem do banner",
 }
 
-interface ApiProblem {
+/** Corpo de erro da API (contrato §1). */
+export interface ApiProblem {
   code?: string
   message?: string
   fields?: { field?: string; message?: string }[]
 }
 
+export const readApiProblem = async (res: Response) =>
+  ((await res.json().catch(() => null)) ?? {}) as ApiProblem
+
+/** "Rótulo: mensagem"; sem rótulo conhecido, só a mensagem. */
+export const describeField = ({ field = "", message = "" }: { field?: string; message?: string }) =>
+  FIELD_LABELS[field] ? `${FIELD_LABELS[field]}: ${message}` : message
+
 /** O aviso para uma ação que a API recusou. As mensagens dela para campanhas já vêm em português. */
 export async function explainFailure(res: Response, action: CampaignAction): Promise<NoticeOptions> {
-  const body = ((await res.json().catch(() => null)) ?? {}) as ApiProblem
+  const body = await readApiProblem(res)
   const title = `Não foi possível ${ACTIONS[action].verb}`
   const warning = (text: string): NoticeOptions => ({ icon: "warning", title, text })
 
@@ -129,9 +143,7 @@ export async function explainFailure(res: Response, action: CampaignAction): Pro
     case "concurrent_operation":
       return warning(body.message ?? "Outra operação ou campanha impede esta ação.")
     case "publish_requirements": {
-      const missing = (body.fields ?? []).map(({ field = "", message = "" }) =>
-        FIELD_LABELS[field] ? `${FIELD_LABELS[field]}: ${message}` : message,
-      )
+      const missing = (body.fields ?? []).map(describeField)
       return warning(["Complete a campanha antes.", ...new Set(missing)].join(" "))
     }
   }

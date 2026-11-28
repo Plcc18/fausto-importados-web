@@ -131,3 +131,11 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C
   - *Como reproduzir:* publicar uma faixa ou botão com `https://loja.com:abc/x` ou `https://loja.com:99999`.
   - *Confirmado no código (27/11/2026):* a API confere só o servidor e o `usuario@`. Não foi executado de ponta a ponta.
   - *Sugestão:* apertar a validação na API (o melhor lugar para o aviso aparecer ao salvar), ou descartar na loja só o link ou botão inválido.
+
+- [ ] **C15. Alterações não salvas do formulário de campanha podem se perder sem aviso** · Menor
+  - *Origem:* limitação percebida ao fazer a T28 (27/11/2026).
+  - *Onde:* [Campaigns.tsx](../src/admin/campaigns/Campaigns.tsx) e `RequireAdmin` em [App.tsx](../src/App.tsx).
+  - *Problema:* o aviso cobre cancelar, o voltar do navegador dentro da área de campanhas e fechar ou recarregar a aba. Não cobre a sessão que cai (a tela vai para o login) nem o voltar para outra tela do app quando o formulário foi aberto direto pelo endereço.
+  - *Como reproduzir:* editar um campo e encerrar a sessão em outra aba.
+  - *Confirmado no código (27/11/2026):* o bloqueio depende de a tela de campanhas continuar montada.
+  - *Sugestão:* guardar o preenchimento no `sessionStorage` e oferecer a recuperação, ou migrar para o roteador de dados do React Router, que bloqueia qualquer navegação.
