@@ -296,14 +296,33 @@ describe("?colecao= e o histórico", () => {
 })
 
 describe("selo no card", () => {
-  it("fica no canto de cima (embaixo ficam favorito e compartilhar), abaixo do \"Destaque\" e cortado se for longo", async () => {
+  it("fica no canto de cima (embaixo ficam favorito e compartilhar), usa a largura do card e é cortado se for longo", async () => {
     withCampaign({ type: "VALENTINES_DAY" } as Partial<PublicCampaign>)
     await renderStore()
 
     const badge = within(document.getElementById("colecao")!).getAllByTitle("Dia dos Namorados")[0]
     expect(badge.className).toContain("top-3")
-    expect(badge.className).toContain("max-w-[calc(100%-6rem)]")
+    expect(badge.className).toContain("max-w-[calc(100%-1.5rem)]")
     expect(badge.querySelector(".truncate")?.textContent).toBe("Dia dos Namorados")
+  })
+
+  it.each([
+    ["Destaque", { featured: true }],
+    ["Oferta", { originalPrice: 999 }],
+  ])("com \"%s\" no card, vai para a linha de baixo", async (label, change) => {
+    // O "p3" é o primeiro da coleção; a troca vale só para este teste
+    const original = CATALOG[2]
+    CATALOG[2] = { ...original, ...change }
+    try {
+      withCampaign()
+      await renderStore("/?colecao=ofertas")
+
+      const tag = within(document.getElementById("colecao")!).getByText(label)
+      const badge = within(tag.parentElement!).getByTitle("Black Friday")
+      expect(badge.className).toContain("top-11")
+    } finally {
+      CATALOG[2] = original
+    }
   })
 })
 
