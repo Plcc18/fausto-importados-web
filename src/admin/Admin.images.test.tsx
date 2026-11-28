@@ -75,6 +75,7 @@ describe("imagem do produto", { timeout: 30_000 }, () => {
     type("Marca", "Creed")
     type("Descrição", "Notas")
     type("Preço (R$)", "100")
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Floral" }))
 
     send(dialog)
     await waitFor(() =>

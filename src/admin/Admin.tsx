@@ -214,6 +214,11 @@ export function Admin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // A API exige a família: sem este aviso, a recusa chega só como "Bad Request"
+    if (!formData.olfactiveFamily) {
+      notify({ icon: "warning", title: "Família olfativa obrigatória", text: "Marque ao menos uma família olfativa antes de salvar." })
+      return
+    }
     if (!formData.image) {
       notify({ icon: "warning", title: "Imagem obrigatória", text: "Aguarde o upload da imagem ou selecione uma imagem antes de salvar." })
       return
@@ -227,7 +232,7 @@ export function Admin() {
       price: Number(formData.price),
       originalPrice: formData.originalPrice ? Number(formData.originalPrice) : null,
       category: formData.category, size: formData.size,
-      olfactiveFamily: formData.olfactiveFamily || null,
+      olfactiveFamily: formData.olfactiveFamily,
       featured: formData.featured ?? false,
       inStock: formData.inStock ?? true,
       image: formData.image,
@@ -819,7 +824,7 @@ export function Admin() {
                     </Select>
                   </div>
                   <div className="space-y-2 mt-4 col-span-3">
-                    <Label>Família Olfativa (Selecione uma ou mais)</Label>
+                    <Label>Família Olfativa (selecione ao menos uma)</Label>
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 rounded-lg border p-4 bg-muted/20">
                       {[
                         { value: "FLORAL", label: "Floral" },
