@@ -198,6 +198,8 @@ export function createCampaignStore({
   let changeTimer: ReturnType<typeof setTimeout> | null = null
 
   const serverNow = () => Date.now() + (current?.clockOffsetMs ?? 0)
+  /** A resposta em uso deixou de valer neste instante? */
+  const isExpired = () => current !== null && !isStillValid(current.response, serverNow())
 
   function setState(next: CampaignState) {
     // Mesma campanha e mesmo status: não avisa ninguém (evita re-renderizar a loja à toa)
@@ -257,7 +259,8 @@ export function createCampaignStore({
       // A loja segue com o que já tem (cache ainda válido ou tema padrão); nada de tela de erro. Se ninguém
       // assina mais (a pessoa saiu da loja e as tentativas pararam de propósito), não é falha para avisar.
       if (started) console.warn("Campanha indisponível; mantendo o tema atual:", error)
-      setState({ ...state, status: "ready" })
+      // Mesmo com a API fora, a campanha que terminou durante a busca não fica
+      setState({ status: "ready", campaign: isExpired() ? null : state.campaign })
     } finally {
       if (abort === controller) {
         abort = null
@@ -267,8 +270,12 @@ export function createCampaignStore({
   }
 
   function handleVisibility() {
-    if (document.visibilityState !== "visible" || abort) return
-    if (Date.now() - lastFinishedAt < CAMPAIGN_VISIBILITY_MIN_INTERVAL_MS) return
+    if (document.visibilityState !== "visible") return
+    // Um aparelho que dormiu pode ter parado os timers. Antes de qualquer busca: a campanha que terminou sai na
+    // hora; a que ainda vale tem a saída reagendada pelo tempo que de fato resta.
+    if (isExpired()) setState({ ...state, campaign: null })
+    else scheduleChange()
+    if (abort || Date.now() - lastFinishedAt < CAMPAIGN_VISIBILITY_MIN_INTERVAL_MS) return
     void load()
   }
 
@@ -291,7 +298,7 @@ export function createCampaignStore({
     started = true
     init()
     // Enquanto ninguém assinava, o horário de mudança pode ter passado: a campanha que terminou sai na hora
-    const expired = current !== null && !isStillValid(current.response, serverNow())
+    const expired = isExpired()
     if (expired) setState({ ...state, campaign: null })
     scheduleChange()
     if (typeof document !== "undefined") document.addEventListener("visibilitychange", handleVisibility)
