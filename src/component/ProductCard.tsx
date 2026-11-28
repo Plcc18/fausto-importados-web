@@ -132,11 +132,12 @@ export function ProductCard({
             <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">Destaque</Badge>
           )}
           {campaignBadge && (
-            // Canto superior esquerdo (embaixo ficam favorito e compartilhar): abaixo do "Destaque", se houver, e
-            // cortado com reticências antes do "Oferta" do outro canto. O nome inteiro está nos detalhes.
+            // Canto superior esquerdo (embaixo ficam favorito e compartilhar). Se já houver "Destaque" ou "Oferta" em
+            // cima, vai para a linha de baixo: assim usa a largura toda do card, que no celular é estreito, e só é
+            // cortado com reticências se nem assim couber. O nome inteiro está nos detalhes.
             <Badge
               title={campaignBadge}
-              className={`absolute left-3 max-w-[calc(100%-6rem)] bg-campaign-badge text-campaign-badge-foreground ${isFeatured && !hasDiscount ? "top-11" : "top-3"}`}
+              className={`absolute left-3 max-w-[calc(100%-1.5rem)] bg-campaign-badge text-campaign-badge-foreground ${isFeatured || hasDiscount ? "top-11" : "top-3"}`}
             >
               <span className="truncate">{campaignBadge}</span>
             </Badge>
