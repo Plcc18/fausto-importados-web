@@ -2,6 +2,12 @@
 import type { CampaignType } from "@/lib/campaign/types"
 import { SENSITIVE_NOT_DONE } from "@/admin/sensitive"
 import { describeField, readApiProblem } from "@/admin/campaigns/actions"
+import {
+  checkCollections,
+  collectionsFrom,
+  collectionsInput,
+  type CollectionDraft,
+} from "@/admin/campaigns/collections/collectionsDraft"
 import { checkContent, contentInput, contentValuesFrom, type ContentValues } from "@/admin/campaigns/content/contentDraft"
 import { fromInputValue, toInputValue } from "@/admin/campaigns/dates"
 import { checkTheme, themeDraftFrom, themeInput, type ThemeDraft } from "@/admin/campaigns/theme/themeDraft"
@@ -16,16 +22,17 @@ export interface FormValues extends ContentValues {
   startsAt: string
   endsAt: string
   theme: ThemeDraft | null
+  collections: CollectionDraft[]
 }
 
-/** Os campos de dados (tema e conteúdo têm editores próprios). */
-export type FieldName = Exclude<keyof FormValues, "theme" | keyof ContentValues>
+/** Os campos de dados (tema, conteúdo e coleções têm editores próprios). */
+export type FieldName = Exclude<keyof FormValues, "theme" | "collections" | keyof ContentValues>
 /** Mensagens pelo caminho que a API usa: `name`, `theme.dark.primary`... */
 export type FieldErrors = Partial<Record<string, string>>
 
 export const EMPTY_VALUES: FormValues = {
   name: "", description: "", type: "", priority: "0", startsAt: "", endsAt: "", theme: null,
-  topBar: null, banner: null, promoImages: [], decorations: [],
+  topBar: null, banner: null, promoImages: [], decorations: [], collections: [],
 }
 
 export const valuesFrom = (campaign: CampaignDetail): FormValues => ({
@@ -37,9 +44,10 @@ export const valuesFrom = (campaign: CampaignDetail): FormValues => ({
   endsAt: toInputValue(campaign.endsAt),
   theme: themeDraftFrom(campaign.theme),
   ...contentValuesFrom(campaign.content),
+  collections: collectionsFrom(campaign.collections),
 })
 
-// tema e conteúdo são objetos, sempre montados com os campos na mesma ordem
+// tema, conteúdo e coleções são objetos, sempre montados com os campos na mesma ordem
 const same = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b)
 
 export const sameValues = (a: FormValues, b: FormValues) =>
@@ -50,7 +58,11 @@ const DATE_TIME = /^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/
 /** Só o que impediria montar o corpo corretamente. As regras de cada campo são da API, que responde campo a campo. */
 export function checkValues(values: FormValues): FieldErrors {
   const { priority, startsAt, endsAt, theme } = values
-  const errors: FieldErrors = { ...checkTheme(theme), ...checkContent(values) }
+  const errors: FieldErrors = {
+    ...checkTheme(theme),
+    ...checkContent(values),
+    ...checkCollections(values.collections),
+  }
   const number = Number(priority)
   // Vazio também é recusado: a caixa numérica devolve vazio para textos como "50e", e salvar 0 mudaria a
   // prioridade sem avisar
@@ -64,8 +76,8 @@ export function checkValues(values: FormValues): FieldErrors {
 }
 
 /**
- * Corpo de criar ou editar. As coleções voltam como vieram, porque a edição substitui o documento inteiro. O mesmo
- * vale para o tema, cada parte do conteúdo e as datas que a pessoa não mexeu (a caixa de data não guarda os segundos).
+ * Corpo de criar ou editar. Como a edição substitui o documento inteiro, o que a pessoa não mexeu (coleções, tema,
+ * cada parte do conteúdo e datas) volta exatamente como veio; a caixa de data, por exemplo, não guarda os segundos.
  */
 export function buildInput(values: FormValues, campaign: CampaignDetail | null): CampaignInput {
   const instant = (value: string, original: string | null | undefined) => {
@@ -82,7 +94,10 @@ export function buildInput(values: FormValues, campaign: CampaignDetail | null):
     theme:
       campaign && same(values.theme, themeDraftFrom(campaign.theme)) ? (campaign.theme ?? null) : themeInput(values.theme),
     content: contentInput(campaign?.content, values),
-    collections: campaign?.collections ?? [],
+    collections:
+      campaign && same(values.collections, collectionsFrom(campaign.collections))
+        ? campaign.collections
+        : collectionsInput(values.collections),
     ...(campaign && { version: campaign.version }),
   }
 }
@@ -125,8 +140,10 @@ export async function readSaveProblem(res: Response): Promise<SaveProblem> {
       const others = new Set<string>()
       for (const item of body.fields ?? []) {
         const field = item.field ?? ""
-        // dados, tema e conteúdo mostram o erro junto do campo; o aviso junto dos botões lista todos
-        if (/^(theme|content)(\.|\[|$)/.test(field) || Object.hasOwn(EMPTY_VALUES, field)) fields[field] ??= item.message
+        // o erro aparece junto do campo; o aviso junto dos botões lista todos
+        if (/^(theme|content|collections)(\.|\[|$)/.test(field) || Object.hasOwn(EMPTY_VALUES, field)) {
+          fields[field] ??= item.message
+        }
         others.add(describeField(item))
       }
       const message = body.code === "publish_requirements" ? "Faltam dados para publicar." : "Há campos inválidos."

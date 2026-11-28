@@ -8,9 +8,11 @@ import type { CampaignDetail } from "./types"
 import { templateTheme } from "./theme/templates"
 import { themeInput } from "./theme/themeDraft"
 import { ReauthPromptHost } from "@/admin/ReauthPromptHost"
+import { resolveCollections } from "@/lib/campaign/collections"
 import { parseActiveCampaignResponse } from "@/lib/campaign/parse"
 import { NoticeHost } from "@/component/NoticeHost"
 import { authClient } from "@/lib/auth"
+import type { Product } from "@/lib/types"
 import { ROUTES } from "@/routes"
 
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), info: vi.fn() }) }))
@@ -47,6 +49,8 @@ let server: CampaignDetail
 let readAnswers: (() => Response)[]
 let writeAnswers: (() => Response | Promise<Response>)[]
 let uploadAnswers: (() => Promise<Response>)[]
+let catalog: Product[]
+let productAnswers: (() => Response)[]
 let requireReauth: boolean
 
 const calls = () =>
@@ -69,6 +73,7 @@ function installApi() {
     const method = init.method ?? "GET"
     if (pathname === "/auth/login") return json({ status: "AUTHENTICATED", accessToken: "access-1", expiresIn: 900 })
     if (pathname === "/auth/reauth") return json({ reauthToken: "prova-2fa", expiresIn: 300 })
+    if (pathname === "/api/product") return productAnswers.shift()?.() ?? json({ content: catalog })
     if (pathname === "/api/upload") {
       const file = (init.body as FormData).get("file") as File
       return uploadAnswers.shift()?.() ?? json({ url: imageUrl(file.name), width: 1920, height: 640 })
@@ -163,6 +168,8 @@ beforeEach(async () => {
   readAnswers = []
   writeAnswers = []
   uploadAnswers = []
+  catalog = []
+  productAnswers = []
   URL.createObjectURL = vi.fn(() => "blob:previa")
   URL.revokeObjectURL = vi.fn()
   requireReauth = false
@@ -1135,6 +1142,309 @@ describe("conteúdo no formulário", () => {
     await settled()
     expect(field("Texto do botão 1").getAttribute("aria-invalid")).toBe("true")
     expect(field("Subtítulo do banner").getAttribute("aria-invalid")).toBe("true")
+  })
+})
+
+describe("coleções no formulário", () => {
+  const product = (id: string, name: string, extra: Partial<Product> = {}): Product => ({
+    id, name, brand: "Lattafa", description: "", price: 100, image: `https://img.test/${id}.webp`, size: "100",
+    inStock: true, stockQuantity: 5, concentration: "EDP", olfactiveFamily: "ORIENTAL",
+    category: "FEMININO" as Product["category"], ...extra,
+  }) as Product
+  const saved = (id: string, title: string, slug: string, ...products: string[]) => ({
+    id, title, slug, position: 0,
+    products: products.map((productId, position) => ({ productId, position, discount: null })),
+  })
+  const withCollections = (...list: ReturnType<typeof saved>[]) => {
+    server = detail({ collections: list.map((item, position) => ({ ...item, position })) })
+  }
+
+  beforeEach(() => {
+    catalog = [
+      product("p1", "Asad"),
+      product("p2", "Badee", { price: 250, originalPrice: 300 }),
+      product("p3", "Club de Nuit", { brand: "Armaf", category: "MASCULINO" as Product["category"] }),
+      product("p4", "Khamrah", { stockQuantity: 0 }),
+    ]
+  })
+
+  const section = (n: number) => within(screen.getByTestId(`collection-${n}`))
+  /** Os produtos de uma coleção, na ordem da tela. */
+  const listed = (n: number) =>
+    section(n).queryAllByTestId(/^collection-product-/).map((li) => li.dataset.testid!.replace("collection-product-", ""))
+  const catalogReady = () => waitFor(() => expect(screen.queryByText("Carregando os produtos...")).toBeNull())
+  const openPicker = async (n: number) => {
+    await waitFor(() => expect(button(`Adicionar produtos à coleção ${n}`).disabled).toBe(false))
+    click(`Adicionar produtos à coleção ${n}`)
+    return within(await screen.findByRole("dialog"))
+  }
+  const check = (picker: ReturnType<typeof within>, name: RegExp) =>
+    fireEvent.click(picker.getByRole("checkbox", { name }))
+  const confirmPicker = (picker: ReturnType<typeof within>) =>
+    fireEvent.click(picker.getByRole("button", { name: /^Adicionar \d+ produtos?$/ }))
+  const saveCollections = async () => {
+    click("Salvar rascunho")
+    await waitFor(() => expect(writes()).toHaveLength(1))
+    return writes()[0].body.collections
+  }
+  const productReads = () => calls().filter((c) => c.url.pathname === "/api/product")
+
+  it("monta duas coleções com busca, filtros, vários de uma vez e ordem, e a loja as mostra", async () => {
+    renderAt()
+    click("Nova campanha")
+    type("Nome", "Black Friday")
+    type("Tipo", "BLACK_FRIDAY")
+    expect(productReads()).toHaveLength(0) // sem coleção, o catálogo nem é buscado
+
+    click("Adicionar coleção")
+    type("Título da coleção 1", "Ofertas Black Friday")
+    expect(field("Identificador do link da coleção 1").value).toBe("ofertas-black-friday")
+    let picker = await openPicker(1)
+    // marcados fora da ordem do alfabeto: entram na ordem em que foram marcados
+    check(picker, /^Club de Nuit/)
+    fireEvent.change(picker.getByLabelText("Buscar por nome ou marca"), { target: { value: "badee" } })
+    expect(picker.getAllByRole("listitem")).toHaveLength(1)
+    check(picker, /^Badee/)
+    confirmPicker(picker)
+    expect(listed(1)).toEqual(["p3", "p2"])
+
+    click("Adicionar coleção")
+    type("Título da coleção 2", "Mais vendidos da campanha")
+    picker = await openPicker(2)
+    fireEvent.change(picker.getByLabelText("Gênero"), { target: { value: "FEMININO" } })
+    fireEvent.click(picker.getByRole("checkbox", { name: "Disponíveis" }))
+    fireEvent.change(picker.getByLabelText("Ordenar por"), { target: { value: "price_desc" } })
+    fireEvent.click(picker.getByRole("button", { name: "Marcar todos da busca" }))
+    confirmPicker(picker)
+    expect(listed(2)).toEqual(["p2", "p1"])
+
+    fireEvent.click(section(2).getByRole("button", { name: /^Subir: Asad/ }))
+    expect(listed(2)).toEqual(["p1", "p2"])
+
+    const sent = await saveCollections()
+    expect(sent).toEqual([
+      {
+        title: "Ofertas Black Friday", slug: "ofertas-black-friday", position: 0,
+        products: [{ productId: "p3", position: 0, discount: null }, { productId: "p2", position: 1, discount: null }],
+      },
+      {
+        title: "Mais vendidos da campanha", slug: "mais-vendidos-da-campanha", position: 1,
+        products: [{ productId: "p1", position: 0, discount: null }, { productId: "p2", position: 1, discount: null }],
+      },
+    ])
+    expect(productReads()).toHaveLength(1)
+
+    // o que o painel envia passa pela conferência da loja, que cruza com o catálogo
+    const store = parseActiveCampaignResponse({
+      serverTime: "2026-11-27T14:00:00Z",
+      nextChangeAt: null,
+      campaign: {
+        id: "novo", type: "BLACK_FRIDAY", startsAt: "2026-11-27T03:00:00Z", endsAt: "2026-12-01T03:00:00Z",
+        updatedAt: "2026-11-26T18:00:00Z", theme, content: { topBar: null, hero: null, promoImages: [], decorations: [] },
+        // a resposta pública traz só os IDs, já na ordem
+        collections: sent.map((c: { products: { productId: string }[] }) => ({
+          ...c,
+          productIds: c.products.map((p) => p.productId),
+        })),
+      },
+    })
+    expect(resolveCollections(store!.campaign, catalog).map((c) => [c.title, c.products.map((p) => p.name)])).toEqual([
+      ["Ofertas Black Friday", ["Club de Nuit", "Badee"]],
+      ["Mais vendidos da campanha", ["Asad", "Badee"]],
+    ])
+  })
+
+  it("na escolha, o que já está na coleção fica marcado e não repete; cancelar não muda nada", async () => {
+    withCollections(saved("col-1", "Ofertas", "ofertas", "p1"))
+    await openForm()
+    const picker = await openPicker(1)
+
+    const already = picker.getByRole("checkbox", { name: /^Asad/ }) as HTMLInputElement
+    expect([already.checked, already.disabled]).toEqual([true, true])
+    expect((picker.getByRole("button", { name: "Adicionar" }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(picker.getByRole("button", { name: "Marcar todos da busca" }))
+    expect(picker.getByRole("button", { name: "Adicionar 3 produtos" })).toBeTruthy()
+    fireEvent.click(picker.getByRole("button", { name: "Cancelar" }))
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    expect(listed(1)).toEqual(["p1"])
+    expect(screen.queryByText("Alterações não salvas")).toBeNull()
+    // abrir de novo começa sem nada marcado
+    expect((await openPicker(1)).getByRole("button", { name: "Adicionar" })).toBeTruthy()
+  })
+
+  it("a coleção leva até 60 produtos", async () => {
+    catalog = Array.from({ length: 62 }, (_, i) => product(`x${i}`, `Perfume ${String(i).padStart(2, "0")}`))
+    withCollections(saved("col-1", "Ofertas", "ofertas", "x0"))
+    await openForm()
+    const picker = await openPicker(1)
+
+    fireEvent.click(picker.getByRole("button", { name: "Marcar todos da busca" }))
+
+    expect(picker.getByText("A coleção leva até 60 produtos.")).toBeTruthy()
+    expect((picker.getByRole("checkbox", { name: /^Perfume 61/ }) as HTMLInputElement).disabled).toBe(true)
+    confirmPicker(picker)
+    expect(listed(1)).toHaveLength(60)
+    expect(button("Adicionar produtos à coleção 1").disabled).toBe(true)
+  })
+
+  it("reordena e tira produtos, inclusive um desativado", async () => {
+    withCollections(saved("col-1", "Ofertas", "ofertas", "p1", "sumiu", "p2", "p3"))
+    await openForm()
+    await catalogReady()
+    expect(section(1).getByText("Produto desativado ou removido")).toBeTruthy()
+
+    fireEvent.click(section(1).getByRole("button", { name: /^Levar ao início: Club de Nuit/ }))
+    fireEvent.click(section(1).getByRole("button", { name: /^Descer: Asad/ }))
+    expect(listed(1)).toEqual(["p3", "sumiu", "p1", "p2"])
+    fireEvent.click(section(1).getByRole("button", { name: /^Tirar da coleção: Produto desativado/ }))
+
+    expect(await saveCollections()).toEqual([saved("col-1", "Ofertas", "ofertas", "p3", "p1", "p2")])
+  })
+
+  it("um produto desativado que fica na coleção continua sendo enviado", async () => {
+    withCollections(saved("col-1", "Ofertas", "ofertas", "sumiu"))
+    await openForm()
+    await catalogReady()
+
+    type("Título da coleção 1", "Novas ofertas")
+
+    expect(await saveCollections()).toEqual([saved("col-1", "Novas ofertas", "ofertas", "sumiu")])
+  })
+
+  it("o identificador de uma coleção salva não muda sozinho, e mudá-lo avisa dos links", async () => {
+    await openForm()
+    type("Título da coleção 1", "Super ofertas")
+    expect(field("Identificador do link da coleção 1").value).toBe("ofertas")
+    expect(screen.queryByText(/deixam de abrir esta coleção/)).toBeNull()
+
+    type("Identificador do link da coleção 1", "super")
+
+    expect(screen.getByText(/Os links para \/\?colecao=ofertas deixam de abrir/)).toBeTruthy()
+  })
+
+  it("numa coleção nova, o identificador acompanha o título até ser escolhido à mão, sem repetir outro", async () => {
+    await openForm()
+    click("Adicionar coleção")
+    type("Título da coleção 2", "Ofertas")
+    expect(field("Identificador do link da coleção 2").value).toBe("ofertas-2")
+    type("Identificador do link da coleção 2", "relampago")
+    type("Título da coleção 2", "Ofertas relâmpago")
+    expect(field("Identificador do link da coleção 2").value).toBe("relampago")
+  })
+
+  it("sugere nas caixas de link as coleções que estão sendo editadas", async () => {
+    await openForm()
+    const options = () =>
+      [...document.getElementById(field("Link da faixa").getAttribute("list")!)!.querySelectorAll("option")].map((o) => o.value)
+
+    click("Adicionar coleção")
+    type("Título da coleção 2", "Mais vendidos")
+    expect(options()).toEqual(["/#colecao", "/?colecao=ofertas", "/?colecao=mais-vendidos"])
+
+    type("Identificador do link da coleção 2", "mais-") // pela metade
+    expect(options()).toEqual(["/#colecao", "/?colecao=ofertas"])
+
+    // repetido no meio de uma troca de identificadores: uma sugestão só, sem o React reclamar de chave igual
+    const complaints = vi.spyOn(console, "error")
+    type("Identificador do link da coleção 2", "ofertas")
+    expect(options()).toEqual(["/#colecao", "/?colecao=ofertas"])
+    expect(complaints).not.toHaveBeenCalled()
+    complaints.mockRestore()
+  })
+
+  it("muda a ordem das coleções e remove com confirmação", async () => {
+    withCollections(saved("a", "Primeira", "primeira", "p1"), saved("b", "Segunda", "segunda", "p2"))
+    await openForm()
+    expect(button("Subir coleção 1").disabled).toBe(true)
+    expect(button("Descer coleção 2").disabled).toBe(true)
+
+    click("Subir coleção 2")
+    expect(field("Título da coleção 1").value).toBe("Segunda")
+
+    click("Remover coleção 2")
+    fireEvent.click(await inDialog("Cancelar"))
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    expect(field("Título da coleção 2").value).toBe("Primeira")
+    click("Remover coleção 2")
+    fireEvent.click(await inDialog("Remover"))
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+
+    expect(await saveCollections()).toEqual([{ ...saved("b", "Segunda", "segunda", "p2"), position: 0 }])
+  })
+
+  it("uma coleção nova e vazia sai sem perguntar, e nada fica por salvar", async () => {
+    await openForm()
+    click("Adicionar coleção")
+    expect(screen.getByText("Alterações não salvas")).toBeTruthy()
+
+    click("Remover coleção 2")
+
+    expect(screen.queryByRole("dialog")).toBeNull()
+    expect(screen.queryByText("Alterações não salvas")).toBeNull()
+  })
+
+  it("leva até oito coleções", async () => {
+    withCollections(...Array.from({ length: 7 }, (_, i) => saved(`c${i}`, `Coleção ${i}`, `colecao-${i}`)))
+    await openForm()
+
+    click("Adicionar coleção")
+
+    expect(screen.queryByRole("button", { name: "Adicionar coleção" })).toBeNull()
+  })
+
+  it("exige título e identificador antes de enviar, e limpa o erro corrigido", async () => {
+    await openForm()
+    click("Adicionar coleção")
+
+    click("Salvar rascunho")
+
+    expect(screen.getByRole("alert").textContent).toContain("Coleção 2 · Título")
+    expect(screen.getByRole("alert").textContent).toContain("Coleção 2 · Identificador")
+    expect(field("Título da coleção 2").getAttribute("aria-invalid")).toBe("true")
+    expect(writes()).toHaveLength(0)
+    type("Título da coleção 2", "Kits")
+    expect(field("Título da coleção 2").getAttribute("aria-invalid")).not.toBe("true")
+    expect(field("Identificador do link da coleção 2").getAttribute("aria-invalid")).not.toBe("true")
+  })
+
+  it("mostra cada erro da API na coleção e no produto certos", async () => {
+    withCollections(saved("a", "Primeira", "primeira", "p1"), saved("b", "Segunda", "segunda", "p2", "p3"))
+    writeAnswers = [() => json({
+      code: "validation_failed",
+      fields: [
+        { field: "collections[1].slug", message: "Já existe outra coleção com este identificador." },
+        { field: "collections[1].products[1].productId", message: "Produto não encontrado." },
+      ],
+    }, 400)]
+    await openForm()
+    await catalogReady()
+    type("Nome", "Outro")
+
+    click("Salvar rascunho")
+
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Coleção 2 · Produto 2"))
+    expect(field("Identificador do link da coleção 2").getAttribute("aria-invalid")).toBe("true")
+    expect(within(screen.getByTestId("collection-product-p3")).getByText("Produto não encontrado.")).toBeTruthy()
+    expect(within(screen.getByTestId("collection-product-p2")).queryByText("Produto não encontrado.")).toBeNull()
+    // mudar a lista de produtos tira o erro, que é por posição
+    fireEvent.click(section(2).getByRole("button", { name: /^Subir: Club de Nuit/ }))
+    expect(screen.queryByText("Produto não encontrado.", { selector: "span" })).toBeNull()
+  })
+
+  it("se os produtos não carregam, dá para tentar de novo, e salvar não perde as coleções", async () => {
+    productAnswers = [() => json({}, 500)]
+    await openForm()
+    await screen.findByRole("button", { name: "Tentar novamente" })
+    expect(button("Adicionar produtos à coleção 1").disabled).toBe(true)
+
+    type("Nome", "Outro")
+    expect(await saveCollections()).toEqual(collections)
+    await settled()
+
+    click("Tentar novamente")
+    await waitFor(() => expect(section(1).getByText("Asad")).toBeTruthy())
+    expect(button("Adicionar produtos à coleção 1").disabled).toBe(false)
   })
 })
 

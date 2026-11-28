@@ -28,6 +28,7 @@ import {
   updateCampaign,
 } from "@/admin/campaigns/api"
 import { CampaignsHeader } from "@/admin/campaigns/CampaignsHeader"
+import { CollectionsEditor } from "@/admin/campaigns/collections/CollectionsEditor"
 import { BannerEditor } from "@/admin/campaigns/content/BannerEditor"
 import type { ContentValues } from "@/admin/campaigns/content/contentDraft"
 import { DecorationsEditor } from "@/admin/campaigns/content/DecorationsEditor"
@@ -86,10 +87,7 @@ function Field({
   )
 }
 
-/**
- * Formulário de uma campanha (dados, agendamento, tema e conteúdo): criar, editar, salvar rascunho e publicar. As
- * coleções de produtos são preservadas e ganham editor próprio (T32).
- */
+/** Formulário de uma campanha (dados, agendamento, tema, conteúdo e coleções): criar, editar, salvar e publicar. */
 export function CampaignEditor({
   initialId,
   leaving,
@@ -209,12 +207,12 @@ export function CampaignEditor({
   }
 
   /**
-   * Quem altera uma parte do conteúdo. A mudança é uma função (o envio de uma imagem termina depois de outras), e
-   * `changed` diz os caminhos cujos erros deixam de valer.
+   * Quem altera uma parte do conteúdo ou as coleções. A mudança é uma função (o envio de uma imagem termina depois de
+   * outras), e `changed` diz os caminhos cujos erros deixam de valer.
    */
   const setPart =
-    <K extends keyof ContentValues>(part: K) =>
-    (update: (current: ContentValues[K]) => ContentValues[K], changed: string[]) => {
+    <K extends keyof ContentValues | "collections">(part: K) =>
+    (update: (current: FormValues[K]) => FormValues[K], changed: string[]) => {
       const stale = (path: string) =>
         changed.some((prefix) => path === prefix || path.startsWith(`${prefix}.`) || path.startsWith(`${prefix}[`))
       setErrors((current) => Object.fromEntries(Object.entries(current).filter(([path]) => !stale(path))))
@@ -335,7 +333,8 @@ export function CampaignEditor({
   }
 
   const isDraft = !campaign || campaign.status === "DRAFT"
-  const suggestions = linkSuggestions(campaign?.collections)
+  const suggestions = linkSuggestions(values.collections)
+  const savedSlugs = new Map(saved.collections.flatMap((c) => (c.id ? [[c.id, c.slug] as const] : [])))
   const locked = busy !== null || uploading || failure?.stale === true
 
   const content = () => {
@@ -428,6 +427,15 @@ export function CampaignEditor({
             suggestions={suggestions}
             onChange={setPart("promoImages")}
             onUploadingChange={trackUpload}
+          />
+        </fieldset>
+
+        <fieldset disabled={busy !== null} className="min-w-0 border-t border-border pt-6">
+          <CollectionsEditor
+            collections={values.collections}
+            savedSlugs={savedSlugs}
+            errors={errors}
+            onChange={setPart("collections")}
           />
         </fieldset>
 

@@ -1,5 +1,6 @@
 import type { NoticeOptions } from "@/lib/notice"
 import { SENSITIVE_NOT_DONE } from "@/admin/sensitive"
+import { collectionFieldLabel } from "@/admin/campaigns/collections/collectionsDraft"
 import { contentFieldLabel } from "@/admin/campaigns/content/contentDraft"
 import { situationOf, type Situation } from "@/admin/campaigns/labels"
 import { THEME_FIELD_LABELS } from "@/admin/campaigns/theme/themeDraft"
@@ -120,7 +121,7 @@ export const readApiProblem = async (res: Response) =>
 
 /** "Rótulo: mensagem"; sem rótulo conhecido, só a mensagem. */
 export const describeField = ({ field = "", message = "" }: { field?: string; message?: string }) => {
-  const label = FIELD_LABELS[field] ?? contentFieldLabel(field)
+  const label = FIELD_LABELS[field] ?? contentFieldLabel(field) ?? collectionFieldLabel(field)
   return label ? `${label}: ${message}` : message
 }
 
