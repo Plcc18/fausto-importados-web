@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import fs from "fs"
 import path from "path"
 import tailwindcss from "@tailwindcss/vite"
@@ -38,5 +39,9 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  test: {
+    // Os testes que montam telas inteiras passam do padrão (5 s) com muitos arquivos em paralelo
+    testTimeout: 20_000,
   },
 })
