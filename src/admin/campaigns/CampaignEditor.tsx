@@ -88,6 +88,7 @@ export function CampaignEditor({
   onStay,
   onDiscard,
   onDirtyChange,
+  onBusyChange,
   onCreated,
   onClose,
 }: {
@@ -98,6 +99,8 @@ export function CampaignEditor({
   onStay: () => void
   onDiscard: () => void
   onDirtyChange: (dirty: boolean) => void
+  /** Salvando ou publicando: quem chama não troca de tela até terminar. */
+  onBusyChange: (busy: boolean) => void
   onCreated: (id: string) => void
   /** Fecha o formulário (com alterações pendentes, quem chama pergunta antes). */
   onClose: () => void
@@ -114,7 +117,12 @@ export function CampaignEditor({
   const loading = loaded !== attempt
   const [loadFailure, setLoadFailure] = useState<ErrorCode | "missing" | null>(null)
 
-  const [busy, setBusy] = useState<"saving" | "publishing" | null>(null)
+  const [busy, setBusyState] = useState<"saving" | "publishing" | null>(null)
+  // Avisa na mesma atualização, e não num efeito: ao publicar, a tela é fechada logo depois de terminar
+  const setBusy = (next: typeof busy) => {
+    setBusyState(next)
+    onBusyChange(next !== null)
+  }
   const [errors, setErrors] = useState<FieldErrors>({})
   const [failure, setFailure] = useState<SaveProblem | null>(null)
   const [confirmingPublish, setConfirmingPublish] = useState(false)
@@ -158,15 +166,16 @@ export function CampaignEditor({
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange])
 
   // Fechar ou recarregar a aba: o navegador pergunta antes
+  const unfinished = dirty || busy !== null
   useEffect(() => {
-    if (!dirty) return
+    if (!unfinished) return
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ""
     }
     window.addEventListener("beforeunload", warn)
     return () => window.removeEventListener("beforeunload", warn)
-  }, [dirty])
+  }, [unfinished])
 
   const set = <K extends FieldName>(field: K, value: FormValues[K]) => {
     setValues((current) => ({ ...current, [field]: value }))
@@ -191,10 +200,19 @@ export function CampaignEditor({
     return Object.keys(found).length === 0
   }
 
+  /** Mostra o problema no formulário; se ele já foi fechado, num aviso, para não se perder. */
+  const report = (found: SaveProblem) => {
+    if (!mounted.current) {
+      toast.error(found.message)
+      return
+    }
+    setErrors(found.fields)
+    setFailure(found)
+  }
+
   const refuse = async (res: Response, prefix = "") => {
     const found = await readSaveProblem(res)
-    setErrors(found.fields)
-    setFailure({ ...found, message: `${prefix}${found.message}` })
+    report({ ...found, message: `${prefix}${found.message}` })
   }
 
   /** Cria o rascunho ou salva a edição. `null` = a API recusou (o motivo já está na tela). */
@@ -227,7 +245,7 @@ export function CampaignEditor({
     try {
       if (await persist()) toast.success(campaign ? "Alterações salvas." : "Rascunho salvo.")
     } catch {
-      setFailure(problem(SAVE_UNCONFIRMED))
+      report(problem(SAVE_UNCONFIRMED))
     } finally {
       setBusy(null)
     }
@@ -250,6 +268,11 @@ export function CampaignEditor({
     try {
       const target = savedNow ? await persist() : campaign
       if (!target) return
+      // Formulário fechado por outro caminho (outra rota, sessão encerrada): ninguém publica sem acompanhar
+      if (!mounted.current) {
+        toast.info("O rascunho foi salvo, mas a campanha não foi publicada.")
+        return
+      }
       publishing = true
       const res = await publishCampaign(target)
       if (!res.ok) {
@@ -257,9 +280,12 @@ export function CampaignEditor({
         return
       }
       toast.success("Campanha publicada.")
-      if (mounted.current) onClose()
+      if (mounted.current) {
+        setBusy(null) // antes de fechar: com o salvamento em andamento, a saída é segurada
+        onClose()
+      }
     } catch {
-      setFailure(problem(publishing
+      report(problem(publishing
         ? "Não conseguimos falar com o servidor. Confira na lista se a campanha foi publicada."
         : SAVE_UNCONFIRMED))
     } finally {
@@ -344,7 +370,7 @@ export function CampaignEditor({
         )}
 
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button type="button" variant="outline" disabled={busy !== null} onClick={onClose}>Cancelar</Button>
           <Button type="submit" variant={isDraft ? "outline" : "default"} disabled={locked}>
             {busy === "saving" ? "Salvando..." : isDraft ? "Salvar rascunho" : "Salvar alterações"}
           </Button>
@@ -360,7 +386,12 @@ export function CampaignEditor({
 
   return (
     <div className="min-h-screen bg-background">
-      <CampaignsHeader title={initialId || campaign ? "Editar campanha" : "Nova campanha"} backLabel="Voltar à lista" onBack={onClose} />
+      <CampaignsHeader
+        title={initialId || campaign ? "Editar campanha" : "Nova campanha"}
+        backLabel="Voltar à lista"
+        onBack={onClose}
+        backDisabled={busy !== null}
+      />
 
       <main className="mx-auto max-w-3xl px-4 py-6">
         <Card>

@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useEffect, useEffectEvent, useState } from "react"
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
 import { CampaignEditor } from "@/admin/campaigns/CampaignEditor"
 import { CampaignListView } from "@/admin/campaigns/CampaignListView"
 import { useListState } from "@/admin/campaigns/useListState"
@@ -18,7 +19,8 @@ const targetFrom = (key: string): Target =>
  * Área de campanhas sazonais do painel. Só abre para administradores (`RequireAdmin`, em `App.tsx`).
  *
  * A lista e o formulário ficam na mesma rota, separados pela query string: o botão voltar do navegador funciona e,
- * como esta tela continua montada, dá para perguntar antes de descartar alterações não salvas.
+ * como esta tela continua montada, dá para perguntar antes de descartar alterações não salvas e segurar a saída
+ * enquanto um salvamento não termina.
  */
 export function Campaigns() {
   const navigate = useNavigate()
@@ -30,9 +32,10 @@ export function Campaigns() {
   /** A tela aberta. `alias` = endereço que o rascunho novo ganhou ao ser criado: é o mesmo formulário. */
   const [open, setOpen] = useState<{ key: string; alias?: string; serial: number }>({ key: requested, serial: 0 })
   const [dirty, setDirty] = useState(false)
+  const [busy, setBusy] = useState(false)
   const elsewhere = requested !== open.key && requested !== open.alias
   // Mudou o endereço sem nada a perder: troca de tela (ajuste durante a renderização)
-  if (elsewhere && !dirty) setOpen({ key: requested, serial: open.serial + 1 })
+  if (elsewhere && !dirty && !busy) setOpen({ key: requested, serial: open.serial + 1 })
 
   const fromList = (location.state as { fromList?: boolean } | null)?.fromList === true
   const show = (query: Record<string, string>) => setParams(query, { state: { fromList: true } })
@@ -46,6 +49,16 @@ export function Campaigns() {
     const current = targetFrom(open.alias ?? open.key)
     return current?.id ? { editar: current.id } : { nova: "" }
   }
+
+  // Voltar no meio de um salvamento: não há o que descartar (o pedido já saiu), então a pessoa volta ao formulário
+  const holdBack = elsewhere && busy
+  const stayWhileBusy = useEffectEvent(() => {
+    show(editorUrl())
+    toast.info("Aguarde o salvamento terminar para sair.")
+  })
+  useEffect(() => {
+    if (holdBack) stayWhileBusy()
+  }, [holdBack])
 
   const target = targetFrom(open.key)
   if (!target) {
@@ -63,10 +76,11 @@ export function Campaigns() {
     <CampaignEditor
       key={open.serial}
       initialId={target.id}
-      leaving={elsewhere && dirty}
+      leaving={elsewhere && dirty && !busy}
       onStay={() => show(editorUrl())}
       onDiscard={() => setDirty(false)}
       onDirtyChange={setDirty}
+      onBusyChange={setBusy}
       onCreated={(id) => {
         setOpen((current) => ({ ...current, alias: `editar:${id}` }))
         setParams({ editar: id }, { replace: true, state: location.state })
