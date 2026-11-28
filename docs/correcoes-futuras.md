@@ -95,7 +95,8 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C
   - *Problema:* falta de conexão, 403 e erro do servidor aparecem iguais, porque o `HttpError` é descartado. Foge da regra do `CLAUDE.md` sobre `httpErrors.ts` e as telas de `src/component/errors`.
   - *Sugestão:* classificar com `errorCodeFromError` e mostrar a tela ou mensagem correspondente. A T27 reescreve essa tela e pode já resolver.
 
-- [ ] **C10. Campanha encerrada pode continuar na tela ao voltar para a aba** · Importante (avaliar se corrige antes da publicação)
+- [x] **C10. Campanha encerrada pode continuar na tela ao voltar para a aba** · Importante
+  - *Corrigido:* 27/11/2026, no PR #37: ao voltar para a aba e quando a busca falha, a validade é conferida, e a saída da campanha que ainda vale é reagendada. Coberto por testes com os timers parados; não reproduzido em um aparelho real.
   - *Onde:* [store.ts](../src/lib/campaign/store.ts), `handleVisibility` e o `catch` de `load`.
   - *Problema:* ao voltar para a aba, a loja só busca de novo, sem conferir se a campanha atual ainda vale; se a busca falhar, mantém a campanha mesmo encerrada. Contraria a garantia do `CLAUDE.md` de que a campanha em cache sai do ar no fim dela, mesmo com a API fora.
   - *Como reproduzir:* celular ou notebook que pausa os timers ao dormir, com a loja aberta; a campanha termina nesse intervalo. Ao acordar, o tema fica na tela enquanto a busca não responde e, se ela falhar, até o timer atrasado disparar.
