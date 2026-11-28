@@ -89,7 +89,8 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35. Salvo onde
   - *Como reproduzir:* primeira visita (sem cache) em `/#colecao`, com campanha só com banner, em navegador que não compensa a rolagem.
   - *Sugestão:* incluir `content.hero` e `content.topBar` na condição.
 
-- [ ] **C09. Tela de campanhas mostra a mesma mensagem para qualquer erro** · Menor
+- [x] **C09. Tela de campanhas mostra a mesma mensagem para qualquer erro** · Menor
+  - *Corrigido:* 27/11/2026, na T27 (branch `feat/campanhas-t27-listagem`), que reescreveu a tela.
   - *Onde:* [Campaigns.tsx](../src/admin/campaigns/Campaigns.tsx), tratamento de erro de `countCampaigns` (entra com o PR #35).
   - *Problema:* falta de conexão, 403 e erro do servidor aparecem iguais, porque o `HttpError` é descartado. Foge da regra do `CLAUDE.md` sobre `httpErrors.ts` e as telas de `src/component/errors`.
   - *Sugestão:* classificar com `errorCodeFromError` e mostrar a tela ou mensagem correspondente. A T27 reescreve essa tela e pode já resolver.

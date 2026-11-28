@@ -216,10 +216,12 @@
   - Status, tipo, período, prioridade, busca e filtros, incluindo expiradas.
   - Ações: criar, editar, duplicar, ativar, desativar, excluir ou arquivar, com confirmação.
   - *Pronto quando:* todas as ações funcionam com estados de carregamento, vazio e erro.
+  - *Resultado parcial (27/11/2026):* decidido na task que "criar" e "editar" chegam com o formulário da T28, que então marca esta. Prontos: listagem paginada (20 por página) com situação, tipo, prioridade, período (horário de Fortaleza) e última alteração; busca pelo nome e filtros por situação, tipo e período; ativar agora, desativar, reativar, duplicar, arquivar e excluir, cada uma só nas situações que a API aceita e sempre com confirmação (ativar, reativar, arquivar e excluir pedem 2FA; duplicar envia `Idempotency-Key`). Estados de carregamento, vazio (com e sem filtro) e erro (telas de `component/errors`, o que resolveu o C09); recusas da API explicadas em um aviso, com a lista atualizada. Conferido no navegador com uma API simulada. Front com 602 testes passando.
 
 - [ ] **T28. Criar o formulário de dados e agendamento** · `WEB`
   - Nome, descrição, tipo, prioridade, início e fim no horário de Fortaleza.
   - Salvar rascunho, publicar, avisar sobre alterações não salvas, conflitos e edição concorrente.
+  - Ligar "Nova campanha" e "Editar" na listagem e marcar a T27 (decidido na T27). Datas e avisos de recusa: reutilizar `dates.ts` e `actions.ts`.
   - *Pronto quando:* as datas aparecem corretamente mesmo com o computador em outro fuso.
 
 - [ ] **T29. Criar o editor de tema** · `WEB`
