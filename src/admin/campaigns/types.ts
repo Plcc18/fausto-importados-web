@@ -33,3 +33,30 @@ export interface CampaignPage {
   content: CampaignSummary[]
   page: { size: number; number: number; totalElements: number; totalPages: number }
 }
+
+/**
+ * Corpo de criar e editar (§5.1). A edição substitui o documento inteiro: o que não for enviado é apagado.
+ * `theme`, `content` e `collections` ganham tipos nas telas que os editam (T29 a T32); até lá o painel os devolve
+ * como recebeu.
+ */
+export interface CampaignInput {
+  name: string | null
+  description: string | null
+  type: CampaignType | null
+  priority: number
+  startsAt: IsoDateTime | null
+  endsAt: IsoDateTime | null
+  theme: unknown
+  content: unknown
+  collections: unknown[]
+  /** Não vai na criação. */
+  version?: number
+}
+
+/** Resposta do painel para uma campanha (`CampaignDetail`, §5.2). */
+export interface CampaignDetail extends CampaignInput {
+  id: string
+  status: CampaignStatus
+  phase: CampaignPhase | null
+  version: number
+}

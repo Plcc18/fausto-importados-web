@@ -23,6 +23,26 @@ export function formatPeriod(startsAt: string | null, endsAt: string | null): st
   return `${startsAt ? formatDateTime(startsAt) : "sem início"} até ${endsAt ? formatDateTime(endsAt) : "sem fim"}`
 }
 
+const inputFormat = new Intl.DateTimeFormat("en-US", {
+  timeZone: TIME_ZONE,
+  year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+})
+
+/** Instante da API → valor de um `<input type="datetime-local">` no horário da loja. Sem data → vazio. */
+export function toInputValue(iso: string | null): string {
+  if (!iso) return ""
+  const instant = new Date(iso)
+  if (Number.isNaN(instant.getTime())) return ""
+  const part = Object.fromEntries(inputFormat.formatToParts(instant).map(({ type, value }) => [type, value]))
+  return `${part.year}-${part.month}-${part.day}T${part.hour}:${part.minute}`
+}
+
+/** Valor do `<input type="datetime-local">` (`AAAA-MM-DDTHH:mm`, horário da loja) → instante para a API. */
+export function fromInputValue(value: string): string {
+  const withSeconds = value.length === 16 ? `${value}:00` : value
+  return new Date(`${withSeconds}${UTC_OFFSET}`).toISOString()
+}
+
 /** Meia-noite, na loja, do dia `AAAA-MM-DD` (o valor de um `<input type="date">`). */
 export function startOfDay(day: string): string {
   return new Date(`${day}T00:00:00${UTC_OFFSET}`).toISOString()
