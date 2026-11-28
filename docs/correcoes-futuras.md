@@ -38,7 +38,7 @@ Modelo:
 
 ## Pendências
 
-Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C10 a C14, do `/code-review` da T27 (27/11/2026, PR #36). Salvo onde está dito "confirmado", ainda não foram reproduzidos: confira antes de corrigir.
+Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C10 a C14, do `/code-review` da T27 (27/11/2026, PR #36); os itens C16 a C21, do `/code-review` da T28 (27/11/2026, PR #38). Salvo onde está dito "confirmado", ainda não foram reproduzidos: confira antes de corrigir.
 
 - [ ] **C01. Produto reativado pode continuar fora da coleção da campanha** · Importante
   - *Onde:* [store.ts](../src/lib/campaign/store.ts), `isSameCampaign` e `apply`.
@@ -139,3 +139,47 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C
   - *Como reproduzir:* editar um campo e encerrar a sessão em outra aba.
   - *Confirmado no código (27/11/2026):* o bloqueio depende de a tela de campanhas continuar montada.
   - *Sugestão:* guardar o preenchimento no `sessionStorage` e oferecer a recuperação, ou migrar para o roteador de dados do React Router, que bloqueia qualquer navegação.
+
+- [x] **C16. Campanha pode ser salva ou publicada depois de "Cancelar" ou "Descartar"** · Importante
+  - *Corrigido:* 28/11/2026, no PR #39: enquanto salva ou publica, "Cancelar" e a seta ficam bloqueados e o voltar do navegador é segurado, sem oferecer descarte; se o formulário for fechado por outro caminho, não publica, e o resultado vira aviso. Coberto por testes e conferido no Chrome com API simulada.
+  - *Onde:* [CampaignEditor.tsx](../src/admin/campaigns/CampaignEditor.tsx), `persist`, `publish` e o botão "Cancelar".
+  - *Problema:* "Cancelar" e a seta continuam ativos durante o salvamento. Depois de descartar, `publish` ainda chama a publicação, sem pedir 2FA se houver uma confirmação recente, e uma recusa se perde. Se a resposta chega com o diálogo de descarte aberto, uma campanha nova pode levar a pessoa de volta ao formulário.
+  - *Como reproduzir:* clicar em "Publicar", confirmar e clicar em "Cancelar" e "Descartar" enquanto salva: a campanha vai ao ar.
+  - *Confirmado no código (27/11/2026):* não há conferência antes de publicar. O teste existente cobre só o salvamento.
+  - *Sugestão:* impedir a saída enquanto salva ou publica, ou não publicar com o formulário fechado e avisar o resultado, atualizando a lista.
+
+- [x] **C17. Prioridade inválida é salva como 0** · Importante
+  - *Corrigido:* 28/11/2026, no PR #39: prioridade vazia, que é o que o navegador entrega para "50e", é recusada. Reproduzido e conferido no Chrome.
+  - *Onde:* [CampaignEditor.tsx](../src/admin/campaigns/CampaignEditor.tsx), `check`; [form.ts](../src/admin/campaigns/form.ts), `checkValues` e `buildInput`.
+  - *Problema:* a caixa numérica devolve vazio para textos como "50e", a conferência de `validity.badInput` cobre só as datas, e vazio vira 0. A campanha pode perder a vez para outra na loja, inclusive numa edição publicada com 2FA.
+  - *Como reproduzir:* numa campanha com prioridade 50, digitar "e" depois do número e salvar.
+  - *Confirmado no código (27/11/2026).* Não reproduzido no navegador.
+  - *Sugestão:* conferir `validity.badInput` também no campo de prioridade.
+
+- [ ] **C18. Celulares e telas densas podem baixar a imagem da campanha no tamanho original** · Menor
+  - *Onde:* [image.ts](../src/lib/campaign/image.ts), `cloudinarySrcSet`.
+  - *Problema:* a largura real entra sempre no `srcset`, mesmo muito acima da maior largura pedida.
+  - *Como reproduzir:* imagem de celular com 4000 px e larguras até 1080, num celular com densidade 3: o navegador escolhe a de 4000.
+  - *Confirmado no código (27/11/2026).*
+  - *Sugestão:* acrescentar a largura real só quando for menor que a maior largura da lista.
+
+- [ ] **C19. Desistir do 2FA ao publicar diz "salvo" e "nada foi alterado"** · Menor
+  - *Onde:* [CampaignEditor.tsx](../src/admin/campaigns/CampaignEditor.tsx), `publish`, com `SENSITIVE_NOT_DONE`.
+  - *Problema:* o aviso junta "O rascunho foi salvo..." com "Nada foi alterado."
+  - *Como reproduzir:* editar um rascunho, clicar em "Publicar" e cancelar o pedido do código.
+  - *Confirmado no código (27/11/2026).*
+  - *Sugestão:* quando houve salvamento, usar a mensagem sem a última frase.
+
+- [ ] **C20. Endereço de campanha malformado mostra erro de conexão** · Menor
+  - *Onde:* [CampaignEditor.tsx](../src/admin/campaigns/CampaignEditor.tsx), carregamento do detalhe.
+  - *Problema:* só o 404 vira "Essa campanha não existe mais". Um `?editar=` que não é UUID deve receber 400 da API, mostrado como falha de conexão, e "Tentar novamente" repete o erro.
+  - *Como reproduzir:* abrir `/admin/campanhas?editar=abc`.
+  - *Confirmado no código (27/11/2026):* a API não trata o erro de tipo do identificador. O status 400 não foi conferido com a API rodando.
+  - *Sugestão:* tratar o 400 dessa leitura como o 404, depois de conferir o status.
+
+- [ ] **C21. Ações sensíveis de campanha não enviam `Idempotency-Key`** · Menor
+  - *Onde:* [api.ts](../src/admin/campaigns/api.ts), `publishCampaign` e `runCampaignAction`.
+  - *Problema:* o `CLAUDE.md` pede a chave nos POSTs sensíveis, mas o contrato e a API só a exigem ao criar e duplicar. Hoje nada é recusado.
+  - *Confirmado no código (27/11/2026):* a API não lê a chave em publicar, ativar, reativar e arquivar.
+  - *Sugestão:* enviar a chave, ou ajustar a regra do `CLAUDE.md` ao contrato.
+
