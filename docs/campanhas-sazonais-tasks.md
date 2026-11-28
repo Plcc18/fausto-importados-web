@@ -225,11 +225,12 @@
   - *Pronto quando:* as datas aparecem corretamente mesmo com o computador em outro fuso.
   - *Resultado (27/11/2026):* `CampaignEditor.tsx` na mesma rota (`/admin/campanhas?nova` e `?editar=<id>`), aberto por "Nova campanha" e "Editar" (rascunho, agendada, no ar e desativada). Datas sempre no horário de Fortaleza, conferidas em testes com quatro fusos e no Chrome em `Asia/Tokyo`; data não mexida volta exatamente como veio, e data pela metade é recusada. Criar envia `Idempotency-Key`; salvar envia a `version` e devolve tema, conteúdo e coleções como recebidos (resposta sem eles não abre o formulário). Publicar salva antes e pede 2FA, como editar uma publicada. Erros da API aparecem junto dos campos; conflito de período com a mensagem da API; em edição concorrente o salvamento fica bloqueado até carregar a versão atual. Alterações não salvas: aviso ao cancelar, no voltar do navegador e ao fechar a aba (limitações no C15). Os filtros da lista continuam ao voltar. Publicar uma campanha nova só passa depois da T29, porque a API exige o tema. Front com 640 testes passando.
 
-- [ ] **T29. Criar o editor de tema** · `WEB`
+- [x] **T29. Criar o editor de tema** · `WEB`
   - Seletor para todas as cores, restaurar padrão e miniprévia ao vivo.
   - Modelos iniciais editáveis (Black Friday, Natal, Páscoa, Namorados etc.).
   - Alertar sobre contraste insuficiente.
   - *Pronto quando:* é possível montar um tema completo sem tocar em código.
+  - *Resultado (28/11/2026):* seção "Tema" no formulário da campanha (`src/admin/campaigns/theme/`), salva junto com os dados. Um modelo por tipo (o de "Personalizada" são as cores da loja), sugerido pelo tipo escolhido, com modo escuro e claro; trocar um tema já montado pede confirmação. Todas as cores do contrato, pelo seletor ou pelo código, com "restaurar padrão" por cor e por modo; dourado e modo claro opcionais. Miniprévia ao vivo com as variáveis da loja (um teste compara as cores padrão com o `index.css`). Alerta de contraste: 4,5:1 nos textos, inclusive os que a campanha não troca sobre a cor secundária, e 2:1 no destaque e no dourado (o dourado da própria loja fica em 2,4:1 no modo claro); os alertas não impedem salvar. Todos os modelos passam sem alerta. Tema não mexido volta como veio. Com o tema, uma campanha nova já pode ser publicada pelo painel. Conferido no Chrome com API simulada. Front com 702 testes passando.
 
 - [ ] **T30. Criar o upload de imagens e banners** · `WEB`
   - Transformar o `SmartImageUploader` em componente reutilizável (hoje usa um ID fixo).

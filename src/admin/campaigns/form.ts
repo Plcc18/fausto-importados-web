@@ -1,11 +1,12 @@
-/** O que o formulário de dados e agendamento mostra, e a ida e volta disso para a API. */
+/** O que o formulário da campanha mostra, e a ida e volta disso para a API. */
 import type { CampaignType } from "@/lib/campaign/types"
 import { SENSITIVE_NOT_DONE } from "@/admin/sensitive"
 import { describeField, readApiProblem } from "@/admin/campaigns/actions"
 import { fromInputValue, toInputValue } from "@/admin/campaigns/dates"
+import { checkTheme, themeDraftFrom, themeInput, type ThemeDraft } from "@/admin/campaigns/theme/themeDraft"
 import type { CampaignDetail, CampaignInput } from "@/admin/campaigns/types"
 
-/** Os campos como estão nas caixas de texto. Vazio = sem valor. Datas no horário da loja. */
+/** Os campos como estão na tela. Vazio = sem valor. Datas no horário da loja. */
 export interface FormValues {
   name: string
   description: string
@@ -13,12 +14,17 @@ export interface FormValues {
   priority: string
   startsAt: string
   endsAt: string
+  theme: ThemeDraft | null
 }
 
-export type FieldName = keyof FormValues
-export type FieldErrors = Partial<Record<FieldName, string>>
+/** Os campos de dados (o tema tem editor próprio). */
+export type FieldName = Exclude<keyof FormValues, "theme">
+/** Mensagens pelo caminho que a API usa: `name`, `theme.dark.primary`... */
+export type FieldErrors = Partial<Record<string, string>>
 
-export const EMPTY_VALUES: FormValues = { name: "", description: "", type: "", priority: "0", startsAt: "", endsAt: "" }
+export const EMPTY_VALUES: FormValues = {
+  name: "", description: "", type: "", priority: "0", startsAt: "", endsAt: "", theme: null,
+}
 
 export const valuesFrom = (campaign: CampaignDetail): FormValues => ({
   name: campaign.name ?? "",
@@ -27,16 +33,22 @@ export const valuesFrom = (campaign: CampaignDetail): FormValues => ({
   priority: String(campaign.priority),
   startsAt: toInputValue(campaign.startsAt),
   endsAt: toInputValue(campaign.endsAt),
+  theme: themeDraftFrom(campaign.theme),
 })
 
+// o tema é um objeto, sempre montado com os campos na mesma ordem
+const sameTheme = (a: ThemeDraft | null, b: ThemeDraft | null) => JSON.stringify(a) === JSON.stringify(b)
+
 export const sameValues = (a: FormValues, b: FormValues) =>
-  (Object.keys(a) as FieldName[]).every((field) => a[field] === b[field])
+  (Object.keys(a) as (keyof FormValues)[]).every((field) =>
+    field === "theme" ? sameTheme(a.theme, b.theme) : a[field] === b[field],
+  )
 
 const DATE_TIME = /^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/
 
 /** Só o que impediria montar o corpo corretamente. As regras de cada campo são da API, que responde campo a campo. */
-export function checkValues({ priority, startsAt, endsAt }: FormValues): FieldErrors {
-  const errors: FieldErrors = {}
+export function checkValues({ priority, startsAt, endsAt, theme }: FormValues): FieldErrors {
+  const errors: FieldErrors = checkTheme(theme)
   const number = Number(priority)
   // Vazio também é recusado: a caixa numérica devolve vazio para textos como "50e", e salvar 0 mudaria a
   // prioridade sem avisar
@@ -50,8 +62,8 @@ export function checkValues({ priority, startsAt, endsAt }: FormValues): FieldEr
 }
 
 /**
- * Corpo de criar ou editar. Tema, conteúdo e coleções voltam como vieram, porque a edição substitui o documento
- * inteiro. Uma data que a pessoa não mexeu volta exatamente como veio (a caixa de texto não guarda os segundos).
+ * Corpo de criar ou editar. Conteúdo e coleções voltam como vieram, porque a edição substitui o documento inteiro.
+ * O mesmo vale para o tema e as datas que a pessoa não mexeu (a caixa de data não guarda os segundos).
  */
 export function buildInput(values: FormValues, campaign: CampaignDetail | null): CampaignInput {
   const instant = (value: string, original: string | null | undefined) => {
@@ -65,7 +77,8 @@ export function buildInput(values: FormValues, campaign: CampaignDetail | null):
     priority: Number(values.priority),
     startsAt: instant(values.startsAt, campaign?.startsAt),
     endsAt: instant(values.endsAt, campaign?.endsAt),
-    theme: campaign?.theme ?? null,
+    theme:
+      campaign && sameTheme(values.theme, themeDraftFrom(campaign.theme)) ? (campaign.theme ?? null) : themeInput(values.theme),
     content: campaign?.content ?? null,
     collections: campaign?.collections ?? [],
     ...(campaign && { version: campaign.version }),
@@ -76,7 +89,7 @@ export interface SaveProblem {
   message: string
   /** Erros mostrados junto do campo. */
   fields: FieldErrors
-  /** Erros de partes que este formulário não edita (tema, imagens...). */
+  /** Repetidos no aviso: erros do tema (podem estar no modo escondido) e de partes sem editor (imagens...). */
   others: string[]
   /** A campanha mudou no servidor: só resta carregar a versão atual. Nunca sobrescrever. */
   stale: boolean
@@ -110,8 +123,9 @@ export async function readSaveProblem(res: Response): Promise<SaveProblem> {
       const others = new Set<string>()
       for (const item of body.fields ?? []) {
         const field = item.field ?? ""
-        if (Object.hasOwn(EMPTY_VALUES, field)) fields[field as FieldName] ??= item.message
-        else others.add(describeField(item))
+        const inTheme = field === "theme" || field.startsWith("theme.")
+        if (inTheme || Object.hasOwn(EMPTY_VALUES, field)) fields[field] ??= item.message
+        if (inTheme || !Object.hasOwn(EMPTY_VALUES, field)) others.add(describeField(item))
       }
       const message = body.code === "publish_requirements" ? "Faltam dados para publicar." : "Há campos inválidos."
       return problem(message, { fields, others: [...others] })

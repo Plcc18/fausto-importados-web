@@ -18,7 +18,7 @@ import { ErrorView } from "@/component/errors/ErrorView"
 import { CAMPAIGN_TYPES, type CampaignType } from "@/lib/campaign/types"
 import { HttpError, type ErrorCode } from "@/lib/httpErrors"
 import { useIdempotencyKeys } from "@/lib/idempotency"
-import { isEditable } from "@/admin/campaigns/actions"
+import { describeField, isEditable } from "@/admin/campaigns/actions"
 import {
   createCampaign,
   errorScreenCode,
@@ -42,6 +42,8 @@ import {
   type SaveProblem,
 } from "@/admin/campaigns/form"
 import { SITUATION_LABELS, TYPE_LABELS, situationOf } from "@/admin/campaigns/labels"
+import { ThemeEditor } from "@/admin/campaigns/theme/ThemeEditor"
+import { themeValueAt, type ThemeDraft } from "@/admin/campaigns/theme/themeDraft"
 import type { CampaignDetail } from "@/admin/campaigns/types"
 
 const selectClass =
@@ -79,8 +81,8 @@ function Field({
 }
 
 /**
- * Formulário de dados e agendamento de uma campanha: criar, editar, salvar rascunho e publicar. Tema, conteúdo e
- * produtos são preservados e ganham editores próprios (T29 a T32).
+ * Formulário de uma campanha (dados, agendamento e tema): criar, editar, salvar rascunho e publicar. Conteúdo e
+ * produtos são preservados e ganham editores próprios (T30 a T32).
  */
 export function CampaignEditor({
   initialId,
@@ -182,6 +184,18 @@ export function CampaignEditor({
     setErrors((current) => ({ ...current, [field]: undefined }))
   }
 
+  const setTheme = (theme: ThemeDraft | null) => {
+    // some o erro só das cores que mudaram; os outros continuam apontando o que falta
+    setErrors((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([path]) => !path.startsWith("theme") || themeValueAt(theme, path) === themeValueAt(values.theme, path),
+        ),
+      ),
+    )
+    setValues((current) => ({ ...current, theme }))
+  }
+
   const reload = () => {
     setFailure(null)
     setErrors({})
@@ -196,7 +210,11 @@ export function CampaignEditor({
       if (ref.current?.validity.badInput) found[field] = "Complete a data e o horário."
     }
     setErrors(found)
-    setFailure(null)
+    // um erro de cor pode estar no modo que não está na tela: vai também para o aviso junto dos botões
+    const inTheme = Object.entries(found)
+      .filter(([field]) => field.startsWith("theme."))
+      .map(([field, message]) => describeField({ field, message }))
+    setFailure(inTheme.length > 0 ? problem("Há cores inválidas no tema.", { others: inTheme }) : null)
     return Object.keys(found).length === 0
   }
 
@@ -353,6 +371,10 @@ export function CampaignEditor({
           <DateTimeField name="endsAt" label="Fim" hint="Horário de Fortaleza. Neste instante ela já saiu do ar." error={errors.endsAt} ref={endRef} value={values.endsAt} onChange={(value) => set("endsAt", value)} />
         </fieldset>
 
+        <fieldset disabled={busy !== null} className="min-w-0 border-t border-border pt-6">
+          <ThemeEditor theme={values.theme} campaignType={values.type} errors={errors} onChange={setTheme} />
+        </fieldset>
+
         {failure && (
           <div role="alert" className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             <p>{failure.message}</p>
@@ -393,7 +415,7 @@ export function CampaignEditor({
         backDisabled={busy !== null}
       />
 
-      <main className="mx-auto max-w-3xl px-4 py-6">
+      <main className="mx-auto max-w-5xl px-4 py-6">
         <Card>
           <CardContent>{content()}</CardContent>
         </Card>
