@@ -8,6 +8,7 @@ import type { CampaignDetail } from "./types"
 import { templateTheme } from "./theme/templates"
 import { themeInput } from "./theme/themeDraft"
 import { ReauthPromptHost } from "@/admin/ReauthPromptHost"
+import { parseActiveCampaignResponse } from "@/lib/campaign/parse"
 import { NoticeHost } from "@/component/NoticeHost"
 import { authClient } from "@/lib/auth"
 import { ROUTES } from "@/routes"
@@ -852,6 +853,288 @@ describe("banner no formulário", () => {
     await arrived("computador", "larga.webp")
     expect(field("Título do banner").value).toBe("Digitado durante o envio")
     expect(field("Nome").value).toBe("Nome novo")
+  })
+})
+
+describe("conteúdo no formulário", () => {
+  const upload = (group: string, file: string) =>
+    fireEvent.change(within(screen.getByRole("group", { name: group })).getByTestId("image-input"), {
+      target: { files: [new File(["x"], file, { type: "image/webp" })] },
+    })
+  const uploaded = (group: string, file: string) =>
+    waitFor(() =>
+      expect(within(screen.getByRole("group", { name: group })).getByRole("img").getAttribute("src")).toBe(imageUrl(file)),
+    )
+  const decoration = (name: string) => screen.getByRole("checkbox", { name }) as HTMLInputElement
+  const saveAndRead = async () => {
+    click("Salvar rascunho")
+    await waitFor(() => expect(writes()).toHaveLength(1))
+    return writes()[0].body.content
+  }
+  const emptyContent = { topBar: null, hero: null, promoImages: [], decorations: [] }
+
+  it("monta todo o conteúdo que a loja mostra, e a loja o aceita", async () => {
+    renderAt()
+    click("Nova campanha")
+    type("Nome", "Black Friday")
+    type("Tipo", "BLACK_FRIDAY")
+    type("Início", "2026-11-27T00:00")
+    type("Fim", "2026-12-01T00:00")
+    click("Aplicar modelo")
+
+    click("Adicionar faixa")
+    type("Texto da faixa", "Até 40% em perfumes selecionados")
+    type("Link da faixa", "/?colecao=ofertas")
+
+    click("Adicionar banner")
+    type("Título do banner", "Black Friday Fausto")
+    type("Subtítulo do banner", "Condições especiais")
+    upload("Imagem do computador", "larga.webp")
+    await uploaded("Imagem do computador", "larga.webp")
+    type("Texto alternativo (computador)", "Frascos")
+    click("Adicionar botão")
+    type("Texto do botão 1", "Ver ofertas")
+    type("Link do botão 1", "/#colecao")
+    click("Adicionar botão")
+    type("Texto do botão 2", "Termos")
+    type("Link do botão 2", "/termos")
+
+    click("Adicionar imagem")
+    upload("Imagem de divulgação 1", "frete.webp")
+    await uploaded("Imagem de divulgação 1", "frete.webp")
+    type("Texto alternativo da imagem 1", "Frete grátis")
+    type("Link da imagem 1", "https://exemplo.com/frete")
+
+    fireEvent.click(decoration("Neve"))
+    fireEvent.click(decoration("Brilhos"))
+    await confirmPublish()
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Campanha publicada."))
+    const sent = writes()[0].body
+    expect(sent.content).toEqual({
+      topBar: { text: "Até 40% em perfumes selecionados", link: "/?colecao=ofertas" },
+      hero: {
+        title: "Black Friday Fausto",
+        subtitle: "Condições especiais",
+        imageDesktop: { url: imageUrl("larga.webp"), alt: "Frascos", width: 1920, height: 640 },
+        imageMobile: null,
+        buttons: [
+          { label: "Ver ofertas", link: "/#colecao", style: "PRIMARY" },
+          { label: "Termos", link: "/termos", style: "SECONDARY" },
+        ],
+      },
+      promoImages: [{
+        image: { url: imageUrl("frete.webp"), alt: "Frete grátis", width: 1920, height: 640 },
+        link: "https://exemplo.com/frete",
+      }],
+      decorations: ["SNOW", "SPARKLES"],
+    })
+    // o que o painel envia passa pela conferência que a loja faz, sem perder nada
+    const store = parseActiveCampaignResponse({
+      serverTime: "2026-11-27T14:00:00Z",
+      nextChangeAt: null,
+      campaign: { ...sent, id: "novo", updatedAt: "2026-11-26T18:00:00Z", collections: [] },
+    })
+    expect(store?.campaign?.content).toEqual(sent.content)
+  })
+
+  describe("faixa superior", () => {
+    it("mostra a prévia no tamanho de celular, com as cores da campanha", async () => {
+      await openForm()
+      type("Texto da faixa", "Frete grátis")
+
+      const preview = screen.getByTestId("top-bar-preview")
+      expect(preview.textContent).toBe("Frete grátis")
+      expect(preview.style.getPropertyValue("--primary")).toBe(theme.dark.primary)
+      expect(preview.querySelector(".line-clamp-2")).toBeTruthy()
+      expect(preview.querySelector(".underline")).toBeNull()
+      type("Link da faixa", "/termos")
+      expect(preview.querySelector(".underline")).toBeTruthy()
+    })
+
+    it("avisa quando o texto passa do que cabe em 2 linhas no celular, sem impedir salvar", async () => {
+      await openForm()
+      type("Texto da faixa", "a".repeat(90))
+      expect(screen.queryByText(/no máximo 2 linhas/)).toBeNull()
+      expect(screen.getByText("90 de 120 caracteres.")).toBeTruthy()
+
+      type("Texto da faixa", `${"a".repeat(90)}🎁`) // um emoji conta um
+
+      expect(screen.getByText(/no máximo 2 linhas/)).toBeTruthy()
+      expect(screen.getByText("91 de 120 caracteres.")).toBeTruthy()
+      expect((await saveAndRead()).topBar.text).toContain("🎁")
+    })
+
+    it("sugere a vitrine e as coleções nas caixas de link", async () => {
+      await openForm()
+
+      const list = document.getElementById(field("Link da faixa").getAttribute("list")!)!
+
+      expect([...list.querySelectorAll("option")].map((o) => o.value)).toEqual(["/#colecao", "/?colecao=ofertas"])
+    })
+
+    it("remover volta à faixa de sempre", async () => {
+      await openForm()
+      click("Remover faixa")
+      expect(screen.getByText("Sem faixa, a loja mostra a de sempre, só no computador.")).toBeTruthy()
+
+      expect((await saveAndRead()).topBar).toBeNull()
+    })
+  })
+
+  it("o banner leva até dois botões, com estilo e remoção", async () => {
+    await openForm()
+    click("Adicionar banner")
+    type("Título do banner", "Natal")
+    click("Adicionar botão")
+    click("Adicionar botão")
+    expect(screen.queryByRole("button", { name: "Adicionar botão" })).toBeNull()
+    type("Texto do botão 1", "Primeiro")
+    type("Link do botão 1", "/a")
+    type("Texto do botão 2", "Segundo")
+    type("Link do botão 2", "/b")
+    type("Estilo do botão 2", "PRIMARY")
+
+    click("Remover botão 1")
+
+    expect(field("Texto do botão 1").value).toBe("Segundo")
+    expect((await saveAndRead()).hero.buttons).toEqual([{ label: "Segundo", link: "/b", style: "PRIMARY" }])
+  })
+
+  describe("imagens de divulgação", () => {
+    const promo = (name: string) => ({
+      image: { url: imageUrl(`${name}.webp`), alt: name, width: 1080, height: 1080 }, link: null,
+    })
+    const withPromos = (...names: string[]) => {
+      server = detail({ content: { ...emptyContent, promoImages: names.map(promo) } })
+    }
+    const previewed = () => within(screen.getByTestId("promo-preview")).getAllByRole("img").map((img) => img.getAttribute("alt"))
+
+    it("orienta a usar artes com a oferta e mostra como ficam abaixo do banner", async () => {
+      withPromos("frete", "kits")
+      await openForm()
+
+      expect(screen.getByText(/Use artes com a oferta escrita na própria imagem/)).toBeTruthy()
+      expect(screen.getByTestId("promo-preview").textContent).toContain("Banner")
+      expect(previewed()).toEqual(["frete", "kits"])
+      expect(within(screen.getByTestId("promo-preview")).queryByRole("link")).toBeNull()
+    })
+
+    it("muda a ordem e tira da lista, mantendo cada imagem com o seu texto", async () => {
+      withPromos("um", "dois", "tres")
+      await openForm()
+      expect(button("Subir imagem 1").disabled).toBe(true)
+      expect(button("Descer imagem 3").disabled).toBe(true)
+
+      click("Subir imagem 3")
+      click("Tirar imagem 1 da lista")
+
+      expect(field("Texto alternativo da imagem 1").value).toBe("tres")
+      expect(previewed()).toEqual(["tres", "dois"])
+      expect((await saveAndRead()).promoImages).toEqual([promo("tres"), promo("dois")])
+    })
+
+    it("leva até seis", async () => {
+      withPromos("a", "b", "c", "d", "e")
+      await openForm()
+
+      click("Adicionar imagem")
+
+      expect(screen.queryByRole("button", { name: "Adicionar imagem" })).toBeNull()
+    })
+
+    it("um envio chega à imagem certa mesmo que a ordem mude enquanto sobe", async () => {
+      let finish!: (res: Response) => void
+      uploadAnswers = [() => new Promise<Response>((resolve) => { finish = resolve })]
+      withPromos("um", "dois")
+      await openForm()
+      upload("Imagem de divulgação 2", "nova.webp")
+      await waitFor(() => expect(button("Salvar rascunho").disabled).toBe(true))
+
+      click("Subir imagem 2")
+      finish(json({ url: imageUrl("nova.webp"), width: 1080, height: 1080 }))
+
+      await uploaded("Imagem de divulgação 1", "nova.webp")
+      const sent = (await saveAndRead()).promoImages
+      expect(sent.map((p: { image: { alt: string; url: string } }) => [p.image.alt, p.image.url])).toEqual([
+        ["dois", imageUrl("nova.webp")],
+        ["um", imageUrl("um.webp")],
+      ])
+    })
+
+    it("um item sem imagem não é enviado, e tirá-lo limpa o erro", async () => {
+      await openForm()
+      click("Adicionar imagem")
+
+      click("Salvar rascunho")
+
+      expect(screen.getAllByRole("alert").map((a) => a.textContent)).toContain("Envie a imagem.")
+      expect(writes()).toHaveLength(0)
+      click("Tirar imagem 1 da lista")
+      expect(screen.queryByText("Envie a imagem.")).toBeNull()
+    })
+  })
+
+  it("escolhe até três enfeites", async () => {
+    await openForm() // vem com neve
+    expect(decoration("Neve").checked).toBe(true)
+    fireEvent.click(decoration("Corações"))
+    fireEvent.click(decoration("Estrelas"))
+    expect(decoration("Fitas").disabled).toBe(true)
+    expect(decoration("Neve").disabled).toBe(false)
+    expect(screen.getByText("3 de 3 escolhidos.")).toBeTruthy()
+
+    fireEvent.click(decoration("Neve"))
+
+    expect(decoration("Fitas").disabled).toBe(false)
+    expect((await saveAndRead()).decorations).toEqual(["HEARTS", "STARS"])
+  })
+
+  it("valida junto do campo antes de enviar", async () => {
+    await openForm()
+    type("Texto da faixa", "")
+    type("Link da faixa", "www.exemplo.com")
+    click("Adicionar banner")
+    type("Título do banner", "Natal")
+    click("Adicionar botão")
+
+    click("Salvar rascunho")
+
+    for (const label of ["Texto da faixa", "Link da faixa", "Texto do botão 1", "Link do botão 1"]) {
+      expect(field(label).getAttribute("aria-invalid")).toBe("true")
+    }
+    expect(screen.getByText("Escreva o texto da faixa.")).toBeTruthy()
+    expect(screen.getByRole("alert").textContent).toContain("Botão 1 · Link: Informe o link.")
+    expect(writes()).toHaveLength(0)
+    type("Link da faixa", "/termos")
+    expect(field("Link da faixa").getAttribute("aria-invalid")).toBe("false")
+    expect(field("Texto do botão 1").getAttribute("aria-invalid")).toBe("true")
+  })
+
+  it("mostra cada erro da API no item certo da lista", async () => {
+    server = detail({
+      content: {
+        ...emptyContent,
+        hero: { title: "T", subtitle: null, imageDesktop: null, imageMobile: null, buttons: [{ label: "A", link: "/a", style: "PRIMARY" }] },
+      },
+    })
+    writeAnswers = [() => json({
+      code: "validation_failed",
+      fields: [
+        { field: "content.hero.subtitle", message: "Use no máximo 160 caracteres." },
+        { field: "content.hero.buttons[0].label", message: "Use no máximo 30 caracteres." },
+      ],
+    }, 400)]
+    await openForm()
+    type("Nome", "Outro")
+
+    click("Salvar rascunho")
+
+    const alert = await screen.findByRole("alert")
+    expect(alert.textContent).toContain("Botão 1 · Texto: Use no máximo 30 caracteres.")
+    await settled()
+    expect(field("Texto do botão 1").getAttribute("aria-invalid")).toBe("true")
+    expect(field("Subtítulo do banner").getAttribute("aria-invalid")).toBe("true")
   })
 })
 

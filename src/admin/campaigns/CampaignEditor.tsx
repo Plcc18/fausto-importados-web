@@ -27,9 +27,13 @@ import {
   readCampaignDetail,
   updateCampaign,
 } from "@/admin/campaigns/api"
-import { BannerEditor } from "@/admin/campaigns/banner/BannerEditor"
-import type { BannerDraft } from "@/admin/campaigns/banner/bannerDraft"
 import { CampaignsHeader } from "@/admin/campaigns/CampaignsHeader"
+import { BannerEditor } from "@/admin/campaigns/content/BannerEditor"
+import type { ContentValues } from "@/admin/campaigns/content/contentDraft"
+import { DecorationsEditor } from "@/admin/campaigns/content/DecorationsEditor"
+import { linkSuggestions } from "@/admin/campaigns/content/fields"
+import { PromoImagesEditor } from "@/admin/campaigns/content/PromoImagesEditor"
+import { TopBarEditor } from "@/admin/campaigns/content/TopBarEditor"
 import {
   EMPTY_VALUES,
   buildInput,
@@ -83,8 +87,8 @@ function Field({
 }
 
 /**
- * Formulário de uma campanha (dados, agendamento, tema e banner): criar, editar, salvar rascunho e publicar. O resto
- * do conteúdo e os produtos são preservados e ganham editores próprios (T31 e T32).
+ * Formulário de uma campanha (dados, agendamento, tema e conteúdo): criar, editar, salvar rascunho e publicar. As
+ * coleções de produtos são preservadas e ganham editor próprio (T32).
  */
 export function CampaignEditor({
   initialId,
@@ -204,16 +208,18 @@ export function CampaignEditor({
     setValues((current) => ({ ...current, theme }))
   }
 
-  const setBanner = (update: (current: BannerDraft | null) => BannerDraft | null, changed: string[]) => {
-    setErrors((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(
-          ([path]) => !changed.some((prefix) => path === prefix || path.startsWith(`${prefix}.`)),
-        ),
-      ),
-    )
-    setValues((current) => ({ ...current, banner: update(current.banner) }))
-  }
+  /**
+   * Quem altera uma parte do conteúdo. A mudança é uma função (o envio de uma imagem termina depois de outras), e
+   * `changed` diz os caminhos cujos erros deixam de valer.
+   */
+  const setPart =
+    <K extends keyof ContentValues>(part: K) =>
+    (update: (current: ContentValues[K]) => ContentValues[K], changed: string[]) => {
+      const stale = (path: string) =>
+        changed.some((prefix) => path === prefix || path.startsWith(`${prefix}.`) || path.startsWith(`${prefix}[`))
+      setErrors((current) => Object.fromEntries(Object.entries(current).filter(([path]) => !stale(path))))
+      setValues((current) => ({ ...current, [part]: update(current[part]) }))
+    }
 
   const reload = () => {
     setFailure(null)
@@ -229,12 +235,10 @@ export function CampaignEditor({
       if (ref.current?.validity.badInput) found[field] = "Complete a data e o horário."
     }
     setErrors(found)
-    // um erro de cor pode estar no modo que não está na tela: vai também para o aviso junto dos botões
-    const inTheme = Object.entries(found)
-      .filter(([field]) => field.startsWith("theme."))
-      .map(([field, message]) => describeField({ field, message }))
-    setFailure(inTheme.length > 0 ? problem("Há cores inválidas no tema.", { others: inTheme }) : null)
-    return Object.keys(found).length === 0
+    // o formulário é longo (e o tema tem um modo escondido): os erros vão também para o aviso junto dos botões
+    const listed = Object.entries(found).map(([field, message]) => describeField({ field, message }))
+    setFailure(listed.length > 0 ? problem("Corrija os campos indicados.", { others: listed }) : null)
+    return listed.length === 0
   }
 
   /** Mostra o problema no formulário; se ele já foi fechado, num aviso, para não se perder. */
@@ -331,6 +335,7 @@ export function CampaignEditor({
   }
 
   const isDraft = !campaign || campaign.status === "DRAFT"
+  const suggestions = linkSuggestions(campaign?.collections)
   const locked = busy !== null || uploading || failure?.stale === true
 
   const content = () => {
@@ -395,7 +400,39 @@ export function CampaignEditor({
         </fieldset>
 
         <fieldset disabled={busy !== null} className="min-w-0 border-t border-border pt-6">
-          <BannerEditor banner={values.banner} errors={errors} onChange={setBanner} onUploadingChange={trackUpload} />
+          <TopBarEditor
+            topBar={values.topBar}
+            palette={values.theme?.dark ?? null}
+            errors={errors}
+            suggestions={suggestions}
+            onChange={setPart("topBar")}
+          />
+        </fieldset>
+
+        <fieldset disabled={busy !== null} className="min-w-0 border-t border-border pt-6">
+          <BannerEditor
+            banner={values.banner}
+            errors={errors}
+            suggestions={suggestions}
+            onChange={setPart("banner")}
+            onUploadingChange={trackUpload}
+          />
+        </fieldset>
+
+        <fieldset disabled={busy !== null} className="min-w-0 border-t border-border pt-6">
+          <PromoImagesEditor
+            promoImages={values.promoImages}
+            banner={values.banner?.desktop ?? null}
+            palette={values.theme?.dark ?? null}
+            errors={errors}
+            suggestions={suggestions}
+            onChange={setPart("promoImages")}
+            onUploadingChange={trackUpload}
+          />
+        </fieldset>
+
+        <fieldset disabled={busy !== null} className="min-w-0 border-t border-border pt-6">
+          <DecorationsEditor decorations={values.decorations} errors={errors} onChange={setPart("decorations")} />
         </fieldset>
 
         {uploading && <p className="text-right text-xs text-muted-foreground">Aguarde o envio da imagem para salvar.</p>}

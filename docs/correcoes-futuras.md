@@ -132,6 +132,8 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C
   - *Como reproduzir:* publicar uma faixa ou botão com `https://loja.com:abc/x` ou `https://loja.com:99999`.
   - *Confirmado no código (27/11/2026):* a API confere só o servidor e o `usuario@`. Não foi executado de ponta a ponta.
   - *Sugestão:* apertar a validação na API (o melhor lugar para o aviso aparecer ao salvar), ou descartar na loja só o link ou botão inválido.
+  - *Coberto em parte (28/11/2026, T31):* o painel recusa esses endereços com a mesma regra da loja. A API continua aceitando o que vier por outro caminho.
+  - *Confirmado com a API rodando (28/11/2026):* ela aceita e grava os dois endereços do exemplo.
 
 - [ ] **C15. Alterações não salvas do formulário de campanha podem se perder sem aviso** · Menor
   - *Origem:* limitação percebida ao fazer a T28 (27/11/2026).
@@ -177,6 +179,7 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C
   - *Como reproduzir:* abrir `/admin/campanhas?editar=abc`.
   - *Confirmado no código (27/11/2026):* a API não trata o erro de tipo do identificador. O status 400 não foi conferido com a API rodando.
   - *Sugestão:* tratar o 400 dessa leitura como o 404, depois de conferir o status.
+  - *Confirmado com a API rodando (28/11/2026):* `GET /api/admin/campaigns/abc` responde 400.
 
 - [ ] **C21. Ações sensíveis de campanha não enviam `Idempotency-Key`** · Menor
   - *Onde:* [api.ts](../src/admin/campaigns/api.ts), `publishCampaign` e `runCampaignAction`.
@@ -199,3 +202,12 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C
   - *Como reproduzir:* abrir "Novo Produto" em desenvolvimento e ver o console.
   - *Confirmado no Chrome (28/11/2026).*
   - *Sugestão:* acrescentar a descrição, ou declarar que não há. A revisão de acessibilidade é a T38.
+
+- [x] **C24. Produto sem família olfativa é recusado com "Bad Request"** · Importante (anterior às campanhas)
+  - *Corrigido:* 28/11/2026, no PR #42: o painel exige ao menos uma família e avisa antes de enviar, no cadastro e na edição. A mensagem da API não mudou. Chega à `main` com a próxima publicação.
+  - *Origem:* conferência contra a API real (28/11/2026).
+  - *Onde:* [Admin.tsx](../src/admin/Admin.tsx), `handleSubmit` do cadastro de produto; na API, `ProductRequestDTO`.
+  - *Problema:* a API exige a família olfativa, o painel não a marca como obrigatória e envia vazio. A pessoa vê só "Erro ao cadastrar produto: Bad Request", sem saber o que falta.
+  - *Como reproduzir:* cadastrar um produto sem marcar nenhuma família.
+  - *Confirmado com a API rodando (28/11/2026).* Os dados não são afetados.
+  - *Sugestão:* exigir ao menos uma família no formulário, com aviso claro; na API, devolver o campo recusado.

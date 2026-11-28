@@ -2,13 +2,13 @@
 import type { CampaignType } from "@/lib/campaign/types"
 import { SENSITIVE_NOT_DONE } from "@/admin/sensitive"
 import { describeField, readApiProblem } from "@/admin/campaigns/actions"
-import { bannerDraftFrom, checkBanner, contentWithBanner, type BannerDraft } from "@/admin/campaigns/banner/bannerDraft"
+import { checkContent, contentInput, contentValuesFrom, type ContentValues } from "@/admin/campaigns/content/contentDraft"
 import { fromInputValue, toInputValue } from "@/admin/campaigns/dates"
 import { checkTheme, themeDraftFrom, themeInput, type ThemeDraft } from "@/admin/campaigns/theme/themeDraft"
 import type { CampaignDetail, CampaignInput } from "@/admin/campaigns/types"
 
 /** Os campos como estão na tela. Vazio = sem valor. Datas no horário da loja. */
-export interface FormValues {
+export interface FormValues extends ContentValues {
   name: string
   description: string
   type: CampaignType | ""
@@ -16,16 +16,16 @@ export interface FormValues {
   startsAt: string
   endsAt: string
   theme: ThemeDraft | null
-  banner: BannerDraft | null
 }
 
-/** Os campos de dados (tema e banner têm editores próprios). */
-export type FieldName = Exclude<keyof FormValues, "theme" | "banner">
+/** Os campos de dados (tema e conteúdo têm editores próprios). */
+export type FieldName = Exclude<keyof FormValues, "theme" | keyof ContentValues>
 /** Mensagens pelo caminho que a API usa: `name`, `theme.dark.primary`... */
 export type FieldErrors = Partial<Record<string, string>>
 
 export const EMPTY_VALUES: FormValues = {
-  name: "", description: "", type: "", priority: "0", startsAt: "", endsAt: "", theme: null, banner: null,
+  name: "", description: "", type: "", priority: "0", startsAt: "", endsAt: "", theme: null,
+  topBar: null, banner: null, promoImages: [], decorations: [],
 }
 
 export const valuesFrom = (campaign: CampaignDetail): FormValues => ({
@@ -36,10 +36,10 @@ export const valuesFrom = (campaign: CampaignDetail): FormValues => ({
   startsAt: toInputValue(campaign.startsAt),
   endsAt: toInputValue(campaign.endsAt),
   theme: themeDraftFrom(campaign.theme),
-  banner: bannerDraftFrom(campaign.content),
+  ...contentValuesFrom(campaign.content),
 })
 
-// tema e banner são objetos, sempre montados com os campos na mesma ordem
+// tema e conteúdo são objetos, sempre montados com os campos na mesma ordem
 const same = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b)
 
 export const sameValues = (a: FormValues, b: FormValues) =>
@@ -48,8 +48,9 @@ export const sameValues = (a: FormValues, b: FormValues) =>
 const DATE_TIME = /^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/
 
 /** Só o que impediria montar o corpo corretamente. As regras de cada campo são da API, que responde campo a campo. */
-export function checkValues({ priority, startsAt, endsAt, theme, banner }: FormValues): FieldErrors {
-  const errors: FieldErrors = { ...checkTheme(theme), ...checkBanner(banner) }
+export function checkValues(values: FormValues): FieldErrors {
+  const { priority, startsAt, endsAt, theme } = values
+  const errors: FieldErrors = { ...checkTheme(theme), ...checkContent(values) }
   const number = Number(priority)
   // Vazio também é recusado: a caixa numérica devolve vazio para textos como "50e", e salvar 0 mudaria a
   // prioridade sem avisar
@@ -63,9 +64,8 @@ export function checkValues({ priority, startsAt, endsAt, theme, banner }: FormV
 }
 
 /**
- * Corpo de criar ou editar. As coleções e o conteúdo sem editor voltam como vieram, porque a edição substitui o
- * documento inteiro. O mesmo vale para o tema, o banner e as datas que a pessoa não mexeu (a caixa de data não guarda
- * os segundos).
+ * Corpo de criar ou editar. As coleções voltam como vieram, porque a edição substitui o documento inteiro. O mesmo
+ * vale para o tema, cada parte do conteúdo e as datas que a pessoa não mexeu (a caixa de data não guarda os segundos).
  */
 export function buildInput(values: FormValues, campaign: CampaignDetail | null): CampaignInput {
   const instant = (value: string, original: string | null | undefined) => {
@@ -81,10 +81,7 @@ export function buildInput(values: FormValues, campaign: CampaignDetail | null):
     endsAt: instant(values.endsAt, campaign?.endsAt),
     theme:
       campaign && same(values.theme, themeDraftFrom(campaign.theme)) ? (campaign.theme ?? null) : themeInput(values.theme),
-    content:
-      campaign && same(values.banner, bannerDraftFrom(campaign.content))
-        ? (campaign.content ?? null)
-        : contentWithBanner(campaign?.content, values.banner),
+    content: contentInput(campaign?.content, values),
     collections: campaign?.collections ?? [],
     ...(campaign && { version: campaign.version }),
   }
@@ -94,7 +91,7 @@ export interface SaveProblem {
   message: string
   /** Erros mostrados junto do campo. */
   fields: FieldErrors
-  /** Repetidos no aviso: erros do tema e do banner (longe dos botões) e de partes sem editor. */
+  /** Os campos com problema, listados no aviso junto dos botões. */
   others: string[]
   /** A campanha mudou no servidor: só resta carregar a versão atual. Nunca sobrescrever. */
   stale: boolean
@@ -128,10 +125,9 @@ export async function readSaveProblem(res: Response): Promise<SaveProblem> {
       const others = new Set<string>()
       for (const item of body.fields ?? []) {
         const field = item.field ?? ""
-        const inEditor = /^(theme|content\.hero)(\.|$)/.test(field)
-        const isData = !inEditor && Object.hasOwn(EMPTY_VALUES, field)
-        if (inEditor || isData) fields[field] ??= item.message
-        if (!isData) others.add(describeField(item))
+        // dados, tema e conteúdo mostram o erro junto do campo; o aviso junto dos botões lista todos
+        if (/^(theme|content)(\.|\[|$)/.test(field) || Object.hasOwn(EMPTY_VALUES, field)) fields[field] ??= item.message
+        others.add(describeField(item))
       }
       const message = body.code === "publish_requirements" ? "Faltam dados para publicar." : "Há campos inválidos."
       return problem(message, { fields, others: [...others] })
