@@ -191,3 +191,11 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C
   - *Como reproduzir:* abrir o formulário com um tema em 390 px e mudar a cor das etiquetas.
   - *Confirmado no Chrome (28/11/2026).*
   - *Sugestão:* uma versão reduzida da prévia fixa no topo, ou um botão para vê-la sem sair do campo.
+
+- [ ] **C23. Janelas do painel de produtos sem descrição para leitores de tela** · Menor (anterior às campanhas)
+  - *Origem:* aviso no console ao conferir a T30 (28/11/2026).
+  - *Onde:* [Admin.tsx](../src/admin/Admin.tsx), `DialogContent` do cadastro de produto e das confirmações.
+  - *Problema:* o Radix avisa que falta `DialogDescription` (ou `aria-describedby={undefined}`).
+  - *Como reproduzir:* abrir "Novo Produto" em desenvolvimento e ver o console.
+  - *Confirmado no Chrome (28/11/2026).*
+  - *Sugestão:* acrescentar a descrição, ou declarar que não há. A revisão de acessibilidade é a T38.

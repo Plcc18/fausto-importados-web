@@ -29,11 +29,3 @@ export const emptyForm: ProductFormData = {
   inStock: true,
   stockQuantity: 0,
 }
-
-export type SmartImageUploaderProps = {
-  value: string
-  onChange: (value: string) => void
-  className?: string
-  maxSizeMB?: number
-  onLoadingChange?: (loading: boolean) => void
-}
