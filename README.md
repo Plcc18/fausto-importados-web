@@ -118,6 +118,10 @@ Para configurar a produção:
 
 Em desenvolvimento nada disso é necessário: `localhost:5173` e `localhost:8080` são o mesmo *site*.
 
+## Correções futuras
+
+Achou um bug que pode esperar a publicação em produção? Registre em [docs/correcoes-futuras.md](docs/correcoes-futuras.md), em vez de corrigir na hora ou misturar à tarefa em andamento. A regra vale para todo mundo que mexer no repositório; o arquivo diz o que **não** pode esperar (segurança, perda de dados, preços e pedidos, entre outros).
+
 ## Deploy
 
 O projeto é publicado na Vercel. O [vercel.json](vercel.json) redireciona as rotas do app para `index.html` (SPA) e faz o proxy de `/auth/*` para a API.

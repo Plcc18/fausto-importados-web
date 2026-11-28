@@ -23,6 +23,7 @@ const ADMIN_ONLY_MARKERS = [
   "/api/orders/sales-stats",
   "/reset-credentials", // gestão de administradores
   "Confirme sua identidade", // diálogo de reautenticação
+  "/api/admin/campaigns", // campanhas sazonais (inclusive a prévia)
 ]
 
 const walk = (dir: string): string[] =>
@@ -67,6 +68,14 @@ describe("build de produção", () => {
     expect(jsFiles.length).toBeGreaterThan(1)
     expect(chunksWithAdminApi.length).toBeGreaterThan(0) // o código do painel existe...
     expect(chunksWithAdminApi).not.toContain(entryFile)   // ...mas não no bundle de entrada
+  })
+
+  it("cada marcador existe em algum chunk: um marcador que sumiu do código não protegeria nada", () => {
+    const sources = files.filter((f) => f.endsWith(".js")).map(read)
+
+    for (const marker of ADMIN_ONLY_MARKERS) {
+      expect(sources.some((source) => source.includes(marker)), `"${marker}" não está em chunk nenhum`).toBe(true)
+    }
   })
 
   it("o bundle público não contém as chamadas exclusivas do painel", () => {

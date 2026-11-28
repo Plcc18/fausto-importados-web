@@ -206,10 +206,11 @@
 
 ## Fase 5: Painel administrativo
 
-- [ ] **T26. Criar a área de campanhas** · `WEB`
+- [x] **T26. Criar a área de campanhas** · `WEB`
   - Rota `/admin/campanhas` com `RequireAdmin`, carregamento sob demanda e acesso pelo painel atual.
   - Atualizar `routes.ts`, `vercel.json`, `routes.test.ts` e os marcadores de `build.test.ts`.
   - *Pronto quando:* a rota abre direto pela URL e o código dela não vai no bundle público.
+  - *Resultado (27/11/2026):* `src/admin/campaigns/` com a tela (`Campaigns.tsx`) e o início das chamadas administrativas (`api.ts`), em chunk próprio, baixado só depois de a API confirmar o `ADMIN`. A tela mostra o total de campanhas, com estados de carregamento e de erro (com nova tentativa); a listagem entra na T27. Acesso pelo botão "Campanhas" no cabeçalho do painel, que no celular passa a ter os botões na segunda linha (com mais um botão, o título sumia e a página rolava para o lado em 320 px). `/api/admin/campaigns` entrou nos marcadores do `build.test.ts`, que agora também falha se um marcador não existir em chunk nenhum. Conferido no navegador com uma API simulada; o rewrite da Vercel está coberto por teste, falta ver no preview. Front com 563 testes passando.
 
 - [ ] **T27. Criar a listagem e o histórico geral** · `WEB`
   - Status, tipo, período, prioridade, busca e filtros, incluindo expiradas.
