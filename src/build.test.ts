@@ -24,6 +24,7 @@ const ADMIN_ONLY_MARKERS = [
   "/reset-credentials", // gestão de administradores
   "Confirme sua identidade", // diálogo de reautenticação
   "/api/admin/campaigns", // campanhas sazonais (inclusive a prévia)
+  "/api/upload", // envio de imagens (produtos e campanhas)
 ]
 
 const walk = (dir: string): string[] =>

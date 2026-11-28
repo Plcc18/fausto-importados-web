@@ -27,6 +27,8 @@ import {
   readCampaignDetail,
   updateCampaign,
 } from "@/admin/campaigns/api"
+import { BannerEditor } from "@/admin/campaigns/banner/BannerEditor"
+import type { BannerDraft } from "@/admin/campaigns/banner/bannerDraft"
 import { CampaignsHeader } from "@/admin/campaigns/CampaignsHeader"
 import {
   EMPTY_VALUES,
@@ -81,8 +83,8 @@ function Field({
 }
 
 /**
- * Formulário de uma campanha (dados, agendamento e tema): criar, editar, salvar rascunho e publicar. Conteúdo e
- * produtos são preservados e ganham editores próprios (T30 a T32).
+ * Formulário de uma campanha (dados, agendamento, tema e banner): criar, editar, salvar rascunho e publicar. O resto
+ * do conteúdo e os produtos são preservados e ganham editores próprios (T31 e T32).
  */
 export function CampaignEditor({
   initialId,
@@ -128,6 +130,12 @@ export function CampaignEditor({
   const [errors, setErrors] = useState<FieldErrors>({})
   const [failure, setFailure] = useState<SaveProblem | null>(null)
   const [confirmingPublish, setConfirmingPublish] = useState(false)
+  /** Imagens subindo agora. Salvar antes de terminarem gravaria a campanha sem elas. */
+  const [uploads, setUploads] = useState(0)
+  const trackUpload = useCallback((uploading: boolean) => setUploads((n) => n + (uploading ? 1 : -1)), [])
+  const uploading = uploads > 0
+  /** O que se perderia ao sair: mudanças não salvas ou uma imagem a caminho. */
+  const unsaved = dirty || uploading
   const idempotency = useIdempotencyKeys()
   const startRef = useRef<HTMLInputElement>(null)
   const endRef = useRef<HTMLInputElement>(null)
@@ -165,10 +173,10 @@ export function CampaignEditor({
     return () => controller.abort()
   }, [attempt, apply])
 
-  useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange])
+  useEffect(() => onDirtyChange(unsaved), [unsaved, onDirtyChange])
 
   // Fechar ou recarregar a aba: o navegador pergunta antes
-  const unfinished = dirty || busy !== null
+  const unfinished = unsaved || busy !== null
   useEffect(() => {
     if (!unfinished) return
     const warn = (event: BeforeUnloadEvent) => {
@@ -194,6 +202,17 @@ export function CampaignEditor({
       ),
     )
     setValues((current) => ({ ...current, theme }))
+  }
+
+  const setBanner = (update: (current: BannerDraft | null) => BannerDraft | null, changed: string[]) => {
+    setErrors((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([path]) => !changed.some((prefix) => path === prefix || path.startsWith(`${prefix}.`)),
+        ),
+      ),
+    )
+    setValues((current) => ({ ...current, banner: update(current.banner) }))
   }
 
   const reload = () => {
@@ -312,7 +331,7 @@ export function CampaignEditor({
   }
 
   const isDraft = !campaign || campaign.status === "DRAFT"
-  const locked = busy !== null || failure?.stale === true
+  const locked = busy !== null || uploading || failure?.stale === true
 
   const content = () => {
     if (loading) {
@@ -374,6 +393,12 @@ export function CampaignEditor({
         <fieldset disabled={busy !== null} className="min-w-0 border-t border-border pt-6">
           <ThemeEditor theme={values.theme} campaignType={values.type} errors={errors} onChange={setTheme} />
         </fieldset>
+
+        <fieldset disabled={busy !== null} className="min-w-0 border-t border-border pt-6">
+          <BannerEditor banner={values.banner} errors={errors} onChange={setBanner} onUploadingChange={trackUpload} />
+        </fieldset>
+
+        {uploading && <p className="text-right text-xs text-muted-foreground">Aguarde o envio da imagem para salvar.</p>}
 
         {failure && (
           <div role="alert" className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">

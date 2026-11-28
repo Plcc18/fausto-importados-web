@@ -2,6 +2,7 @@
 import type { CampaignType } from "@/lib/campaign/types"
 import { SENSITIVE_NOT_DONE } from "@/admin/sensitive"
 import { describeField, readApiProblem } from "@/admin/campaigns/actions"
+import { bannerDraftFrom, checkBanner, contentWithBanner, type BannerDraft } from "@/admin/campaigns/banner/bannerDraft"
 import { fromInputValue, toInputValue } from "@/admin/campaigns/dates"
 import { checkTheme, themeDraftFrom, themeInput, type ThemeDraft } from "@/admin/campaigns/theme/themeDraft"
 import type { CampaignDetail, CampaignInput } from "@/admin/campaigns/types"
@@ -15,15 +16,16 @@ export interface FormValues {
   startsAt: string
   endsAt: string
   theme: ThemeDraft | null
+  banner: BannerDraft | null
 }
 
-/** Os campos de dados (o tema tem editor próprio). */
-export type FieldName = Exclude<keyof FormValues, "theme">
+/** Os campos de dados (tema e banner têm editores próprios). */
+export type FieldName = Exclude<keyof FormValues, "theme" | "banner">
 /** Mensagens pelo caminho que a API usa: `name`, `theme.dark.primary`... */
 export type FieldErrors = Partial<Record<string, string>>
 
 export const EMPTY_VALUES: FormValues = {
-  name: "", description: "", type: "", priority: "0", startsAt: "", endsAt: "", theme: null,
+  name: "", description: "", type: "", priority: "0", startsAt: "", endsAt: "", theme: null, banner: null,
 }
 
 export const valuesFrom = (campaign: CampaignDetail): FormValues => ({
@@ -34,21 +36,20 @@ export const valuesFrom = (campaign: CampaignDetail): FormValues => ({
   startsAt: toInputValue(campaign.startsAt),
   endsAt: toInputValue(campaign.endsAt),
   theme: themeDraftFrom(campaign.theme),
+  banner: bannerDraftFrom(campaign.content),
 })
 
-// o tema é um objeto, sempre montado com os campos na mesma ordem
-const sameTheme = (a: ThemeDraft | null, b: ThemeDraft | null) => JSON.stringify(a) === JSON.stringify(b)
+// tema e banner são objetos, sempre montados com os campos na mesma ordem
+const same = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b)
 
 export const sameValues = (a: FormValues, b: FormValues) =>
-  (Object.keys(a) as (keyof FormValues)[]).every((field) =>
-    field === "theme" ? sameTheme(a.theme, b.theme) : a[field] === b[field],
-  )
+  (Object.keys(a) as (keyof FormValues)[]).every((field) => same(a[field], b[field]))
 
 const DATE_TIME = /^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/
 
 /** Só o que impediria montar o corpo corretamente. As regras de cada campo são da API, que responde campo a campo. */
-export function checkValues({ priority, startsAt, endsAt, theme }: FormValues): FieldErrors {
-  const errors: FieldErrors = checkTheme(theme)
+export function checkValues({ priority, startsAt, endsAt, theme, banner }: FormValues): FieldErrors {
+  const errors: FieldErrors = { ...checkTheme(theme), ...checkBanner(banner) }
   const number = Number(priority)
   // Vazio também é recusado: a caixa numérica devolve vazio para textos como "50e", e salvar 0 mudaria a
   // prioridade sem avisar
@@ -62,8 +63,9 @@ export function checkValues({ priority, startsAt, endsAt, theme }: FormValues): 
 }
 
 /**
- * Corpo de criar ou editar. Conteúdo e coleções voltam como vieram, porque a edição substitui o documento inteiro.
- * O mesmo vale para o tema e as datas que a pessoa não mexeu (a caixa de data não guarda os segundos).
+ * Corpo de criar ou editar. As coleções e o conteúdo sem editor voltam como vieram, porque a edição substitui o
+ * documento inteiro. O mesmo vale para o tema, o banner e as datas que a pessoa não mexeu (a caixa de data não guarda
+ * os segundos).
  */
 export function buildInput(values: FormValues, campaign: CampaignDetail | null): CampaignInput {
   const instant = (value: string, original: string | null | undefined) => {
@@ -78,8 +80,11 @@ export function buildInput(values: FormValues, campaign: CampaignDetail | null):
     startsAt: instant(values.startsAt, campaign?.startsAt),
     endsAt: instant(values.endsAt, campaign?.endsAt),
     theme:
-      campaign && sameTheme(values.theme, themeDraftFrom(campaign.theme)) ? (campaign.theme ?? null) : themeInput(values.theme),
-    content: campaign?.content ?? null,
+      campaign && same(values.theme, themeDraftFrom(campaign.theme)) ? (campaign.theme ?? null) : themeInput(values.theme),
+    content:
+      campaign && same(values.banner, bannerDraftFrom(campaign.content))
+        ? (campaign.content ?? null)
+        : contentWithBanner(campaign?.content, values.banner),
     collections: campaign?.collections ?? [],
     ...(campaign && { version: campaign.version }),
   }
@@ -89,7 +94,7 @@ export interface SaveProblem {
   message: string
   /** Erros mostrados junto do campo. */
   fields: FieldErrors
-  /** Repetidos no aviso: erros do tema (podem estar no modo escondido) e de partes sem editor (imagens...). */
+  /** Repetidos no aviso: erros do tema e do banner (longe dos botões) e de partes sem editor. */
   others: string[]
   /** A campanha mudou no servidor: só resta carregar a versão atual. Nunca sobrescrever. */
   stale: boolean
@@ -123,9 +128,10 @@ export async function readSaveProblem(res: Response): Promise<SaveProblem> {
       const others = new Set<string>()
       for (const item of body.fields ?? []) {
         const field = item.field ?? ""
-        const inTheme = field === "theme" || field.startsWith("theme.")
-        if (inTheme || Object.hasOwn(EMPTY_VALUES, field)) fields[field] ??= item.message
-        if (inTheme || !Object.hasOwn(EMPTY_VALUES, field)) others.add(describeField(item))
+        const inEditor = /^(theme|content\.hero)(\.|$)/.test(field)
+        const isData = !inEditor && Object.hasOwn(EMPTY_VALUES, field)
+        if (inEditor || isData) fields[field] ??= item.message
+        if (!isData) others.add(describeField(item))
       }
       const message = body.code === "publish_requirements" ? "Faltam dados para publicar." : "Há campos inválidos."
       return problem(message, { fields, others: [...others] })

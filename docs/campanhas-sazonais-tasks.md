@@ -232,13 +232,15 @@
   - *Pronto quando:* é possível montar um tema completo sem tocar em código.
   - *Resultado (28/11/2026):* seção "Tema" no formulário da campanha (`src/admin/campaigns/theme/`), salva junto com os dados. Um modelo por tipo (o de "Personalizada" são as cores da loja), sugerido pelo tipo escolhido, com modo escuro e claro; trocar um tema já montado pede confirmação. Todas as cores do contrato, pelo seletor ou pelo código, com "restaurar padrão" por cor e por modo; dourado e modo claro opcionais. Miniprévia ao vivo com as variáveis da loja (um teste compara as cores padrão com o `index.css`). Alerta de contraste: 4,5:1 nos textos, inclusive os que a campanha não troca sobre a cor secundária, e 2:1 no destaque e no dourado (o dourado da própria loja fica em 2,4:1 no modo claro); os alertas não impedem salvar. Todos os modelos passam sem alerta. Tema não mexido volta como veio. Com o tema, uma campanha nova já pode ser publicada pelo painel. Conferido no Chrome com API simulada. Front com 702 testes passando.
 
-- [ ] **T30. Criar o upload de imagens e banners** · `WEB`
+- [x] **T30. Criar o upload de imagens e banners** · `WEB`
   - Transformar o `SmartImageUploader` em componente reutilizável (hoje usa um ID fixo).
   - Desktop e celular, dimensões recomendadas, texto alternativo, substituição e remoção.
   - *Pronto quando:* produtos e campanhas usam o mesmo componente sem conflito.
+  - *Resultado (28/11/2026):* `src/admin/images/` com o `ImageUploader` (clique ou arraste, trocar e remover com botões visíveis, identificador próprio por campo) e o envio (`upload.ts`): produtos como antes, campanhas em `?folder=campaigns` aceitando só JPEG, PNG e WebP; os dois recusam antes de enviar o que passa de 5 MB (o painel anunciava 8 MB, anotado na T15). Uma falha mantém a imagem anterior, e um envio que termina depois de a tela fechar é ignorado (antes podia cair no produto seguinte). No formulário da campanha, seção "Banner principal" com título (a API o exige sempre que há banner), imagens de computador (1920 × 640) e celular (1080 × 1350), tamanho enviado, aviso de imagem pequena e texto alternativo obrigatório. Enquanto uma imagem sobe, não dá para salvar nem publicar. `/api/upload` entrou nos marcadores do `build.test.ts`. Conferido no Chrome com API simulada; **falta conferir contra o Cloudinary real** (T39). Front com 737 testes passando.
 
 - [ ] **T31. Criar o editor de conteúdo** · `WEB`
   - Faixa superior, banner, textos, botões, links, seções especiais, imagens de divulgação e decorações.
+  - Já pronto na T30: título e imagens do banner. Faltam nele o subtítulo e os botões; as imagens de divulgação reutilizam o `ImageUploader`.
   - Validação junto ao campo.
   - Faixa superior: no celular a loja mostra no máximo 2 linhas (~90 caracteres, T22); avisar quando o texto passar disso e mostrar a prévia no tamanho de celular.
   - Imagens de divulgação: orientar o admin a usar artes com o texto da oferta ("Frete grátis acima de R$ 299", "Kits a partir de R$ 199"), com prévia de como ficam logo abaixo do banner (T24). Uma foto sem texto ali parece solta.

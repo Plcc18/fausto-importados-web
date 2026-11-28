@@ -20,6 +20,8 @@ const theme = { dark: { background: "#000000", foreground: "#FFFFFF", primary: "
 const content = { topBar: { text: "Ofertas", link: null }, hero: null, promoImages: [], decorations: ["SNOW"] }
 const collections = [{ id: "col-1", title: "Ofertas", slug: "ofertas", position: 0, products: [{ productId: "p1", position: 0, discount: null }] }]
 
+const imageUrl = (name: string) => `https://res.cloudinary.com/fausto/image/upload/v1/campaigns/${name}`
+
 const detail = (extra: Partial<CampaignDetail> = {}): CampaignDetail => ({
   id: "c1",
   name: "Black Friday 2026",
@@ -43,6 +45,7 @@ let server: CampaignDetail
 /** Respostas forçadas para as próximas leituras do detalhe e para as próximas escritas. */
 let readAnswers: (() => Response)[]
 let writeAnswers: (() => Response | Promise<Response>)[]
+let uploadAnswers: (() => Promise<Response>)[]
 let requireReauth: boolean
 
 const calls = () =>
@@ -65,6 +68,10 @@ function installApi() {
     const method = init.method ?? "GET"
     if (pathname === "/auth/login") return json({ status: "AUTHENTICATED", accessToken: "access-1", expiresIn: 900 })
     if (pathname === "/auth/reauth") return json({ reauthToken: "prova-2fa", expiresIn: 300 })
+    if (pathname === "/api/upload") {
+      const file = (init.body as FormData).get("file") as File
+      return uploadAnswers.shift()?.() ?? json({ url: imageUrl(file.name), width: 1920, height: 640 })
+    }
 
     if (method === "GET") {
       if (pathname === "/api/admin/campaigns") {
@@ -154,6 +161,9 @@ beforeEach(async () => {
   server = detail()
   readAnswers = []
   writeAnswers = []
+  uploadAnswers = []
+  URL.createObjectURL = vi.fn(() => "blob:previa")
+  URL.revokeObjectURL = vi.fn()
   requireReauth = false
   fetchMock = vi.fn()
   vi.stubGlobal("fetch", fetchMock)
@@ -671,6 +681,177 @@ describe("tema no formulário", () => {
 
     await waitFor(() => expect(writes()).toHaveLength(1))
     expect(writes()[0].body.theme).toBeNull()
+  })
+})
+
+describe("banner no formulário", () => {
+  const slot = (name: "computador" | "celular") => screen.getByRole("group", { name: `Imagem do ${name}` })
+  const send = (name: "computador" | "celular", file: string) =>
+    fireEvent.change(within(slot(name)).getByTestId("image-input"), {
+      target: { files: [new File(["x"], file, { type: "image/webp" })] },
+    })
+  const shown = (name: "computador" | "celular") => within(slot(name)).queryByRole("img")?.getAttribute("src") ?? null
+  const arrived = (name: "computador" | "celular", file: string) => waitFor(() => expect(shown(name)).toBe(imageUrl(file)))
+
+  const hero = {
+    title: "Black Friday Fausto",
+    subtitle: "Até domingo",
+    imageDesktop: { url: imageUrl("larga.webp"), alt: "Frascos", width: 1920, height: 640 },
+    imageMobile: null,
+    buttons: [{ label: "Ver ofertas", link: "/?colecao=ofertas", style: "PRIMARY" }],
+  }
+
+  it("monta o banner com título e as duas imagens, mantendo o resto do conteúdo", async () => {
+    await openForm()
+    expect(screen.getByText("Sem banner, a loja mostra o destaque de sempre.")).toBeTruthy()
+    click("Adicionar banner")
+    type("Título do banner", "  Black Friday Fausto  ")
+    send("computador", "larga.webp")
+    await arrived("computador", "larga.webp")
+    type("Texto alternativo (computador)", "Frascos com laço")
+    send("celular", "alta.webp")
+    await arrived("celular", "alta.webp")
+    type("Texto alternativo (celular)", "Frasco em destaque")
+
+    click("Salvar rascunho")
+
+    await waitFor(() => expect(writes()).toHaveLength(1))
+    expect(writes()[0].body.content).toEqual({
+      ...content,
+      hero: {
+        title: "Black Friday Fausto",
+        subtitle: null,
+        buttons: [],
+        imageDesktop: { url: imageUrl("larga.webp"), alt: "Frascos com laço", width: 1920, height: 640 },
+        imageMobile: { url: imageUrl("alta.webp"), alt: "Frasco em destaque", width: 1920, height: 640 },
+      },
+    })
+    const sent = calls().filter((c) => c.url.pathname === "/api/upload")
+    expect(sent.map((c) => c.url.search)).toEqual(["?folder=campaigns", "?folder=campaigns"])
+  })
+
+  it("mostra o tamanho enviado e avisa quando é menor que o recomendado", async () => {
+    uploadAnswers = [async () => json({ url: imageUrl("pequena.webp"), width: 800, height: 300 })]
+    await openForm()
+    click("Adicionar banner")
+
+    send("computador", "pequena.webp")
+
+    expect(await screen.findByText(/Enviada: 800 × 300 px\. Menor que o recomendado/)).toBeTruthy()
+  })
+
+  it("trocar a imagem mantém o texto alternativo, o subtítulo e os botões", async () => {
+    server = detail({ content: { ...content, hero } })
+    await openForm()
+    expect(field("Título do banner").value).toBe("Black Friday Fausto")
+    expect(shown("computador")).toBe(imageUrl("larga.webp"))
+
+    send("computador", "nova.webp")
+    await arrived("computador", "nova.webp")
+    click("Salvar rascunho")
+
+    await waitFor(() => expect(writes()).toHaveLength(1))
+    expect(writes()[0].body.content.hero).toEqual({
+      ...hero,
+      imageDesktop: { url: imageUrl("nova.webp"), alt: "Frascos", width: 1920, height: 640 },
+    })
+  })
+
+  it("um banner não mexido volta exatamente como veio", async () => {
+    server = detail({ content: { ...content, hero } })
+    await openForm()
+    type("Nome", "Outro")
+
+    click("Salvar rascunho")
+
+    await waitFor(() => expect(writes()).toHaveLength(1))
+    expect(writes()[0].body.content).toEqual({ ...content, hero })
+  })
+
+  it("remove uma imagem e, depois de confirmar, o banner inteiro", async () => {
+    server = detail({ content: { ...content, hero } })
+    await openForm()
+    fireEvent.click(button("Remover imagem: Imagem do computador"))
+    expect(screen.queryByLabelText("Texto alternativo (computador)")).toBeNull()
+
+    click("Remover banner")
+    fireEvent.click(await inDialog("Remover"))
+    click("Salvar rascunho")
+
+    await waitFor(() => expect(writes()).toHaveLength(1))
+    expect(writes()[0].body.content).toEqual({ ...content, hero: null })
+  })
+
+  it("exige o título e a descrição das imagens antes de enviar", async () => {
+    await openForm()
+    click("Adicionar banner")
+    send("computador", "larga.webp")
+    await arrived("computador", "larga.webp")
+
+    click("Salvar rascunho")
+
+    expect(field("Título do banner").getAttribute("aria-invalid")).toBe("true")
+    expect(field("Texto alternativo (computador)").getAttribute("aria-invalid")).toBe("true")
+    expect(screen.getByText("Informe o título do banner.")).toBeTruthy()
+    expect(screen.getByText("Descreva a imagem.")).toBeTruthy()
+    expect(writes()).toHaveLength(0)
+    type("Título do banner", "Natal")
+    expect(field("Título do banner").getAttribute("aria-invalid")).toBe("false")
+  })
+
+  it("publicar sem a imagem do computador mostra o motivo junto do campo e no aviso", async () => {
+    writeAnswers = [
+      // a API devolve o rascunho como o salvou: com o banner ainda sem imagem
+      () => json({ ...server, content: { ...content, hero: { ...hero, title: "Natal", imageDesktop: null } }, version: 5 }),
+      () => json({ code: "publish_requirements", fields: [{ field: "content.hero.imageDesktop", message: "Envie a imagem." }] }, 422),
+    ]
+    await openForm()
+    click("Adicionar banner")
+    type("Título do banner", "Natal")
+
+    await confirmPublish()
+
+    await waitFor(() => expect(within(slot("computador")).getByRole("alert").textContent).toBe("Envie a imagem."))
+    expect(screen.getAllByRole("alert").map((a) => a.textContent).join(" ")).toContain("Imagem do banner: Envie a imagem.")
+  })
+
+  it("enquanto a imagem sobe, não salva nem publica, e sair pergunta antes", async () => {
+    let finish!: (res: Response) => void
+    uploadAnswers = [() => new Promise<Response>((resolve) => { finish = resolve })]
+    server = detail({ content: { ...content, hero } })
+    await openFromList()
+
+    send("computador", "nova.webp")
+
+    await waitFor(() => expect(button("Salvar rascunho").disabled).toBe(true))
+    expect(button("Publicar").disabled).toBe(true)
+    expect(screen.getByText("Aguarde o envio da imagem para salvar.")).toBeTruthy()
+    expect(!window.dispatchEvent(new Event("beforeunload", { cancelable: true }))).toBe(true)
+    browserBack()
+    fireEvent.click(await inDialog("Continuar editando"))
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+
+    finish(json({ url: imageUrl("nova.webp"), width: 1920, height: 640 }))
+    await arrived("computador", "nova.webp")
+    expect(button("Salvar rascunho").disabled).toBe(false)
+    expect(writes()).toHaveLength(0)
+  })
+
+  it("o que se digita enquanto a imagem sobe não se perde", async () => {
+    let finish!: (res: Response) => void
+    uploadAnswers = [() => new Promise<Response>((resolve) => { finish = resolve })]
+    await openForm()
+    click("Adicionar banner")
+    send("computador", "larga.webp")
+    await waitFor(() => expect(shown("computador")).toBe("blob:previa"))
+
+    type("Título do banner", "Digitado durante o envio")
+    type("Nome", "Nome novo")
+    finish(json({ url: imageUrl("larga.webp"), width: 1920, height: 640 }))
+
+    await arrived("computador", "larga.webp")
+    expect(field("Título do banner").value).toBe("Digitado durante o envio")
+    expect(field("Nome").value).toBe("Nome novo")
   })
 })
 

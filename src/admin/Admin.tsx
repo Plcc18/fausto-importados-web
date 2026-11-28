@@ -41,7 +41,6 @@ import {
   Package,
   DollarSign,
   Tag,
-  Upload,
   X,
   Loader2,
   Bell,
@@ -61,7 +60,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/Shadcn-Components/ui/popover"
-import { emptyForm, type ProductFormData, type SmartImageUploaderProps } from "@/types"
+import { emptyForm, type ProductFormData } from "@/types"
+import { ImageUploader } from "@/admin/images/ImageUploader"
 import { NotificationsPanel } from "@/admin/NotificationsPanel"
 import { ThemeToggle } from "@/component/ThemeToggle"
 import { Pagination } from "@/component/Pagination"
@@ -74,113 +74,6 @@ import { toast } from "sonner"
 import { useAdminPushNotifications } from "@/admin/useAdminPushNotifications"
 import { sensitiveFetch, SENSITIVE_NOT_DONE } from "@/admin/sensitive"
 import { ROUTES } from "@/routes"
-
-// ============================================================================
-// SmartImageUploader
-// ============================================================================
-function SmartImageUploader({
-  value,
-  onChange,
-  onLoadingChange,
-  className = "",
-  maxSizeMB = 6,
-}: SmartImageUploaderProps) {
-  const [isDragging, setIsDragging] = useState(false)
-  const [preview, setPreview] = useState<string>(value || "")
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-
-  useEffect(() => {
-    if (value && value !== preview) setPreview(value)
-  }, [value, preview])
-
-  const uploadFile = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setError("Apenas imagens são permitidas")
-      return
-    }
-    setError(null)
-    setPreview(URL.createObjectURL(file))
-    setIsLoading(true)
-    onLoadingChange?.(true)
-    try {
-      const formData = new FormData()
-      formData.append("image", file)
-      const response = await authFetch(`${API_URL}/api/upload`, { method: "POST", body: formData })
-      if (!response.ok) throw new Error(await response.text())
-      const data = await response.json()
-      onChange(data.url)
-    } catch (err) {
-      console.error(err)
-      setError("Erro ao enviar imagem")
-    } finally {
-      setIsLoading(false)
-      onLoadingChange?.(false)
-    }
-  }
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) uploadFile(file)
-  }
-
-  const removeImage = () => { setPreview(""); onChange("") }
-
-  return (
-    <div className={`space-y-2 ${className}`}>
-      <Label>Imagem do produto</Label>
-      {preview ? (
-        <div className="relative group rounded-lg overflow-hidden border bg-muted/40">
-          <div className="relative aspect-4/3 sm:aspect-5/4 bg-black/5">
-            <img
-              src={preview}
-              alt="Pré-visualização do produto"
-              className="object-contain w-full h-full transition-transform duration-300 group-hover:scale-105"
-              onError={(e) => { e.currentTarget.src = "/placeholder.svg?height=400&width=500&text=Erro+na+imagem" }}
-            />
-            {isLoading && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-white/80" />
-              </div>
-            )}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-              <Button type="button" variant="destructive" size="icon" className="rounded-full" onClick={removeImage}>
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2 text-center">Clique ou arraste outra imagem para substituir</p>
-        </div>
-      ) : (
-        <div
-          onClick={() => document.getElementById("image-upload")?.click()}
-          onDrop={handleDrop}
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-          onDragLeave={() => setIsDragging(false)}
-          className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 bg-muted/30"}`}
-        >
-          <input
-            id="image-upload"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadFile(file) }}
-          />
-          <div className="flex flex-col items-center gap-3">
-            {isLoading ? <Loader2 className="h-12 w-12 animate-spin text-primary" /> : <Upload className="h-12 w-12 text-muted-foreground" />}
-            <div>
-              <p className="font-medium text-lg">{isDragging ? "Solte a imagem aqui" : "Arraste ou clique para enviar"}</p>
-              <p className="text-sm text-muted-foreground mt-1">PNG, JPG, WebP • Máximo {maxSizeMB}MB</p>
-            </div>
-          </div>
-        </div>
-      )}
-      {error && <p className="text-sm text-destructive mt-2">{error}</p>}
-    </div>
-  )
-}
 
 /** Código e mensagem de um erro da API (em texto puro, se a resposta não for JSON). */
 async function readApiError(res: Response): Promise<{ code?: string; message: string }> {
@@ -999,7 +892,15 @@ export function Admin() {
                       <p className="text-xs text-destructive">O estoque atual não foi informado pela API. Digite a quantidade correta antes de salvar.</p>
                     )}
                   </div>
-                  <SmartImageUploader value={formData.image || ""} onChange={(newImage) => setFormData((prev) => ({ ...prev, image: newImage }))} onLoadingChange={setImageUploading} maxSizeMB={8} />
+                  <ImageUploader
+                    label="Imagem do produto"
+                    kind="product"
+                    value={formData.image || ""}
+                    onChange={(image) => setFormData((prev) => ({ ...prev, image: image?.url ?? "" }))}
+                    onUploadingChange={setImageUploading}
+                    previewAlt="Pré-visualização do produto"
+                    previewClassName="aspect-4/3 sm:aspect-5/4"
+                  />
                 </div>
 
                 <Separator />

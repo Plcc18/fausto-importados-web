@@ -1,5 +1,6 @@
 import type { NoticeOptions } from "@/lib/notice"
 import { SENSITIVE_NOT_DONE } from "@/admin/sensitive"
+import { BANNER_FIELD_LABELS } from "@/admin/campaigns/banner/bannerDraft"
 import { situationOf, type Situation } from "@/admin/campaigns/labels"
 import { THEME_FIELD_LABELS } from "@/admin/campaigns/theme/themeDraft"
 import type { CampaignSummary } from "@/admin/campaigns/types"
@@ -105,7 +106,7 @@ export const FIELD_LABELS: Record<string, string> = {
   startsAt: "Início",
   endsAt: "Fim",
   ...THEME_FIELD_LABELS,
-  "content.hero.imageDesktop": "Imagem do banner",
+  ...BANNER_FIELD_LABELS,
 }
 
 /** Corpo de erro da API (contrato §1). */
