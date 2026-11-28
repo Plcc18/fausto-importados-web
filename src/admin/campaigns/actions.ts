@@ -45,8 +45,14 @@ export const ACTIONS: Record<CampaignAction, ActionTexts> = {
     verb: "desativar",
     destructive: true,
     question: "Desativar campanha?",
-    explain: (c) =>
-      `${subject(c)} ${situationOf(c) === "ACTIVE" ? "sai do ar (a loja atualiza em até 1 minuto)" : "não vai entrar no ar no horário marcado"}. Dá para reativar depois, enquanto o período não acabar.`,
+    explain: (c) => {
+      // A loja não consulta de tempos em tempos: uma página que ficou aberta só muda quando a pessoa age
+      const effect =
+        situationOf(c) === "ACTIVE"
+          ? "sai do ar. Quem abrir a loja já não a vê; quem está com ela aberta só vê a mudança ao recarregar ou voltar para a aba"
+          : "não vai entrar no ar no horário marcado"
+      return `${subject(c)} ${effect}. Dá para reativar depois, enquanto o período não acabar.`
+    },
     done: "Campanha desativada.",
   },
   reactivate: {

@@ -367,6 +367,21 @@ describe("ações sobre uma campanha", () => {
     expect(writes()).toHaveLength(0)
   })
 
+  it.each([
+    ["no ar", campaign("a"), "quem está com ela aberta só vê a mudança ao recarregar ou voltar para a aba"],
+    ["agendada", campaign("a", { phase: "SCHEDULED" }), "não vai entrar no ar no horário marcado"],
+  ])("ao desativar uma campanha %s, explica o efeito sem prometer prazo à loja aberta", async (_, item, effect) => {
+    stored = [item]
+    renderPage()
+    await findRow("a")
+
+    fireEvent.click(rowButton("a", "Desativar"))
+
+    const dialog = await screen.findByRole("dialog")
+    expect(dialog.textContent).toContain(effect)
+    expect(dialog.textContent).not.toContain("minuto")
+  })
+
   it("desativa sem pedir código 2FA, enviando a versão, e atualiza a lista", async () => {
     renderPage()
 

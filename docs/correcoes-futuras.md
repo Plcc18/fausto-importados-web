@@ -102,7 +102,8 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C
   - *Confirmado no código (27/11/2026):* os dois trechos não conferem a validade. O cenário no aparelho não foi reproduzido.
   - *Sugestão:* ao voltar para a aba, antes das outras condições, tirar a campanha que não vale mais e reagendar, como `start()` faz; aplicar a mesma conferência quando a busca falhar.
 
-- [ ] **C11. Confirmação de "Desativar" promete que a loja atualiza em 1 minuto** · Menor
+- [x] **C11. Confirmação de "Desativar" promete que a loja atualiza em 1 minuto** · Menor
+  - *Corrigido:* 27/11/2026, no PR #36: o texto diz que páginas já abertas só mudam ao recarregar ou voltar para a aba.
   - *Onde:* [actions.ts](../src/admin/campaigns/actions.ts), texto de `disable`.
   - *Problema:* quem está com a loja aberta e visível continua vendo a campanha: o [store.ts](../src/lib/campaign/store.ts) só busca de novo ao entrar na loja, ao voltar para a aba, no horário de mudança ou no fim da campanha. O 1 minuto vale para quem abre ou volta à loja.
   - *Como reproduzir:* desativar uma campanha no ar com a loja aberta em outra janela e esperar mais de 1 minuto.
