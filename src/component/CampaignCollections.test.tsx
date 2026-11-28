@@ -326,6 +326,16 @@ describe("selo no card", () => {
   })
 })
 
+describe("rolagem até a vitrine", () => {
+  it("deixa espaço para o cabeçalho fixo não cobrir o título", async () => {
+    await renderStore()
+
+    expect(document.getElementById("colecao")!.className.split(" ")).toEqual(
+      expect.arrayContaining(["scroll-mt-16", "md:scroll-mt-10"]),
+    )
+  })
+})
+
 describe("imagens de divulgação", () => {
   const promo = (name: string) => ({
     image: { url: `${PROMO.replace("promo", name)}`, alt: name, width: 800, height: 800 },

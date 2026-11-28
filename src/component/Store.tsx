@@ -420,7 +420,8 @@ export function Store() {
       />
 
       {/* ── Products Section ── */}
-      <section id="colecao" ref={collectionRef} className="px-4 py-16 md:py-24">
+      {/* scroll-mt: ao rolar até aqui, o título não pode parar atrás do cabeçalho fixo (que cresce com a faixa) */}
+      <section id="colecao" ref={collectionRef} className="scroll-mt-16 px-4 py-16 md:scroll-mt-10 md:py-24">
         <div className="mx-auto max-w-7xl">
           <div className="mb-12 flex flex-col gap-8">
             <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
