@@ -426,6 +426,58 @@ describe("sem assinantes (ex.: admin foi da loja para o painel)", () => {
   })
 })
 
+describe("aparelho que dormiu com a loja aberta (timers parados)", () => {
+  const ENDS_AT = Date.parse("2026-11-27T16:00:00Z")
+  /** Só o relógio anda, como num aparelho dormindo: o timer do fim não dispara. */
+  const wakeAt = (time: number) => {
+    vi.setSystemTime(time)
+    document.dispatchEvent(new Event("visibilitychange"))
+  }
+
+  it("ao voltar para a aba, a campanha que terminou sai antes mesmo de a API responder", async () => {
+    fetchMock.mockResolvedValueOnce(apiResponse(active())).mockImplementation(hangingFetch)
+    const { store, listener } = startStore({ timeoutMs: 60_000 })
+    await flush()
+    listener.mockClear()
+
+    wakeAt(ENDS_AT + HOUR)
+
+    expect(store.getState().campaign).toBeNull()
+    expect(listener).toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("uma busca que falha depois do fim não mantém a campanha encerrada", async () => {
+    let fail: (error: Error) => void = () => {}
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(active()))
+      .mockImplementation(() => new Promise<Response>((_, reject) => (fail = reject)))
+    const { store } = startStore({ timeoutMs: 60_000 })
+    await flush()
+    wakeAt(NOW + CAMPAIGN_VISIBILITY_MIN_INTERVAL_MS) // a busca começa com a campanha ainda válida
+    expect(store.getState().campaign?.id).toBe("c1")
+
+    vi.setSystemTime(ENDS_AT + HOUR)
+    fail(new TypeError("Failed to fetch"))
+    await flush()
+
+    expect(store.getState()).toEqual({ status: "ready", campaign: null })
+  })
+
+  it("se ainda vale ao acordar, sai no horário certo mesmo com a API fora", async () => {
+    fetchMock.mockResolvedValueOnce(apiResponse(active())).mockRejectedValue(new TypeError("Failed to fetch"))
+    const { store } = startStore()
+    await flush()
+
+    wakeAt(ENDS_AT - 60_000)
+    await flush()
+    expect(store.getState().campaign?.id).toBe("c1")
+    await vi.advanceTimersByTimeAsync(65_000)
+
+    expect(store.getState().campaign).toBeNull()
+  })
+})
+
 describe("volta para a aba", () => {
   it("atualiza ao voltar, mas não em alternâncias rápidas", async () => {
     fetchMock.mockResolvedValue(apiResponse(active()))
