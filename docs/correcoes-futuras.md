@@ -211,3 +211,11 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C
   - *Como reproduzir:* cadastrar um produto sem marcar nenhuma família.
   - *Confirmado com a API rodando (28/11/2026).* Os dados não são afetados.
   - *Sugestão:* exigir ao menos uma família no formulário, com aviso claro; na API, devolver o campo recusado.
+
+- [ ] **C25. No celular, janelas de confirmação encostam nas bordas** · Menor
+  - *Origem:* percebido ao conferir a T32 (28/11/2026).
+  - *Onde:* componentes que passam `max-w-sm`, `max-w-md`, `max-w-3xl` ou `max-w-6xl` ao `DialogContent`, no painel e na loja ([dialog.tsx](../src/Shadcn-Components/ui/dialog.tsx)).
+  - *Problema:* a classe substitui a largura máxima padrão, que deixa 1 rem de cada lado. Em telas mais estreitas que o limite pedido, a janela ocupa a largura toda.
+  - *Como reproduzir:* abrir uma confirmação em 320 ou 360 px.
+  - *Confirmado no Chrome (28/11/2026)* numa versão de trabalho da janela de escolha de produtos, que usava `max-w-3xl`; as demais foram conferidas só no código.
+  - *Sugestão:* usar `sm:max-w-...`, que mantém a margem no celular.

@@ -42,20 +42,25 @@ export function linkError(value: string, required: boolean): string | null {
   return isSafeLink(link) ? null : LINK_RULE
 }
 
+/** Formato do identificador de uma coleção (contrato §4.3). */
+export const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
+
 /** Um destino que o editor sugere nas caixas de link. */
 export interface LinkSuggestion {
   value: string
   label: string
 }
 
-/** A vitrine e as coleções desta campanha (o editor delas é a T32). */
+/** A vitrine e as coleções desta campanha, inclusive as que ainda estão sendo editadas. */
 export function linkSuggestions(collections: unknown): LinkSuggestion[] {
-  return [
-    { value: "/#colecao", label: "Vitrine da loja" },
-    ...asList(collections).flatMap((item) => {
-      const collection = asObject(item)
-      const slug = asText(collection?.slug)
-      return slug ? [{ value: `/?colecao=${slug}`, label: `Coleção: ${asText(collection?.title) || slug}` }] : []
-    }),
-  ]
+  // um endereço por sugestão: durante a edição duas coleções podem repetir o identificador (vale a primeira)
+  const labels = new Map([["/#colecao", "Vitrine da loja"]])
+  for (const item of asList(collections)) {
+    const collection = asObject(item)
+    const slug = asText(collection?.slug)
+    const value = `/?colecao=${slug}`
+    // um identificador pela metade não vira sugestão de link
+    if (SLUG.test(slug) && !labels.has(value)) labels.set(value, `Coleção: ${asText(collection?.title) || slug}`)
+  }
+  return [...labels].map(([value, label]) => ({ value, label }))
 }
