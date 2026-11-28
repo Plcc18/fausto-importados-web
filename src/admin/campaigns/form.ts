@@ -37,8 +37,12 @@ const DATE_TIME = /^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/
 /** Só o que impediria montar o corpo corretamente. As regras de cada campo são da API, que responde campo a campo. */
 export function checkValues({ priority, startsAt, endsAt }: FormValues): FieldErrors {
   const errors: FieldErrors = {}
-  const number = Number(priority || 0)
-  if (!Number.isInteger(number) || number < 0 || number > 100) errors.priority = "Use um número inteiro de 0 a 100."
+  const number = Number(priority)
+  // Vazio também é recusado: a caixa numérica devolve vazio para textos como "50e", e salvar 0 mudaria a
+  // prioridade sem avisar
+  if (!priority.trim() || !Number.isInteger(number) || number < 0 || number > 100) {
+    errors.priority = "Use um número inteiro de 0 a 100."
+  }
   for (const [field, value] of [["startsAt", startsAt], ["endsAt", endsAt]] as const) {
     if (value && !DATE_TIME.test(value)) errors[field] = "Use uma data entre os anos 2000 e 2099."
   }
@@ -58,7 +62,7 @@ export function buildInput(values: FormValues, campaign: CampaignDetail | null):
     name: values.name.trim() || null,
     description: values.description.trim() || null,
     type: values.type || null,
-    priority: Number(values.priority || 0),
+    priority: Number(values.priority),
     startsAt: instant(values.startsAt, campaign?.startsAt),
     endsAt: instant(values.endsAt, campaign?.endsAt),
     theme: campaign?.theme ?? null,

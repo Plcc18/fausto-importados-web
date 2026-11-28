@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
-import { MemoryRouter, useLocation, useNavigate } from "react-router-dom"
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { Campaigns } from "./Campaigns"
 import type { CampaignDetail } from "./types"
@@ -404,6 +404,9 @@ describe("edição", () => {
   it.each([
     ["Prioridade", "150", "Use um número inteiro de 0 a 100."],
     ["Prioridade", "1.5", "Use um número inteiro de 0 a 100."],
+    // a caixa numérica devolve vazio para um texto como este: salvar 0 mudaria a prioridade sem avisar
+    ["Prioridade", "50e", "Use um número inteiro de 0 a 100."],
+    ["Prioridade", "", "Use um número inteiro de 0 a 100."],
     ["Fim", "2101-01-01T00:00", "Use uma data entre os anos 2000 e 2099."],
   ])("confere %s = %s antes de enviar", async (label, value, message) => {
     await openForm()
@@ -560,23 +563,117 @@ describe("alterações não salvas", () => {
     click("Salvar rascunho")
     await waitFor(() => expect(unload()).toBe(false))
   })
+})
 
-  it("sair no meio do salvamento não reabre o formulário quando a resposta chega", async () => {
+describe("salvamento ou publicação em andamento", () => {
+  /** A próxima escrita só responde quando o teste mandar. */
+  function holdNextWrite() {
     let finish!: (res: Response) => void
-    writeAnswers = [() => new Promise<Response>((resolve) => { finish = resolve })]
+    writeAnswers.push(() => new Promise<Response>((resolve) => { finish = resolve }))
+    return (res: Response) => finish(res)
+  }
+  const savedDraft = () => json(detail({ name: "Natal", version: 5 }))
+
+  /** Abre a edição, muda o nome e confirma a publicação, com o salvamento ainda sem resposta. */
+  async function startPublishing() {
+    const finish = holdNextWrite()
+    await openFromList()
+    type("Nome", "Natal")
+    await confirmPublish()
+    await waitFor(() => expect(writes()).toHaveLength(1))
+    return finish
+  }
+
+  it("bloqueia Cancelar e a seta, e o navegador pergunta antes de fechar a aba", async () => {
+    const finish = await startPublishing()
+
+    expect(button("Cancelar").disabled).toBe(true)
+    expect(button("Voltar à lista").disabled).toBe(true)
+    expect(!window.dispatchEvent(new Event("beforeunload", { cancelable: true }))).toBe(true)
+
+    finish(savedDraft())
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Campanha publicada."))
+    await waitFor(() => expect(address()).toBe(""))
+  })
+
+  it("segura o voltar do navegador, sem oferecer descarte, e termina a publicação", async () => {
+    const finish = await startPublishing()
+
+    browserBack()
+
+    await waitFor(() => expect(toast.info).toHaveBeenCalledWith("Aguarde o salvamento terminar para sair."))
+    await waitFor(() => expect(address()).toBe("?editar=c1"))
+    expect(screen.queryByRole("dialog")).toBeNull()
+    expect(field("Nome").value).toBe("Natal")
+    finish(savedDraft())
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Campanha publicada."))
+    await waitFor(() => expect(address()).toBe(""))
+    expect(written()).toEqual(["PUT /api/admin/campaigns/c1", "POST /api/admin/campaigns/c1/publish"])
+  })
+
+  it("segura o voltar também numa campanha nova, e o motivo de uma recusa continua na tela", async () => {
+    const finish = holdNextWrite()
+    writeAnswers.push(() => json({ code: "publish_requirements", fields: [] }, 422))
     renderAt()
     click("Nova campanha")
+    type("Nome", "Natal")
+    await confirmPublish()
+    await waitFor(() => expect(writes()).toHaveLength(1))
+
+    browserBack()
+    await waitFor(() => expect(address()).toBe("?nova="))
+    finish(json(detail({ id: "novo", name: "Natal", version: 0 }), 201))
+
+    expect((await screen.findByRole("alert")).textContent).toContain("a campanha não foi publicada")
+    await waitFor(() => expect(address()).toBe("?editar=novo"))
+    expect(screen.queryByRole("dialog")).toBeNull()
+  })
+
+  /** Uma saída que o formulário não tem como segurar: outra rota do app (ou a sessão que cai). */
+  function renderWithPanel() {
+    function Leave() {
+      const navigate = useNavigate()
+      return <button type="button" onClick={() => navigate(ROUTES.admin)}>ir ao painel</button>
+    }
+    render(
+      <MemoryRouter initialEntries={[`${ROUTES.adminCampaigns}?editar=c1`]}>
+        <Routes>
+          <Route path={ROUTES.adminCampaigns} element={<Campaigns />} />
+          <Route path={ROUTES.admin} element={<div data-testid="admin-panel">painel</div>} />
+        </Routes>
+        <Leave />
+      </MemoryRouter>,
+    )
+  }
+
+  it("se a tela for fechada por outro caminho, não publica e avisa", async () => {
+    const finish = holdNextWrite()
+    renderWithPanel()
+    await screen.findByLabelText("Nome")
+    type("Nome", "Natal")
+    await confirmPublish()
+    await waitFor(() => expect(writes()).toHaveLength(1))
+
+    click("ir ao painel")
+    await screen.findByTestId("admin-panel")
+    finish(savedDraft())
+
+    await waitFor(() => expect(toast.info).toHaveBeenCalledWith("O rascunho foi salvo, mas a campanha não foi publicada."))
+    expect(written()).toEqual(["PUT /api/admin/campaigns/c1"])
+    expect(screen.getByTestId("admin-panel")).toBeTruthy()
+  })
+
+  it("se a tela for fechada por outro caminho, uma recusa vira aviso em vez de se perder", async () => {
+    const finish = holdNextWrite()
+    renderWithPanel()
+    await screen.findByLabelText("Nome")
     type("Nome", "Natal")
     click("Salvar rascunho")
     await waitFor(() => expect(writes()).toHaveLength(1))
 
-    browserBack()
-    fireEvent.click(await inDialog("Descartar"))
-    await screen.findByRole("button", { name: "Editar: Black Friday 2026" })
-    finish(json(detail({ id: "novo", name: "Natal" }), 201))
+    click("ir ao painel")
+    finish(json({ code: "campaign_conflict", message: "O período se sobrepõe ao de outra campanha." }, 409))
 
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Rascunho salvo."))
-    expect(address()).toBe("")
-    expect(screen.queryByLabelText("Nome")).toBeNull()
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("O período se sobrepõe ao de outra campanha."))
   })
 })
