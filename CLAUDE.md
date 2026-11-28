@@ -57,6 +57,10 @@ O ambiente padrão do Vitest é Node. Testes de DOM declaram `// @vitest-environ
 ## TypeScript
 `verbatimModuleSyntax` (use `import type`) e `erasableSyntaxOnly` (sem `enum`, `namespace` ou propriedades declaradas no construtor). Alias `@/` aponta para `src/`.
 
+## Correções futuras
+- Regra para qualquer pessoa ou agente: bug que pode esperar a publicação em produção (achado em revisão, teste ou uso) não é corrigido na hora nem misturado à task em andamento. Registre em `docs/correcoes-futuras.md`, no repositório onde está o código com problema.
+- Não esperam: segurança, perda de dados, preço, estoque ou pedido errados, quebra do que já funciona, e o que impede o "Pronto quando" ou faz teste, lint ou build falharem. Critérios e modelo no próprio arquivo.
+
 ## Campanhas sazonais
 - Tasks em `docs/campanhas-sazonais-tasks.md`. Faça uma por vez e marque `[x]` só quando atender ao "Pronto quando".
 - Ativar, encerrar ou editar uma campanha nunca altera os preços cadastrados dos produtos.
