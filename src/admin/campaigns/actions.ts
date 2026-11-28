@@ -1,6 +1,6 @@
 import type { NoticeOptions } from "@/lib/notice"
 import { SENSITIVE_NOT_DONE } from "@/admin/sensitive"
-import { BANNER_FIELD_LABELS } from "@/admin/campaigns/banner/bannerDraft"
+import { contentFieldLabel } from "@/admin/campaigns/content/contentDraft"
 import { situationOf, type Situation } from "@/admin/campaigns/labels"
 import { THEME_FIELD_LABELS } from "@/admin/campaigns/theme/themeDraft"
 import type { CampaignSummary } from "@/admin/campaigns/types"
@@ -106,7 +106,6 @@ export const FIELD_LABELS: Record<string, string> = {
   startsAt: "Início",
   endsAt: "Fim",
   ...THEME_FIELD_LABELS,
-  ...BANNER_FIELD_LABELS,
 }
 
 /** Corpo de erro da API (contrato §1). */
@@ -120,8 +119,10 @@ export const readApiProblem = async (res: Response) =>
   ((await res.json().catch(() => null)) ?? {}) as ApiProblem
 
 /** "Rótulo: mensagem"; sem rótulo conhecido, só a mensagem. */
-export const describeField = ({ field = "", message = "" }: { field?: string; message?: string }) =>
-  FIELD_LABELS[field] ? `${FIELD_LABELS[field]}: ${message}` : message
+export const describeField = ({ field = "", message = "" }: { field?: string; message?: string }) => {
+  const label = FIELD_LABELS[field] ?? contentFieldLabel(field)
+  return label ? `${label}: ${message}` : message
+}
 
 /** O aviso para uma ação que a API recusou. As mensagens dela para campanhas já vêm em português. */
 export async function explainFailure(res: Response, action: CampaignAction): Promise<NoticeOptions> {

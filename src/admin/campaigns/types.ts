@@ -36,8 +36,8 @@ export interface CampaignPage {
 
 /**
  * Corpo de criar e editar (§5.1). A edição substitui o documento inteiro: o que não for enviado é apagado.
- * O `theme` é lido e montado por `theme/themeDraft.ts` e o banner por `banner/bannerDraft.ts`; o restante de
- * `content` e as `collections` ganham editor nas T31 e T32, e até lá o painel os devolve como recebeu.
+ * O `theme` é lido e montado por `theme/themeDraft.ts` e o `content` por `content/contentDraft.ts`. As `collections`
+ * ganham editor na T32; até lá o painel as devolve como recebeu.
  */
 export interface CampaignInput {
   name: string | null
