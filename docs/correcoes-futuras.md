@@ -38,7 +38,7 @@ Modelo:
 
 ## Pendências
 
-Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35. Salvo onde está dito "confirmado", ainda não foram reproduzidos: confira antes de corrigir.
+Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35; os itens C10 a C14, do `/code-review` da T27 (27/11/2026, PR #36). Salvo onde está dito "confirmado", ainda não foram reproduzidos: confira antes de corrigir.
 
 - [ ] **C01. Produto reativado pode continuar fora da coleção da campanha** · Importante
   - *Onde:* [store.ts](../src/lib/campaign/store.ts), `isSameCampaign` e `apply`.
@@ -89,7 +89,44 @@ Os itens C01 a C09 vieram do `/code-review` de 27/11/2026, no PR #35. Salvo onde
   - *Como reproduzir:* primeira visita (sem cache) em `/#colecao`, com campanha só com banner, em navegador que não compensa a rolagem.
   - *Sugestão:* incluir `content.hero` e `content.topBar` na condição.
 
-- [ ] **C09. Tela de campanhas mostra a mesma mensagem para qualquer erro** · Menor
+- [x] **C09. Tela de campanhas mostra a mesma mensagem para qualquer erro** · Menor
+  - *Corrigido:* 27/11/2026, na T27 (PR #36), que reescreveu a tela.
   - *Onde:* [Campaigns.tsx](../src/admin/campaigns/Campaigns.tsx), tratamento de erro de `countCampaigns` (entra com o PR #35).
   - *Problema:* falta de conexão, 403 e erro do servidor aparecem iguais, porque o `HttpError` é descartado. Foge da regra do `CLAUDE.md` sobre `httpErrors.ts` e as telas de `src/component/errors`.
   - *Sugestão:* classificar com `errorCodeFromError` e mostrar a tela ou mensagem correspondente. A T27 reescreve essa tela e pode já resolver.
+
+- [ ] **C10. Campanha encerrada pode continuar na tela ao voltar para a aba** · Importante (avaliar se corrige antes da publicação)
+  - *Onde:* [store.ts](../src/lib/campaign/store.ts), `handleVisibility` e o `catch` de `load`.
+  - *Problema:* ao voltar para a aba, a loja só busca de novo, sem conferir se a campanha atual ainda vale; se a busca falhar, mantém a campanha mesmo encerrada. Contraria a garantia do `CLAUDE.md` de que a campanha em cache sai do ar no fim dela, mesmo com a API fora.
+  - *Como reproduzir:* celular ou notebook que pausa os timers ao dormir, com a loja aberta; a campanha termina nesse intervalo. Ao acordar, o tema fica na tela enquanto a busca não responde e, se ela falhar, até o timer atrasado disparar.
+  - *Confirmado no código (27/11/2026):* os dois trechos não conferem a validade. O cenário no aparelho não foi reproduzido.
+  - *Sugestão:* ao voltar para a aba, antes das outras condições, tirar a campanha que não vale mais e reagendar, como `start()` faz; aplicar a mesma conferência quando a busca falhar.
+
+- [x] **C11. Confirmação de "Desativar" promete que a loja atualiza em 1 minuto** · Menor
+  - *Corrigido:* 27/11/2026, no PR #36: o texto diz que páginas já abertas só mudam ao recarregar ou voltar para a aba.
+  - *Onde:* [actions.ts](../src/admin/campaigns/actions.ts), texto de `disable`.
+  - *Problema:* quem está com a loja aberta e visível continua vendo a campanha: o [store.ts](../src/lib/campaign/store.ts) só busca de novo ao entrar na loja, ao voltar para a aba, no horário de mudança ou no fim da campanha. O 1 minuto vale para quem abre ou volta à loja.
+  - *Como reproduzir:* desativar uma campanha no ar com a loja aberta em outra janela e esperar mais de 1 minuto.
+  - *Confirmado no código (27/11/2026):* não há conferência periódica.
+  - *Sugestão:* dizer no texto que páginas abertas só mudam ao recarregar ou voltar à aba, ou conferir periodicamente enquanto houver campanha na tela.
+
+- [ ] **C12. Duplicar de novo pode avisar sucesso sem criar a cópia** · Menor
+  - *Onde:* [Campaigns.tsx](../src/admin/campaigns/Campaigns.tsx), `run`, com [idempotency.ts](../src/lib/idempotency.ts).
+  - *Problema:* depois de uma falha de rede, a `Idempotency-Key` da campanha é mantida até uma duplicação dar certo ou outra campanha ser duplicada. Se a primeira tentativa foi concluída no servidor, repetir mais tarde recebe a resposta guardada.
+  - *Como reproduzir:* a API duplica A, mas a resposta se perde; a pessoa vê a cópia, exclui e duplica A de novo: aparece o aviso de sucesso e nenhum rascunho novo.
+  - *Confirmado no código (27/11/2026).*
+  - *Sugestão:* descartar a chave quando outra ação rodar ou quando a lista recarregada mostrar que a primeira tentativa deu certo, mantendo-a para a repetição imediata.
+
+- [ ] **C13. Voltar à loja pode cancelar a busca recém-iniciada** · Menor
+  - *Onde:* [store.ts](../src/lib/campaign/store.ts), `start` e `scheduleChange`.
+  - *Problema:* com a resposta vencida, `start()` arma o timer de reserva de 30 s e chama `load()`. Se a busca ainda estiver em andamento aos 30 s, o timer chama `load()` de novo e cancela a anterior.
+  - *Como reproduzir:* ir ao painel, deixar passar o horário de mudança e voltar à loja com a API acordando (cerca de 1 minuto).
+  - *Confirmado no código (27/11/2026).*
+  - *Sugestão:* não armar o timer de reserva quando `start()` vai buscar, ou o timer não chamar `load()` com uma busca em andamento.
+
+- [ ] **C14. Link externo digitado errado derruba a campanha inteira na loja** · Menor
+  - *Onde:* [parse.ts](../src/lib/campaign/parse.ts), `isSafeLink`; na API, `CampaignContentValidator.hasPlainHost`.
+  - *Problema:* a API aceita endereços que o `new URL` do navegador recusa, e um link recusado descarta a campanha toda (aviso só em desenvolvimento). O painel mostra a campanha no ar, e a loja usa o tema padrão.
+  - *Como reproduzir:* publicar uma faixa ou botão com `https://loja.com:abc/x` ou `https://loja.com:99999`.
+  - *Confirmado no código (27/11/2026):* a API confere só o servidor e o `usuario@`. Não foi executado de ponta a ponta.
+  - *Sugestão:* apertar a validação na API (o melhor lugar para o aviso aparecer ao salvar), ou descartar na loja só o link ou botão inválido.
